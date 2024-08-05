@@ -40,13 +40,13 @@ void SPLArchive::load(std::string_view filename) {
         // Animations
         if (flags.hasScaleAnim) {
             SPLScaleAnimNative scaleAnim;
-            fread(&scaleAnim, sizeof(SPLScaleAnim), 1, file);
+            fread(&scaleAnim, sizeof(SPLScaleAnimNative), 1, file);
             res.scaleAnim = fromNative(scaleAnim);
         }
 
         if (flags.hasColorAnim) {
             SPLColorAnimNative colorAnim;
-            fread(&colorAnim, sizeof(SPLColorAnim), 1, file);
+            fread(&colorAnim, sizeof(SPLColorAnimNative), 1, file);
             res.colorAnim = fromNative(colorAnim);
         }
 
@@ -58,50 +58,50 @@ void SPLArchive::load(std::string_view filename) {
 
         if (flags.hasTexAnim) {
             SPLTexAnimNative texAnim;
-            fread(&texAnim, sizeof(SPLTexAnim), 1, file);
+            fread(&texAnim, sizeof(SPLTexAnimNative), 1, file);
             res.texAnim = fromNative(texAnim);
         }
 
         if (flags.hasChildResource) {
             SPLChildResourceNative childResource;
-            fread(&childResource, sizeof(SPLChildResource), 1, file);
+            fread(&childResource, sizeof(SPLChildResourceNative), 1, file);
             res.childResource = fromNative(childResource);
         }
 
         // Behaviors
         if (flags.hasGravityBehavior) {
             SPLGravityBehaviorNative gravityBehavior;
-            fread(&gravityBehavior, sizeof(SPLGravityBehavior), 1, file);
+            fread(&gravityBehavior, sizeof(SPLGravityBehaviorNative), 1, file);
             res.behaviors.push_back(fromNative(gravityBehavior));
         }
 
         if (flags.hasRandomBehavior) {
             SPLRandomBehaviorNative randomBehavior;
-            fread(&randomBehavior, sizeof(SPLRandomBehavior), 1, file);
+            fread(&randomBehavior, sizeof(SPLRandomBehaviorNative), 1, file);
             res.behaviors.push_back(fromNative(randomBehavior));
         }
 
         if (flags.hasMagnetBehavior) {
             SPLMagnetBehaviorNative magnetBehavior;
-            fread(&magnetBehavior, sizeof(SPLMagnetBehavior), 1, file);
+            fread(&magnetBehavior, sizeof(SPLMagnetBehaviorNative), 1, file);
             res.behaviors.push_back(fromNative(magnetBehavior));
         }
 
         if (flags.hasSpinBehavior) {
             SPLSpinBehaviorNative spinBehavior;
-            fread(&spinBehavior, sizeof(SPLSpinBehavior), 1, file);
+            fread(&spinBehavior, sizeof(SPLSpinBehaviorNative), 1, file);
             res.behaviors.push_back(fromNative(spinBehavior));
         }
 
         if (flags.hasCollisionPlaneBehavior) {
             SPLCollisionPlaneBehaviorNative collisionPlaneBehavior;
-            fread(&collisionPlaneBehavior, sizeof(SPLCollisionPlaneBehavior), 1, file);
+            fread(&collisionPlaneBehavior, sizeof(SPLCollisionPlaneBehaviorNative), 1, file);
             res.behaviors.push_back(fromNative(collisionPlaneBehavior));
         }
 
         if (flags.hasConvergenceBehavior) {
             SPLConvergenceBehaviorNative convergenceBehavior;
-            fread(&convergenceBehavior, sizeof(SPLConvergenceBehavior), 1, file);
+            fread(&convergenceBehavior, sizeof(SPLConvergenceBehaviorNative), 1, file);
             res.behaviors.push_back(fromNative(convergenceBehavior));
         }
     }
@@ -111,11 +111,30 @@ void SPLArchive::load(std::string_view filename) {
     for (size_t i = 0; i < m_header.texCount; i++) {
         SPLTexture& tex = m_textures[i];
         SPLTextureResource texRes;
+        size_t offset = ftell(file);
         fread(&texRes, sizeof(SPLTextureResource), 1, file);
 
-        
+        tex.textureData.resize(texRes.textureSize);
+        tex.paletteData.resize(texRes.paletteSize);
 
+        fread(tex.textureData.data(), 1, texRes.textureSize, file);
+        fseek(file, offset + texRes.paletteOffset, SEEK_SET);
+        fread(tex.paletteData.data(), 1, texRes.paletteSize, file);
+
+        tex.resource = nullptr;
+        tex.param = texRes.param;
+        tex.width = 1 << (texRes.param.s + 3);
+        tex.height = 1 << (texRes.param.t + 3);
     }
+
+    fclose(file);
+    m_loaded = true;
+}
+
+void SPLArchive::unload() {
+    m_resources.clear();
+    m_textures.clear();
+    m_loaded = false;
 }
 
 SPLResourceHeader SPLArchive::fromNative(const SPLResourceHeaderNative &native) {

@@ -247,11 +247,11 @@ struct SPLTextureResource {
 
 struct SPLTexture {
     const SPLTextureResource* resource;
-    u32 texAddr; // VRAM address of the texture
-    u32 palAddr; // VRAM address of the palette
     SPLTextureParam param;
     u16 width;
     u16 height;
+    std::vector<u8> textureData;
+    std::vector<u8> paletteData;
 };
 
 using SPLResourceHeader = SPLResourceHeaderTemplate<f32, f32, glm::vec3, glm::vec3, glm::vec3>;

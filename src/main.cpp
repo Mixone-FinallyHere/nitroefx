@@ -1,4 +1,5 @@
-#include <iostream>
+#include "spl/spl_archive.h"
+#include "gl_texture.h"
 
 #include <SDL.h>
 #include <SDL_opengl.h>
@@ -6,6 +7,9 @@
 #include <imgui_impl_sdl2.h>
 #include <imgui_impl_opengl3.h>
 #include <spdlog/spdlog.h>
+
+#include <tinyfiledialogs.h>
+
 
 int main() {
     SDL_SetMainReady();
@@ -47,6 +51,9 @@ int main() {
     ImGui_ImplSDL2_InitForOpenGL(window, glContext);
     ImGui_ImplOpenGL3_Init(glsl_version);
 
+    SPLArchive archive;
+    std::vector<GLTexture> textures;
+
     bool done = false;
     while (!done) {
         SDL_Event event;
@@ -61,8 +68,35 @@ int main() {
         ImGui_ImplSDL2_NewFrame();
         ImGui::NewFrame();
 
-        ImGui::Begin("Hello, world!");
-        ImGui::Text("This is some useful text.");
+        ImGui::Begin("Hello, world!", nullptr, ImGuiWindowFlags_MenuBar);
+
+        if (ImGui::BeginMenuBar()) {
+            if (ImGui::BeginMenu("File")) {
+                if (ImGui::MenuItem("Open..", "Ctrl+O")) {
+                    const auto filter = "*.spa";
+                    const auto file = tinyfd_openFileDialog("Open File", "", 1, &filter, "SPA Files", false);
+                    
+                    if (file) {
+                        archive.load(file);
+                        textures.clear();
+                        for (const auto& texture : archive.getTextures()) {
+                            textures.emplace_back(texture);
+                        }
+                    }
+                }
+                if (ImGui::MenuItem("Save", "Ctrl+S")) {
+
+                }
+                if (ImGui::MenuItem("Close", "Ctrl+W")) { done = true; }
+                ImGui::EndMenu();
+            }
+            ImGui::EndMenuBar();
+        }
+
+        for (const auto& texture : textures) {
+            ImGui::Image((void*)(intptr_t)texture.getHandle(), ImVec2(texture.getWidth() * 8, texture.getHeight() * 8));
+        }
+
         ImGui::End();
 
         ImGui::Render();

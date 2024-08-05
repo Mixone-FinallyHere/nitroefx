@@ -43,3 +43,47 @@ union GXRgb {
         return toVec3();
     }
 };
+
+union GXRgba {
+    u16 color;
+    struct {
+        u16 r : 5;
+        u16 g : 5;
+        u16 b : 5;
+        u16 a : 1;
+    };
+
+    GXRgba() = default;
+    GXRgba(u16 color) : color(color) {}
+    GXRgba(u8 r, u8 g, u8 b, u8 a) : r(r), g(g), b(b), a(a) {}
+    GXRgba(const glm::vec4& vec) {
+        r = vec.r * 31.0f;
+        g = vec.g * 31.0f;
+        b = vec.b * 31.0f;
+        a = vec.a > 0.5f;
+    }
+
+    glm::vec4 toVec4() const {
+        return glm::vec4(r / 31.0f, g / 31.0f, b / 31.0f, a);
+    }
+
+    operator glm::vec4() const {
+        return toVec4();
+    }
+
+    u8 r8() const {
+        return (r << 3) | (r >> 2);
+    }
+
+    u8 g8() const {
+        return (g << 3) | (g >> 2);
+    }
+
+    u8 b8() const {
+        return (b << 3) | (b >> 2);
+    }
+
+    u8 a8() const {
+        return a ? 0xFF : 0;
+    }
+};

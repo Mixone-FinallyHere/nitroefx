@@ -19,6 +19,9 @@ public:
 
     const std::vector<SPLResource>& getResources() const { return m_resources; }
 
+    const SPLTexture& getTexture(size_t index) const { return m_textures[index]; }
+    const std::vector<SPLTexture>& getTextures() const { return m_textures; }
+
     size_t getResourceCount() const { return m_resources.size(); }
     size_t getTextureCount() const { return m_header.texCount; }
 
