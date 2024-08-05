@@ -16,9 +16,9 @@ find_package(glm CONFIG REQUIRED)
 
 file(GLOB_RECURSE SOURCES "src/*.cpp" "src/*.h")
 
-add_executable(nitroefx ${SOURCES})
+add_executable(nitroefx ${SOURCES} external/tinyfiledialogs/tinyfiledialogs.c)
 
-target_include_directories(nitroefx PRIVATE "src")
+target_include_directories(nitroefx PRIVATE src external/tinyfiledialogs)
 target_compile_definitions(nitroefx PRIVATE SDL_MAIN_HANDLED)
 target_link_libraries(nitroefx PRIVATE 
     SDL2::SDL2 
