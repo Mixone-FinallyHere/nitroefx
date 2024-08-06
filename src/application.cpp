@@ -5,10 +5,15 @@
 #include <SDL.h>
 #include <SDL_opengl.h>
 #include <imgui.h>
+#include <imgui_internal.h>
 #include <imgui_impl_sdl2.h>
 #include <imgui_impl_opengl3.h>
 #include <spdlog/spdlog.h>
 
+#ifdef _WIN32
+#include <windows.h>
+#include <ShObjIdl.h>
+#endif
 #include <tinyfiledialogs.h>
 
 int Application::run(int argc, char** argv) {
@@ -18,7 +23,6 @@ int Application::run(int argc, char** argv) {
         return 1;
     }
 
-    const auto glsl_version = "#version 450";
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
@@ -28,14 +32,14 @@ int Application::run(int argc, char** argv) {
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
 
     constexpr auto windowFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI;
-    SDL_Window* window = SDL_CreateWindow("NitroEFX", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, windowFlags);
-    if (window == nullptr) {
+    m_window = SDL_CreateWindow("NitroEFX", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, windowFlags);
+    if (m_window == nullptr) {
         spdlog::error("SDL_CreateWindow Error: {}", SDL_GetError());
         return 1;
     }
 
-    auto glContext = SDL_GL_CreateContext(window);
-    SDL_GL_MakeCurrent(window, glContext);
+    m_context = SDL_GL_CreateContext(m_window);
+    SDL_GL_MakeCurrent(m_window, m_context);
     SDL_GL_SetSwapInterval(1); // Enable vsync
 
     IMGUI_CHECKVERSION();
@@ -47,35 +51,19 @@ int Application::run(int argc, char** argv) {
 
 	setColors();
 
-    ImGui_ImplSDL2_InitForOpenGL(window, glContext);
-    ImGui_ImplOpenGL3_Init(glsl_version);
+    ImGui_ImplSDL2_InitForOpenGL(m_window, m_context);
+    ImGui_ImplOpenGL3_Init("#version 450");
 
-    std::unique_ptr<SPLArchive> archive;
-
-    bool done = false;
-    while (!done) {
-        SDL_Event event;
-        while (SDL_PollEvent(&event)) {
-            ImGui_ImplSDL2_ProcessEvent(&event);
-            switch (event.type) {
-            case SDL_QUIT:
-                done = true;
-                break;
-            case SDL_WINDOWEVENT:
-                if (event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window)) {
-                    done = true;
-                }
-                break;
-            default:
-                break;
-            }
-        }
+    while (m_running) {
+        pollEvents();
 
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplSDL2_NewFrame();
         ImGui::NewFrame();
-
         ImGui::DockSpaceOverViewport();
+
+		renderMenuBar();
+		g_projectManager->render();
 
         ImGui::Render();
         glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
@@ -83,8 +71,7 @@ int Application::run(int argc, char** argv) {
         glClear(GL_COLOR_BUFFER_BIT);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-        if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-        {
+        if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
             SDL_Window* currentWindow = SDL_GL_GetCurrentWindow();
             SDL_GLContext currentContext = SDL_GL_GetCurrentContext();
             ImGui::UpdatePlatformWindows();
@@ -92,10 +79,73 @@ int Application::run(int argc, char** argv) {
             SDL_GL_MakeCurrent(currentWindow, currentContext);
         }
 
-        SDL_GL_SwapWindow(window);
+        SDL_GL_SwapWindow(m_window);
     }
 
     return 0;
+}
+
+void Application::pollEvents() {
+	SDL_Event event;
+	while (SDL_PollEvent(&event)) {
+		ImGui_ImplSDL2_ProcessEvent(&event);
+		switch (event.type) {
+		case SDL_QUIT:
+			m_running = false;
+			break;
+		case SDL_WINDOWEVENT:
+			if (event.window.event == SDL_WINDOWEVENT_CLOSE 
+				&& event.window.windowID == SDL_GetWindowID(m_window)) {
+				m_running = false;
+			}
+			break;
+		default:
+			break;
+		}
+
+		dispatchEvent(event);
+	}
+}
+
+void Application::dispatchEvent(const SDL_Event& event) {
+}
+
+void Application::renderMenuBar() {
+	if (ImGui::BeginMainMenuBar()) {
+		if (ImGui::BeginMenu("File")) {
+			if (ImGui::BeginMenu("New...")) {
+				if (ImGui::MenuItem("Project")) {
+					spdlog::warn("New Project not implemented");
+				}
+
+				if (ImGui::MenuItem("SPL File")) {
+					spdlog::warn("New SPL File not implemented");
+				}
+
+				ImGui::EndMenu();
+			}
+
+			if (ImGui::BeginMenu("Open...")) {
+				if (ImGui::MenuItem("Project")) {
+					const auto path = openProject();
+					if (!path.empty()) {
+						g_projectManager->openProject(path);
+					}
+				}
+
+				if (ImGui::MenuItem("SPL File")) {
+					auto path = openFile();
+					// TODO: Load the SPL file
+				}
+
+				ImGui::EndMenu();
+			}
+
+			ImGui::EndMenu();
+		}
+
+		ImGui::EndMainMenuBar();
+	}
 }
 
 void Application::setColors() {
@@ -185,4 +235,63 @@ void Application::setColors() {
 	style.Colors[ImGuiCol_NavWindowingHighlight] = ImVec4(1.0f, 1.0f, 1.0f, 0.699999988079071f);
 	style.Colors[ImGuiCol_NavWindowingDimBg] = ImVec4(0.800000011920929f, 0.800000011920929f, 0.800000011920929f, 0.2000000029802322f);
 	style.Colors[ImGuiCol_ModalWindowDimBg] = ImVec4(7.167382136685774e-07f, 7.775358312755998e-07f, 9.999999974752427e-07f, 0.3499999940395355f);
+}
+
+std::string_view Application::openFile() {
+	const char* filters[] = { "*.spa" };
+	const char* result = tinyfd_openFileDialog(
+		"Open File", 
+		"", 
+		1, 
+		filters, 
+		"SPL Files", 
+		false
+	);
+
+	return result ? result : "";
+}
+
+std::string_view Application::saveFile() {
+	return {};
+}
+
+std::string Application::openProject() {
+#ifdef _WIN32
+#ifdef _DEBUG
+#define HRESULT_CHECK(hr) if (FAILED(hr)) { spdlog::error("HRESULT failed @ {}:{}", __FILE__, __LINE__); return ""; }
+#else
+#define HRESULT_CHECK(hr) if (FAILED(hr)) { spdlog::error("operation failed: {}", hr); return ""; }
+#endif
+
+	// Implementing this manually because tinyfiledialog uses the old SHBrowseForFolder API (which sucks)
+	IFileOpenDialog* dlg;
+
+	if (FAILED(CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE))) {
+		spdlog::error("Failed to initialize COM");
+		return "";
+	}
+
+	if (FAILED(CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_ALL, 
+		IID_IFileOpenDialog, reinterpret_cast<void**>(&dlg)))) {
+		spdlog::error("Failed to create file open dialog");
+		return "";
+	}
+
+	HRESULT_CHECK(dlg->SetTitle(L"Open Project"))
+	HRESULT_CHECK(dlg->SetOptions(FOS_PICKFOLDERS | FOS_PATHMUSTEXIST))
+	HRESULT_CHECK(dlg->Show(nullptr))
+
+	IShellItem* item;
+	HRESULT_CHECK(dlg->GetResult(&item))
+	PWSTR path;
+	if (FAILED(item->GetDisplayName(SIGDN_FILESYSPATH, &path))) {
+		spdlog::error("Failed to get path");
+		return "";
+	}
+
+	return tinyfd_utf16to8(path);
+#else
+	const auto folder = tinyfd_selectFolderDialog("Open Project", nullptr);
+	return folder ? folder : "";
+#endif
 }
