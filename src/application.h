@@ -16,6 +16,7 @@ private:
     void dispatchEvent(const SDL_Event& event);
     void renderMenuBar();
     void setColors();
+    void loadFonts();
 
     static std::string_view openFile();
     static std::string_view saveFile();

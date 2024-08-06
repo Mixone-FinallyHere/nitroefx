@@ -2,6 +2,7 @@
 
 #include "editor_instance.h"
 
+#include <SDL_events.h>
 #include <filesystem>
 #include <memory>
 #include <span>
@@ -34,6 +35,16 @@ public:
     bool hasProject() const {
         return !m_projectPath.empty();
     }
+
+    bool hasOpenEditors() const {
+        return !m_openEditors.empty();
+    }
+
+    bool hasActiveEditor() const {
+        return m_activeEditor != nullptr;
+    }
+
+    void handleEvent(const SDL_Event& event);
 
 private:
     void renderDirectory(const std::filesystem::path& path);

@@ -2,6 +2,7 @@
 
 #include <imgui.h>
 
+#include "SDL_messagebox.h"
 #include "spdlog/spdlog.h"
 
 
@@ -61,6 +62,19 @@ void ProjectManager::render() {
     }
 
     ImGui::End();
+}
+
+void ProjectManager::handleEvent(const SDL_Event& event) {
+    if (event.type != SDL_DROPFILE) {
+        return;
+    }
+
+    const std::filesystem::path path = event.drop.file;
+    if (std::filesystem::is_directory(path)) {
+        openProject(path);
+    } else {
+        openEditor(path);
+    }
 }
 
 void ProjectManager::renderDirectory(const std::filesystem::path& path) {

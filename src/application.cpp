@@ -1,6 +1,7 @@
 #include "application.h"
 #include "spl/spl_archive.h"
 #include "gl_texture.h"
+#include "fonts/IconsFontAwesome6.h"
 
 #include <SDL.h>
 #include <SDL_opengl.h>
@@ -15,6 +16,7 @@
 #include <ShObjIdl.h>
 #endif
 #include <tinyfiledialogs.h>
+
 
 int Application::run(int argc, char** argv) {
     SDL_SetMainReady();
@@ -49,6 +51,7 @@ int Application::run(int argc, char** argv) {
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // Enable Docking
     io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;       // Enable Multi-Viewport / Platform Windows
 
+	loadFonts();
 	setColors();
 
     ImGui_ImplSDL2_InitForOpenGL(m_window, m_context);
@@ -108,37 +111,58 @@ void Application::pollEvents() {
 }
 
 void Application::dispatchEvent(const SDL_Event& event) {
+	g_projectManager->handleEvent(event);
 }
 
 void Application::renderMenuBar() {
 	if (ImGui::BeginMainMenuBar()) {
 		if (ImGui::BeginMenu("File")) {
-			if (ImGui::BeginMenu("New...")) {
-				if (ImGui::MenuItem("Project")) {
+			if (ImGui::BeginMenu("New")) {
+				if (ImGui::MenuItem(ICON_FA_FOLDER_PLUS " Project", "Ctrl+Shift+N")) {
 					spdlog::warn("New Project not implemented");
 				}
 
-				if (ImGui::MenuItem("SPL File")) {
+				if (ImGui::MenuItem(ICON_FA_FILE_CIRCLE_PLUS " SPL File", "Ctrl+N")) {
 					spdlog::warn("New SPL File not implemented");
 				}
 
 				ImGui::EndMenu();
 			}
 
-			if (ImGui::BeginMenu("Open...")) {
-				if (ImGui::MenuItem("Project")) {
+			if (ImGui::BeginMenu("Open")) {
+				if (ImGui::MenuItem(ICON_FA_FOLDER " Project", "Ctrl+Shift+O")) {
 					const auto path = openProject();
 					if (!path.empty()) {
 						g_projectManager->openProject(path);
 					}
 				}
 
-				if (ImGui::MenuItem("SPL File")) {
+				if (ImGui::MenuItem(ICON_FA_FILE " SPL File", "Ctrl+O")) {
 					auto path = openFile();
 					// TODO: Load the SPL file
 				}
 
 				ImGui::EndMenu();
+			}
+
+			if (ImGui::MenuItem(ICON_FA_FLOPPY_DISK " Save", "Ctrl+S", 
+				false, g_projectManager->hasActiveEditor())) {
+				spdlog::warn("Save not implemented");
+			}
+
+			if (ImGui::MenuItem(ICON_FA_FLOPPY_DISK " Save As...", nullptr, 
+				false, g_projectManager->hasActiveEditor())) {
+				spdlog::warn("Save As not implemented");
+			}
+
+			if (ImGui::MenuItem(ICON_FA_FLOPPY_DISK " Save All", "Ctrl+Shift+S", 
+				false, g_projectManager->hasOpenEditors())) {
+				spdlog::warn("Save All not implemented");
+			}
+
+			if (ImGui::MenuItem(ICON_FA_XMARK " Close", "Ctrl+W", 
+				false, g_projectManager->hasActiveEditor())) {
+				spdlog::warn("Close not implemented");
 			}
 
 			ImGui::EndMenu();
@@ -237,6 +261,39 @@ void Application::setColors() {
 	style.Colors[ImGuiCol_ModalWindowDimBg] = ImVec4(7.167382136685774e-07f, 7.775358312755998e-07f, 9.999999974752427e-07f, 0.3499999940395355f);
 }
 
+#include "fonts/tahoma_font.h"
+#include "fonts/icon_font.h"
+
+void Application::loadFonts() {
+	const ImGuiIO& io = ImGui::GetIO();
+	io.Fonts->Clear();
+
+	ImFontConfig config;
+	config.OversampleH = 2;
+	config.OversampleV = 2;
+	config.PixelSnapH = true;
+	config.FontDataOwnedByAtlas = false;
+
+	io.Fonts->AddFontFromMemoryCompressedTTF(
+		g_tahoma_compressed_data, 
+		g_tahoma_compressed_size, 
+		18.0f, 
+		&config
+	);
+
+	config.MergeMode = true;
+	constexpr ImWchar iconRanges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
+	io.Fonts->AddFontFromMemoryCompressedTTF(
+		g_icon_font_compressed_data, 
+		g_icon_font_compressed_size, 
+		18.0f, 
+		&config,
+		iconRanges
+	);
+
+	io.Fonts->Build();
+}
+
 std::string_view Application::openFile() {
 	const char* filters[] = { "*.spa" };
 	const char* result = tinyfd_openFileDialog(
@@ -279,7 +336,10 @@ std::string Application::openProject() {
 
 	HRESULT_CHECK(dlg->SetTitle(L"Open Project"))
 	HRESULT_CHECK(dlg->SetOptions(FOS_PICKFOLDERS | FOS_PATHMUSTEXIST))
-	HRESULT_CHECK(dlg->Show(nullptr))
+	if (dlg->Show(nullptr) != S_OK) {
+		spdlog::info("User cancelled dialog");
+		return "";
+	}
 
 	IShellItem* item;
 	HRESULT_CHECK(dlg->GetResult(&item))
