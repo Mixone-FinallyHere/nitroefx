@@ -1,10 +1,11 @@
 #include "gl_texture.h"
+#include "spl/spl_resource.h"
 
 
 struct PixelA3I5 {
     u8 color : 5;
     u8 alpha : 3;
-    
+
     u8 getAlpha() const {
         return (alpha << 5) | (alpha << 2) | (alpha >> 1);
     }
@@ -24,7 +25,41 @@ GLTexture::GLTexture(const SPLTexture& texture) : m_width(texture.width), m_heig
     createTexture(texture);
 }
 
+GLTexture::GLTexture(GLTexture&& other) noexcept {
+    if (this != &other) {
+        m_texture = other.m_texture;
+        m_width = other.m_width;
+        m_height = other.m_height;
+        m_format = other.m_format;
+
+        other.m_texture = 0;
+        other.m_width = 0;
+        other.m_height = 0;
+        other.m_format = TextureFormat::None;
+    }
+}
+
+GLTexture& GLTexture::operator=(GLTexture&& other) noexcept {
+    if (this != &other) {
+        m_texture = other.m_texture;
+        m_width = other.m_width;
+        m_height = other.m_height;
+        m_format = other.m_format;
+
+        other.m_texture = 0;
+        other.m_width = 0;
+        other.m_height = 0;
+        other.m_format = TextureFormat::None;
+    }
+
+    return *this;
+}
+
 GLTexture::~GLTexture() {
+    if (m_texture == 0) { // Was moved from
+        return;
+    }
+
     glDeleteTextures(1, &m_texture);
 }
 
@@ -32,82 +67,84 @@ void GLTexture::bind() const {
     glBindTexture(GL_TEXTURE_2D, m_texture);
 }
 
-void GLTexture::unbind() const {
+void GLTexture::unbind() {
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 void GLTexture::createTexture(const SPLTexture& texture) {
-    
+
     // Texture creation is a 2 step process. First the texture/palette data must be converted
-    // to a format that OpenGL can understand. Then the texture will be uploaded to the GPU.
+    // to a format that OpenGL can understand (RGBA32). Then the texture will be uploaded to the GPU.
 
     // Step 1: Conversion
     std::vector<u8> textureData;
     switch ((TextureFormat)texture.param.format) {
-        case TextureFormat::A3I5:
-            textureData = convertA3I5(
-                texture.textureData.data(), 
-                (GXRgba*)texture.paletteData.data(), 
-                texture.width, 
-                texture.height, 
-                texture.paletteData.size()
-            );
-            break;
-        case TextureFormat::Palette4:
-            textureData = convertPalette4(
-                texture.textureData.data(), 
-                (GXRgba*)texture.paletteData.data(), 
-                texture.width, 
-                texture.height, 
-                texture.paletteData.size(), 
-                texture.param.palColor0
-            );
-            break;
-        case TextureFormat::Palette16:
-            textureData = convertPalette16(
-                texture.textureData.data(), 
-                (GXRgba*)texture.paletteData.data(), 
-                texture.width, 
-                texture.height, 
-                texture.paletteData.size(), 
-                texture.param.palColor0
-            );
-            break;
-        case TextureFormat::Palette256:
-            textureData = convertPalette256(
-                texture.textureData.data(), 
-                (GXRgba*)texture.paletteData.data(), 
-                texture.width, 
-                texture.height, 
-                texture.paletteData.size(), 
-                texture.param.palColor0
-            );
-            break;
-        case TextureFormat::Comp4x4:
-            textureData = convertComp4x4(
-                texture.textureData.data(), 
-                (GXRgba*)texture.paletteData.data(), 
-                texture.width, 
-                texture.height, 
-                texture.paletteData.size()
-            );
-            break;
-        case TextureFormat::A5I3:
-            textureData = convertA5I3(
-                texture.textureData.data(), 
-                (GXRgba*)texture.paletteData.data(), 
-                texture.width, 
-                texture.height, 
-                texture.paletteData.size()
-            );
-            break;
-        case TextureFormat::Direct:
-            textureData = convertDirect(
-                (GXRgba*)texture.textureData.data(), 
-                texture.width, 
-                texture.height
-            );
-            break;
+    case TextureFormat::None:
+        break;
+    case TextureFormat::A3I5:
+        textureData = convertA3I5(
+            texture.textureData.data(),
+            (const GXRgba*)texture.paletteData.data(),
+            texture.width,
+            texture.height,
+            texture.paletteData.size()
+        );
+        break;
+    case TextureFormat::Palette4:
+        textureData = convertPalette4(
+            texture.textureData.data(),
+            (const GXRgba*)texture.paletteData.data(),
+            texture.width,
+            texture.height,
+            texture.paletteData.size(),
+            texture.param.palColor0
+        );
+        break;
+    case TextureFormat::Palette16:
+        textureData = convertPalette16(
+            texture.textureData.data(),
+            (const GXRgba*)texture.paletteData.data(),
+            texture.width,
+            texture.height,
+            texture.paletteData.size(),
+            texture.param.palColor0
+        );
+        break;
+    case TextureFormat::Palette256:
+        textureData = convertPalette256(
+            texture.textureData.data(),
+            (const GXRgba*)texture.paletteData.data(),
+            texture.width,
+            texture.height,
+            texture.paletteData.size(),
+            texture.param.palColor0
+        );
+        break;
+    case TextureFormat::Comp4x4:
+        textureData = convertComp4x4(
+            texture.textureData.data(),
+            (const GXRgba*)texture.paletteData.data(),
+            texture.width,
+            texture.height,
+            texture.paletteData.size()
+        );
+        break;
+    case TextureFormat::A5I3:
+        textureData = convertA5I3(
+            texture.textureData.data(),
+            (const GXRgba*)texture.paletteData.data(),
+            texture.width,
+            texture.height,
+            texture.paletteData.size()
+        );
+        break;
+    case TextureFormat::Direct:
+        textureData = convertDirect(
+            (const GXRgba*)texture.textureData.data(),
+            texture.width,
+            texture.height
+        );
+        break;
     }
 
     const auto repeat = (TextureRepeat)texture.param.repeat;
@@ -116,15 +153,32 @@ void GLTexture::createTexture(const SPLTexture& texture) {
     glGenTextures(1, &m_texture);
     glBindTexture(GL_TEXTURE_2D, m_texture);
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, repeat == TextureRepeat::S || repeat == TextureRepeat::ST ? GL_REPEAT : GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, repeat == TextureRepeat::T || repeat == TextureRepeat::ST ? GL_REPEAT : GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(
+        GL_TEXTURE_2D,
+        GL_TEXTURE_WRAP_S,
+        repeat == TextureRepeat::S || repeat == TextureRepeat::ST ? GL_REPEAT : GL_CLAMP_TO_EDGE
+    );
+    glTexParameteri(
+        GL_TEXTURE_2D,
+        GL_TEXTURE_WRAP_T,
+        repeat == TextureRepeat::T || repeat == TextureRepeat::ST ? GL_REPEAT : GL_CLAMP_TO_EDGE
+    );
 
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_width, m_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, textureData.data());
+    glTexImage2D(
+        GL_TEXTURE_2D,
+        0,
+        GL_RGBA,
+        (s32)m_width,
+        (s32)m_height,
+        0,
+        GL_RGBA,
+        GL_UNSIGNED_BYTE,
+        textureData.data()
+    );
+
     glBindTexture(GL_TEXTURE_2D, 0);
-
-    spdlog::info("Created texture with ID {}", m_texture);
 }
 
 
@@ -151,9 +205,8 @@ std::vector<u8> GLTexture::convertPalette4(const u8* tex, const GXRgba* pal, siz
 
     for (size_t i = 0; i < width * height; i += 4) {
         const u8 pixel = pixels[i / 4];
-        u8 index;
 
-        index = pixel & 0x3;
+        u8 index = pixel & 0x3;
         texture[i * 4 + 0] = pal[index].r8();
         texture[i * 4 + 1] = pal[index].g8();
         texture[i * 4 + 2] = pal[index].b8();
@@ -213,9 +266,7 @@ std::vector<u8> GLTexture::convertPalette256(const u8* tex, const GXRgba* pal, s
 
     for (size_t i = 0; i < width * height; i++) {
         const u8 pixel = pixels[i];
-        u8 index;
-
-        index = pixel;
+        const u8 index = pixel;
         texture[i * 4 + 0] = pal[index].r8();
         texture[i * 4 + 1] = pal[index].g8();
         texture[i * 4 + 2] = pal[index].b8();
@@ -232,7 +283,7 @@ std::vector<u8> GLTexture::convertComp4x4(const u8* tex, const GXRgba* pal, size
 
 std::vector<u8> GLTexture::convertA5I3(const u8* tex, const GXRgba* pal, size_t width, size_t height, size_t palSize) {
     std::vector<u8> texture(width * height * 4);
-    const PixelA5I3* pixels = reinterpret_cast<const PixelA5I3*>(tex);
+    const auto pixels = reinterpret_cast<const PixelA5I3*>(tex);
 
     for (size_t i = 0; i < width * height; i++) {
         GXRgba color = pal[pixels[i].color];

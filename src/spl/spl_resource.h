@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <optional>
+#include <span>
 #include <vector>
 
 #include <glm/glm.hpp>
@@ -9,6 +10,7 @@
 #include "spl_behavior.h"
 #include "types.h"
 #include "fx.h"
+#include "gl_texture.h"
 
 struct SPLFileHeader {
     u32 magic;
@@ -250,8 +252,9 @@ struct SPLTexture {
     SPLTextureParam param;
     u16 width;
     u16 height;
-    std::vector<u8> textureData;
-    std::vector<u8> paletteData;
+    std::span<const u8> textureData;
+    std::span<const u8> paletteData;
+    std::shared_ptr<GLTexture> glTexture;
 };
 
 using SPLResourceHeader = SPLResourceHeaderTemplate<f32, f32, glm::vec3, glm::vec3, glm::vec3>;
@@ -278,4 +281,6 @@ struct SPLResource {
     std::optional<SPLTexAnim> texAnim;
     std::optional<SPLChildResource> childResource;
     std::vector<std::shared_ptr<SPLBehavior>> behaviors;
+
+    std::shared_ptr<SPLTexture> texture;
 };

@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.15)
 
-set(VCPKG_TARGET_TRIPLET x64-windows-static-md)
+if (WIN32)
+    set(VCPKG_TARGET_TRIPLET x64-windows-static-md)
+endif()
 
 project(nitroefx)
 
@@ -17,6 +19,11 @@ find_package(glm CONFIG REQUIRED)
 file(GLOB_RECURSE SOURCES "src/*.cpp" "src/*.h")
 
 add_executable(nitroefx ${SOURCES} external/tinyfiledialogs/tinyfiledialogs.c)
+
+if (WIN32 AND NOT CMAKE_BUILD_TYPE MATCHES Debug)
+    message("Using WinMain for Windows builds")
+    set_target_properties(nitroefx PROPERTIES WIN32_EXECUTABLE true)
+endif()
 
 target_include_directories(nitroefx PRIVATE src external/tinyfiledialogs)
 target_compile_definitions(nitroefx PRIVATE SDL_MAIN_HANDLED)

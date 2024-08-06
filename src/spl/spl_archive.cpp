@@ -1,30 +1,27 @@
 #include "spl_archive.h"
 
 #include <spdlog/spdlog.h>
+#include <fstream>
 
-
-SPLArchive::SPLArchive() : m_header(), m_loaded(false) {
+template<class T, std::enable_if_t<std::is_trivially_copyable_v<T>, bool> = true>
+std::istream& operator>>(std::istream& stream, T& v) {
+    return stream.read(reinterpret_cast<char*>(&v), sizeof(T));
 }
 
-SPLArchive::~SPLArchive() {
-    if (m_loaded) {
-        unload();
-    }
+
+SPLArchive::SPLArchive(std::string_view filename) : m_header() {
+    load(filename);
 }
 
 
 void SPLArchive::load(std::string_view filename) {
-    if (m_loaded) {
-        unload();
-    }
-
-    FILE* file = fopen(filename.data(), "rb");
+    std::ifstream file(filename.data(), std::ios::binary | std::ios::in);
     if (!file) {
         spdlog::error("Failed to open file: {}", filename);
         return;
     }
 
-    fread(&m_header, sizeof(SPLFileHeader), 1, file);
+    file >> m_header;
 
     m_resources.resize(m_header.resCount);
     
@@ -32,7 +29,7 @@ void SPLArchive::load(std::string_view filename) {
         SPLResource& res = m_resources[i];
 
         SPLResourceHeaderNative header;
-        fread(&header, sizeof(SPLResourceHeaderNative), 1, file);
+        file >> header;
 
         res.header = fromNative(header);
         const auto& flags = res.header.flags;
@@ -40,68 +37,68 @@ void SPLArchive::load(std::string_view filename) {
         // Animations
         if (flags.hasScaleAnim) {
             SPLScaleAnimNative scaleAnim;
-            fread(&scaleAnim, sizeof(SPLScaleAnimNative), 1, file);
+            file >> scaleAnim;
             res.scaleAnim = fromNative(scaleAnim);
         }
 
         if (flags.hasColorAnim) {
             SPLColorAnimNative colorAnim;
-            fread(&colorAnim, sizeof(SPLColorAnimNative), 1, file);
+            file >> colorAnim;
             res.colorAnim = fromNative(colorAnim);
         }
 
         if (flags.hasAlphaAnim) {
             SPLAlphaAnimNative alphaAnim;
-            fread(&alphaAnim, sizeof(SPLAlphaAnim), 1, file);
+            file >> alphaAnim;
             res.alphaAnim = fromNative(alphaAnim);
         }
 
         if (flags.hasTexAnim) {
             SPLTexAnimNative texAnim;
-            fread(&texAnim, sizeof(SPLTexAnimNative), 1, file);
+            file >> texAnim;
             res.texAnim = fromNative(texAnim);
         }
 
         if (flags.hasChildResource) {
             SPLChildResourceNative childResource;
-            fread(&childResource, sizeof(SPLChildResourceNative), 1, file);
+            file >> childResource;
             res.childResource = fromNative(childResource);
         }
 
         // Behaviors
         if (flags.hasGravityBehavior) {
             SPLGravityBehaviorNative gravityBehavior;
-            fread(&gravityBehavior, sizeof(SPLGravityBehaviorNative), 1, file);
+            file >> gravityBehavior;
             res.behaviors.push_back(fromNative(gravityBehavior));
         }
 
         if (flags.hasRandomBehavior) {
             SPLRandomBehaviorNative randomBehavior;
-            fread(&randomBehavior, sizeof(SPLRandomBehaviorNative), 1, file);
+            file >> randomBehavior;
             res.behaviors.push_back(fromNative(randomBehavior));
         }
 
         if (flags.hasMagnetBehavior) {
             SPLMagnetBehaviorNative magnetBehavior;
-            fread(&magnetBehavior, sizeof(SPLMagnetBehaviorNative), 1, file);
+            file >> magnetBehavior;
             res.behaviors.push_back(fromNative(magnetBehavior));
         }
 
         if (flags.hasSpinBehavior) {
             SPLSpinBehaviorNative spinBehavior;
-            fread(&spinBehavior, sizeof(SPLSpinBehaviorNative), 1, file);
+            file >> spinBehavior;
             res.behaviors.push_back(fromNative(spinBehavior));
         }
 
         if (flags.hasCollisionPlaneBehavior) {
             SPLCollisionPlaneBehaviorNative collisionPlaneBehavior;
-            fread(&collisionPlaneBehavior, sizeof(SPLCollisionPlaneBehaviorNative), 1, file);
+            file >> collisionPlaneBehavior;
             res.behaviors.push_back(fromNative(collisionPlaneBehavior));
         }
 
         if (flags.hasConvergenceBehavior) {
             SPLConvergenceBehaviorNative convergenceBehavior;
-            fread(&convergenceBehavior, sizeof(SPLConvergenceBehaviorNative), 1, file);
+            file >> convergenceBehavior;
             res.behaviors.push_back(fromNative(convergenceBehavior));
         }
     }
@@ -110,31 +107,47 @@ void SPLArchive::load(std::string_view filename) {
 
     for (size_t i = 0; i < m_header.texCount; i++) {
         SPLTexture& tex = m_textures[i];
+
         SPLTextureResource texRes;
-        size_t offset = ftell(file);
-        fread(&texRes, sizeof(SPLTextureResource), 1, file);
-
-        tex.textureData.resize(texRes.textureSize);
-        tex.paletteData.resize(texRes.paletteSize);
-
-        fread(tex.textureData.data(), 1, texRes.textureSize, file);
-        fseek(file, offset + texRes.paletteOffset, SEEK_SET);
-        fread(tex.paletteData.data(), 1, texRes.paletteSize, file);
+        s64 offset = file.tellg();
+        file >> texRes;
 
         tex.resource = nullptr;
         tex.param = texRes.param;
         tex.width = 1 << (texRes.param.s + 3);
         tex.height = 1 << (texRes.param.t + 3);
+
+        if (!texRes.param.useSharedTexture) { // Handle shared textures later
+            if (texRes.textureSize > 0) {
+                m_textureData.emplace_back(texRes.textureSize);
+                file.read((char*)m_textureData.back().data(), texRes.textureSize);
+            }
+
+            if (texRes.textureSize > 0) {
+                m_paletteData.emplace_back(texRes.paletteSize);
+                file.seekg(offset + texRes.paletteOffset, std::ios::beg);
+                file.read((char*)m_paletteData.back().data(), texRes.paletteSize);
+            } else {
+                // No palette data (TextureFormat::Direct)
+                m_paletteData.emplace_back();
+            }
+
+            tex.textureData = m_textureData.back();
+            tex.paletteData = m_paletteData.back();
+
+            tex.glTexture = std::make_shared<GLTexture>(tex);
+        }
+
+        file.seekg(offset + texRes.resourceSize, std::ios::beg);
     }
 
-    fclose(file);
-    m_loaded = true;
-}
-
-void SPLArchive::unload() {
-    m_resources.clear();
-    m_textures.clear();
-    m_loaded = false;
+    for (auto& tex : m_textures) {
+        if (tex.param.useSharedTexture) {
+            tex.textureData = m_textureData[tex.param.sharedTexID];
+            tex.paletteData = m_paletteData[tex.param.sharedTexID];
+            tex.glTexture = m_textures[tex.param.sharedTexID].glTexture;
+        }
+    }
 }
 
 SPLResourceHeader SPLArchive::fromNative(const SPLResourceHeaderNative &native) {

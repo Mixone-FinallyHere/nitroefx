@@ -9,11 +9,7 @@
 
 class SPLArchive {
 public:
-    SPLArchive();
-    ~SPLArchive();
-
-    void load(std::string_view filename);
-    void unload();
+    explicit SPLArchive(std::string_view filename);
 
     const SPLResource& getResource(size_t index) const { return m_resources[index]; }
 
@@ -26,7 +22,9 @@ public:
     size_t getTextureCount() const { return m_header.texCount; }
 
 private:
-    SPLResourceHeader fromNative(const SPLResourceHeaderNative& native);
+    void load(std::string_view filename);
+
+    static SPLResourceHeader fromNative(const SPLResourceHeaderNative& native);
 
     SPLScaleAnim fromNative(const SPLScaleAnimNative& native);
     SPLColorAnim fromNative(const SPLColorAnimNative& native);
@@ -45,7 +43,7 @@ private:
     SPLFileHeader m_header;
     std::vector<SPLResource> m_resources;
     std::vector<SPLTexture> m_textures;
-
-    bool m_loaded;
+    std::vector<std::vector<u8>> m_textureData;
+    std::vector<std::vector<u8>> m_paletteData;
 };
 
