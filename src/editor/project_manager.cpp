@@ -3,6 +3,7 @@
 #include <imgui.h>
 
 #include "SDL_messagebox.h"
+#include "fonts/IconsFontAwesome6.h"
 #include "spdlog/spdlog.h"
 
 
@@ -51,6 +52,8 @@ void ProjectManager::render() {
         if (m_projectPath.empty()) {
             ImGui::Text("No project open");
         } else {
+            ImGui::Checkbox("Hide non SPL files", &m_hideOtherFiles);
+
             for (const auto& entry : std::filesystem::directory_iterator(m_projectPath)) {
                 if (entry.is_directory()) {
                     renderDirectory(entry.path());
@@ -78,7 +81,8 @@ void ProjectManager::handleEvent(const SDL_Event& event) {
 }
 
 void ProjectManager::renderDirectory(const std::filesystem::path& path) {
-    const bool open = ImGui::TreeNodeEx(path.filename().string().c_str(), ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth);
+    const auto text = fmt::format(ICON_FA_FOLDER " {}", path.filename().string());
+    const bool open = ImGui::TreeNodeEx(text.c_str(), ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth);
 
     if (ImGui::BeginPopupContextItem(nullptr, ImGuiPopupFlags_MouseButtonRight)) {
         if (ImGui::MenuItem("New file")) {
@@ -108,10 +112,28 @@ void ProjectManager::renderDirectory(const std::filesystem::path& path) {
 }
 
 void ProjectManager::renderFile(const std::filesystem::path& path) {
-    if (ImGui::Selectable(path.filename().string().c_str(), false, ImGuiSelectableFlags_AllowDoubleClick)) {
-        if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+    const auto text = fmt::format(ICON_FA_FILE " {}", path.filename().string());
+    const bool isSplFile = path.extension().string() == ".spa";
+    if (!isSplFile) {
+        if (m_hideOtherFiles) {
+            return;
+        }
+
+        ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+    }
+
+    ImGui::Indent(40.0f);
+    if (ImGui::Selectable(text.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick)) {
+        if (isSplFile && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
             openEditor(path);
         }
+    }
+
+    ImGui::Unindent(40.0f);
+
+    if (!isSplFile) {
+        ImGui::PopStyleColor();
+        return;
     }
 
     if (ImGui::BeginPopupContextItem(nullptr, ImGuiPopupFlags_MouseButtonRight)) {

@@ -61,6 +61,7 @@ private:
     std::shared_ptr<EditorInstance> m_activeEditor;
 
     bool m_open = true;
+    bool m_hideOtherFiles = false;
     std::filesystem::path m_contextMenuPath;
 };
 
