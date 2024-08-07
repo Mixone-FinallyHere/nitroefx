@@ -1,6 +1,8 @@
 #include "gl_texture.h"
 #include "spl/spl_resource.h"
 
+#include <gl/glew.h>
+
 
 struct PixelA3I5 {
     u8 color : 5;

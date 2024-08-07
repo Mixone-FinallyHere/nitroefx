@@ -53,6 +53,15 @@ void Editor::render() {
     }
 }
 
+void Editor::renderParticles() {
+    const auto& editor = g_projectManager->getActiveEditor();
+    if (!editor) {
+        return;
+    }
+
+    editor->renderParticles();
+}
+
 void Editor::openPicker() {
     m_picker_open = true;
 }
@@ -81,7 +90,7 @@ void Editor::renderResourcePicker() {
         }
 
         const auto contentRegion = ImGui::GetContentRegionAvail();
-        if (ImGui::BeginListBox("Resources", contentRegion)) {
+        if (ImGui::BeginListBox("##Resources", contentRegion)) {
             const ImGuiStyle& style = ImGui::GetStyle();
 
             for (int i = 0; i < resources.size(); ++i) {

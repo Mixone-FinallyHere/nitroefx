@@ -10,6 +10,7 @@
 class Editor {
 public:
     void render();
+    void renderParticles();
     void openPicker();
     void openEditor();
 

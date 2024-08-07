@@ -1,16 +1,17 @@
 {
   "dependencies": [
-    "sdl2",
+    "fmt",
+    "glm",
     {
       "name": "imgui",
       "features": [
         "docking-experimental",
-        "sdl2-binding",
-        "opengl3-binding"
+        "opengl3-binding",
+        "sdl2-binding"
       ]
     },
+    "sdl2",
     "spdlog",
-    "fmt",
-    "glm"
+    "glew"
   ]
 }

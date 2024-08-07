@@ -1,9 +1,8 @@
 #pragma once
+#include "types.h"
 
-#include <SDL2/SDL_opengl.h>
 #include <vector>
 
-#include "types.h"
 
 struct SPLTexture;
 
@@ -21,7 +20,7 @@ public:
     void bind() const;
     static void unbind();
 
-    GLuint getHandle() const { return m_texture; }
+    u32 getHandle() const { return m_texture; }
     size_t getWidth() const { return m_width; }
     size_t getHeight() const { return m_height; }
     TextureFormat getFormat() const { return m_format; }
@@ -38,7 +37,7 @@ private:
     static std::vector<u8> convertDirect(const GXRgba* tex, size_t width, size_t height);
 
 private:
-    GLuint m_texture;
+    u32 m_texture;
     size_t m_width;
     size_t m_height;
     TextureFormat m_format;

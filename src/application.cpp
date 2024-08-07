@@ -1,10 +1,9 @@
 #include "application.h"
-#include "spl/spl_archive.h"
-#include "gl_texture.h"
 #include "fonts/IconsFontAwesome6.h"
 
-#include <SDL.h>
-#include <SDL_opengl.h>
+#include <SDL2/SDL.h>
+#include <gl/glew.h>
+#include <SDL2/SDL_opengl.h>
 #include <imgui.h>
 #include <imgui_internal.h>
 #include <imgui_impl_sdl2.h>
@@ -16,6 +15,7 @@
 #include <ShObjIdl.h>
 #endif
 #include <tinyfiledialogs.h>
+
 
 
 int Application::run(int argc, char** argv) {
@@ -44,6 +44,13 @@ int Application::run(int argc, char** argv) {
     SDL_GL_MakeCurrent(m_window, m_context);
     SDL_GL_SetSwapInterval(1); // Enable vsync
 
+	glewExperimental = GL_TRUE;
+	const GLenum glewError = glewInit();
+	if (glewError != GLEW_OK) {
+		spdlog::error("GLEW Error: {}", (const char*)glewGetErrorString(glewError));
+		return 1;
+	}
+
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
@@ -61,6 +68,8 @@ int Application::run(int argc, char** argv) {
 
     while (m_running) {
         pollEvents();
+
+		m_editor->renderParticles();
 
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplSDL2_NewFrame();
