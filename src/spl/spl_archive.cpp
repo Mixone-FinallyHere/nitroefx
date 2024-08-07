@@ -113,7 +113,7 @@ void SPLArchive::load(std::string_view filename) {
         file >> texRes;
 
         tex.resource = nullptr;
-        tex.param = texRes.param;
+        tex.param = fromNative(texRes.param);
         tex.width = 1 << (texRes.param.s + 3);
         tex.height = 1 << (texRes.param.t + 3);
 
@@ -152,7 +152,34 @@ void SPLArchive::load(std::string_view filename) {
 
 SPLResourceHeader SPLArchive::fromNative(const SPLResourceHeaderNative &native) {
     return SPLResourceHeader {
-        .flags = native.flags,
+        .flags = {
+            .emissionType = (SPLEmissionType)native.flags.emissionType,
+            .drawType = (SPLDrawType)native.flags.drawType,
+            .circleAxis = (SPLCircleAxis)native.flags.circleAxis,
+            .hasScaleAnim = !!native.flags.hasScaleAnim,
+            .hasColorAnim = !!native.flags.hasColorAnim,
+            .hasAlphaAnim = !!native.flags.hasAlphaAnim,
+            .hasTexAnim = !!native.flags.hasTexAnim,
+            .hasRotation = !!native.flags.hasRotation,
+            .randomInitAngle = !!native.flags.randomInitAngle,
+            .selfMaintaining = !!native.flags.selfMaintaining,
+            .followEmitter = !!native.flags.followEmitter,
+            .hasChildResource = !!native.flags.hasChildResource,
+            .polygonRotAxis = (SPLPolygonRotAxis)native.flags.polygonRotAxis,
+            .polygonReferencePlane = (u8)native.flags.polygonReferencePlane,
+            .randomizeLoopedAnim = !!native.flags.randomizeLoopedAnim,
+            .drawChildrenFirst = !!native.flags.drawChildrenFirst,
+            .hideParent = !!native.flags.hideParent,
+            .useViewSpace = !!native.flags.useViewSpace,
+            .hasGravityBehavior = !!native.flags.hasGravityBehavior,
+            .hasRandomBehavior = !!native.flags.hasRandomBehavior,
+            .hasMagnetBehavior = !!native.flags.hasMagnetBehavior,
+            .hasSpinBehavior = !!native.flags.hasSpinBehavior,
+            .hasCollisionPlaneBehavior = !!native.flags.hasCollisionPlaneBehavior,
+            .hasConvergenceBehavior = !!native.flags.hasConvergenceBehavior,
+            .hasFixedPolygonID = !!native.flags.hasFixedPolygonID,
+            .childHasFixedPolygonID = !!native.flags.childHasFixedPolygonID
+        },
         .emitterBasePos = native.emitterBasePos.toVec3(),
         .emissionCount = FX_FX32_TO_F32(native.emissionCount),
         .radius = FX_FX32_TO_F32(native.radius),
@@ -170,23 +197,23 @@ SPLResourceHeader SPLArchive::fromNative(const SPLResourceHeaderNative &native) 
         .emitterLifeTime = native.emitterLifeTime,
         .particleLifeTime = native.particleLifeTime,
         .randomAttenuation = {
-            .baseScale = native.randomAttenuation.baseScale,
-            .lifeTime = native.randomAttenuation.lifeTime,
-            .initVel = native.randomAttenuation.initVel
+            .baseScale = (u8)native.randomAttenuation.baseScale,
+            .lifeTime = (u8)native.randomAttenuation.lifeTime,
+            .initVel = (u8)native.randomAttenuation.initVel
         },
         .misc = {
-            .emissionInterval = native.misc.emissionInterval,
-            .baseAlpha = native.misc.baseAlpha,
-            .airResistance = native.misc.airResistance,
-            .textureIndex = native.misc.textureIndex,
-            .loopFrames = native.misc.loopFrames,
-            .dbbScale = native.misc.dbbScale,
-            .textureTileCountS = native.misc.textureTileCountS,
-            .textureTileCountT = native.misc.textureTileCountT,
-            .scaleAnimDir = native.misc.scaleAnimDir,
-            .dpolFaceEmitter = native.misc.dpolFaceEmitter,
-            .flipTextureS = native.misc.flipTextureS,
-            .flipTextureT = native.misc.flipTextureT
+            .emissionInterval = (u8)native.misc.emissionInterval,
+            .baseAlpha = (u8)native.misc.baseAlpha,
+            .airResistance = (u8)native.misc.airResistance,
+            .textureIndex = (u8)native.misc.textureIndex,
+            .loopFrames = (u8)native.misc.loopFrames,
+            .dbbScale = (u16)native.misc.dbbScale,
+            .textureTileCountS = (u8)native.misc.textureTileCountS,
+            .textureTileCountT = (u8)native.misc.textureTileCountT,
+            .scaleAnimDir = (SPLScaleAnimDir)native.misc.scaleAnimDir,
+            .dpolFaceEmitter = !!native.misc.dpolFaceEmitter,
+            .flipTextureS = !!native.misc.flipTextureS,
+            .flipTextureT = !!native.misc.flipTextureT
         },
         .polygonX = FX_FX16_TO_F32(native.polygonX),
         .polygonY = FX_FX16_TO_F32(native.polygonY),
@@ -199,7 +226,7 @@ SPLScaleAnim SPLArchive::fromNative(const SPLScaleAnimNative &native) {
         .mid = FX_FX16_TO_F32(native.mid),
         .end = FX_FX16_TO_F32(native.end),
         .curve = native.curve,
-        .flags = { .loop = native.flags.loop }
+        .flags = { .loop = !!native.flags.loop }
     };
 }
 
@@ -209,19 +236,23 @@ SPLColorAnim SPLArchive::fromNative(const SPLColorAnimNative &native) {
         .end = native.end.toVec3(),
         .curve = native.curve,
         .flags = { 
-            .randomStartColor = native.flags.randomStartColor,
-            .loop = native.flags.loop,
-            .interpolate = native.flags.interpolate
+            .randomStartColor = !!native.flags.randomStartColor,
+            .loop = !!native.flags.loop,
+            .interpolate = !!native.flags.interpolate
         }
     };
 }
 
 SPLAlphaAnim SPLArchive::fromNative(const SPLAlphaAnimNative &native) {
     return SPLAlphaAnim {
-        .alpha = { .all = native.alpha.all },
+        .alpha = {
+            .start = (u8)native.alpha.start,
+            .mid = (u8)native.alpha.mid,
+            .end = (u8)native.alpha.end
+        },
         .flags = {
-            .randomRange = native.flags.randomRange,
-            .loop = native.flags.loop
+            .randomRange = (u8)native.flags.randomRange,
+            .loop = !!native.flags.loop
         },
         .curve = native.curve
     };
@@ -240,32 +271,42 @@ SPLTexAnim SPLArchive::fromNative(const SPLTexAnimNative &native) {
             native.textures[7]
         },
         .param = {
-            .frameCount = native.param.frameCount,
-            .step = native.param.step,
-            .randomizeInit = native.param.randomizeInit,
-            .loop = native.param.loop
+            .frameCount = (u8)native.param.frameCount,
+            .step = (u8)native.param.step,
+            .randomizeInit = !!native.param.randomizeInit,
+            .loop = !!native.param.loop
         }
     };
 }
 
 SPLChildResource SPLArchive::fromNative(const SPLChildResourceNative &native) {
     return SPLChildResource {
-        .flags = native.flags,
+        .flags = {
+            .usesBehaviors = !!native.flags.usesBehaviors,
+            .hasScaleAnim = !!native.flags.hasScaleAnim,
+            .hasAlphaAnim = !!native.flags.hasAlphaAnim,
+            .rotationType = (SPLChildRotationType)native.flags.rotationType,
+            .followEmitter = !!native.flags.followEmitter,
+            .useChildColor = !!native.flags.useChildColor,
+            .drawType = (SPLDrawType)native.flags.drawType,
+            .polygonRotAxis = (SPLPolygonRotAxis)native.flags.polygonRotAxis,
+            .polygonReferencePlane = (u8)native.flags.polygonReferencePlane,
+        },
         .randomInitVelMag = FX_FX16_TO_F32(native.randomInitVelMag),
         .endScale = FX_FX16_TO_F32(native.endScale),
         .lifeTime = native.lifeTime,
         .velocityRatio = native.velocityRatio,
         .scaleRatio = native.scaleRatio,
         .misc = {
-            .emissionCount = native.misc.emissionCount,
-            .emissionDelay = native.misc.emissionDelay,
-            .emissionInterval = native.misc.emissionInterval,
-            .texture = native.misc.texture,
-            .textureTileCountS = native.misc.textureTileCountS,
-            .textureTileCountT = native.misc.textureTileCountT,
-            .flipTextureS = native.misc.flipTextureS,
-            .flipTextureT = native.misc.flipTextureT,
-            .dpolFaceEmitter = native.misc.dpolFaceEmitter
+            .emissionCount = (u8)native.misc.emissionCount,
+            .emissionDelay = (u8)native.misc.emissionDelay,
+            .emissionInterval = (u8)native.misc.emissionInterval,
+            .texture = (u8)native.misc.texture,
+            .textureTileCountS = (u8)native.misc.textureTileCountS,
+            .textureTileCountT = (u8)native.misc.textureTileCountT,
+            .flipTextureS = !!native.misc.flipTextureS,
+            .flipTextureT = !!native.misc.flipTextureT,
+            .dpolFaceEmitter = !!native.misc.dpolFaceEmitter
         }
     };
 }
@@ -292,5 +333,18 @@ std::shared_ptr<SPLCollisionPlaneBehavior> SPLArchive::fromNative(const SPLColli
 
 std::shared_ptr<SPLConvergenceBehavior> SPLArchive::fromNative(const SPLConvergenceBehaviorNative& native) {
     return std::make_shared<SPLConvergenceBehavior>(native);
+}
+
+SPLTextureParam SPLArchive::fromNative(const SPLTextureParamNative& native) {
+    return SPLTextureParam{
+        .format = (TextureFormat)native.format,
+        .s = (u8)native.s,
+        .t = (u8)native.t,
+        .repeat = (TextureRepeat)native.repeat,
+        .flip = (TextureFlip)native.flip,
+        .palColor0Transparent = !!native.palColor0,
+        .useSharedTexture = !!native.useSharedTexture,
+        .sharedTexID = (u8)native.sharedTexID
+    };
 }
 

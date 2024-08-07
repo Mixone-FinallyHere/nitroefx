@@ -87,3 +87,23 @@ union GXRgba {
         return a ? 0xFF : 0;
     }
 };
+
+enum class TextureFormat : u8 {
+    None = 0,
+    A3I5,
+    Palette4,
+    Palette16,
+    Palette256,
+    Comp4x4,
+    A5I3,
+    Direct,
+};
+
+enum class TextureRepeat {
+    None,
+    S,
+    T,
+    ST,
+};
+
+typedef TextureRepeat TextureFlip;

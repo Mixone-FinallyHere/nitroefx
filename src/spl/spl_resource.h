@@ -12,6 +12,8 @@
 #include "fx.h"
 #include "gl_texture.h"
 
+ 
+
 struct SPLFileHeader {
     u32 magic;
     u32 version;
@@ -24,7 +26,52 @@ struct SPLFileHeader {
     u32 reserved1;
 };
 
-union SPLResourceFlags {
+enum class SPLEmissionType : u8 {
+    Point = 0,
+    SphereSurface,
+    CircleBorder,
+    CircleBorderUniform,
+    Sphere,
+    Circle,
+    CylinderSurface,
+    Cylinder,
+    HemisphereSurface,
+    Hemisphere
+};
+
+enum class SPLDrawType : u8 {
+    Billboard = 0,
+    DirectionalBillboard,
+    Polygon,
+    DirectionalPolygon,
+    DirectionalPolygonCenter
+};
+
+enum class SPLCircleAxis : u8 {
+    Z = 0,
+    Y,
+    X,
+    Emitter
+};
+
+enum class SPLPolygonRotAxis : u8 {
+    Y = 0,
+    XYZ
+};
+
+enum class SPLChildRotationType : u8 {
+    None = 0,
+    InheritAngle,
+    InheritAngleAndVelocity
+};
+
+enum class SPLScaleAnimDir : u8 {
+    XY = 0,
+    X,
+    Y
+};
+
+union SPLResourceFlagsNative {
     u32 all;
     struct {
         u32 emissionType : 4; // Maps to SPLEmissionType
@@ -59,7 +106,39 @@ union SPLResourceFlags {
     };
 };
 
-union SPLChildResourceFlags {
+struct SPLResourceFlags {
+    SPLEmissionType emissionType;
+    SPLDrawType drawType;
+    SPLCircleAxis circleAxis;
+    bool hasScaleAnim;
+    bool hasColorAnim;
+    bool hasAlphaAnim;
+    bool hasTexAnim;
+    bool hasRotation;
+    bool randomInitAngle;
+    // Whether the emitter manages itself or not.
+    // If set, the emitter will automatically terminate when it reaches the end of its life
+    // and all of its particles have died
+    bool selfMaintaining;
+    bool followEmitter;
+    bool hasChildResource;
+    SPLPolygonRotAxis polygonRotAxis; // The axis to rotate the polygon around when using the 'polygon' draw types
+    u8 polygonReferencePlane;
+    bool randomizeLoopedAnim;
+    bool drawChildrenFirst; // If set, child particles will be rendered before parent particles
+    bool hideParent; // If set, only child particles will be rendered
+    bool useViewSpace; // If set, the rendering calculations will be done in view space
+    bool hasGravityBehavior;
+    bool hasRandomBehavior;
+    bool hasMagnetBehavior;
+    bool hasSpinBehavior;
+    bool hasCollisionPlaneBehavior;
+    bool hasConvergenceBehavior;
+    bool hasFixedPolygonID;
+    bool childHasFixedPolygonID;
+};
+
+union SPLChildResourceFlagsNative {
     u16 all;
     struct {
         u16 usesBehaviors : 1;
@@ -75,31 +154,42 @@ union SPLChildResourceFlags {
     };
 };
 
+struct SPLChildResourceFlags {
+    bool usesBehaviors;
+    bool hasScaleAnim;
+    bool hasAlphaAnim;
+    SPLChildRotationType rotationType;
+    bool followEmitter;
+    bool useChildColor;
+    SPLDrawType drawType;
+    SPLPolygonRotAxis polygonRotAxis;
+    u8 polygonReferencePlane; // 0=XY, 1=XZ
+};
+
 struct SPLCurveInOut {
-    u16 in : 8;
-    u16 out : 8;
+    u8 in;
+    u8 out;
 };
 
 struct SPLCurveInPeakOut {
-    u32 in : 8;
-    u32 peak : 8;
-    u32 out : 8;
-    u32 : 8;
+    u8 in;
+    u8 peak;
+    u8 out;
+    u8 _;
 };
 
-template<class TFloat32, class TFloat16, class TVecF32, class TVecF16, class TColor>
-struct SPLResourceHeaderTemplate {
-    SPLResourceFlags flags;
-    TVecF32 emitterBasePos;
-    TFloat32 emissionCount; // Number of particles to emit per emission interval
-    TFloat32 radius; // Used for circle, sphere, and cylinder emissions
-    TFloat32 length; // Used for cylinder emission
-    TVecF16 axis;
-    TColor color;
-    TFloat32 initVelPosAmplifier;
-    TFloat32 initVelAxisAmplifier;
-    TFloat32 baseScale;
-    TFloat16 aspectRatio;
+struct SPLResourceHeaderNative {
+    SPLResourceFlagsNative flags;
+    VecFx32 emitterBasePos;
+    fx32 emissionCount; // Number of particles to emit per emission interval
+    fx32 radius; // Used for circle, sphere, and cylinder emissions
+    fx32 length; // Used for cylinder emission
+    VecFx16 axis;
+    GXRgb color;
+    fx32 initVelPosAmplifier;
+    fx32 initVelAxisAmplifier;
+    fx32 baseScale;
+    fx16 aspectRatio;
     u16 startDelay; // Delay, in frames, before the emitter starts emitting particles
     s16 minRotation;
     s16 maxRotation;
@@ -133,19 +223,69 @@ struct SPLResourceHeaderTemplate {
         u32 flipTextureT : 1;
         u32 : 30;
     } misc;
-    TFloat16 polygonX;
-    TFloat16 polygonY;
+    fx16 polygonX;
+    fx16 polygonY;
     struct {
         u32 flags : 8;
         u32 : 24;
     } userData;
 };
 
-template<class TFloat16>
-struct SPLScaleAnimTemplate {
-    TFloat16 start;
-    TFloat16 mid;
-    TFloat16 end;
+struct SPLResourceHeader {
+    SPLResourceFlags flags;
+    glm::vec3 emitterBasePos;
+    f32 emissionCount; // Number of particles to emit per emission interval
+    f32 radius; // Used for circle, sphere, and cylinder emissions
+    f32 length; // Used for cylinder emission
+    glm::vec3 axis;
+    glm::vec3 color;
+    f32 initVelPosAmplifier;
+    f32 initVelAxisAmplifier;
+    f32 baseScale;
+    f32 aspectRatio;
+    u16 startDelay; // Delay, in frames, before the emitter starts emitting particles
+    s16 minRotation;
+    s16 maxRotation;
+    u16 initAngle;
+    u16 reserved;
+    u16 emitterLifeTime;
+    u16 particleLifeTime;
+
+    // All of these values are mapped to the range [0, 1]
+    // They are used to attenuate the particle's properties at initialization,
+    // acting as a sort of randomization factor which scales down the initial values
+    struct {
+        u8 baseScale; // Damping factor for the base scale of the particles (0 = no damping)
+        u8 lifeTime;
+        u8 initVel; // Attenuation factor for the initial velocity of the particles (0 = no attenuation)
+    } randomAttenuation;
+
+    struct {
+        u8 emissionInterval;
+        u8 baseAlpha;
+        u8 airResistance;
+        u8 textureIndex;
+        u8 loopFrames;
+        u16 dbbScale;
+        u8 textureTileCountS; // Number of times to tile the texture in the S direction
+        u8 textureTileCountT; // Number of times to tile the texture in the T direction
+        SPLScaleAnimDir scaleAnimDir;
+        bool dpolFaceEmitter; // If set, the polygon will face the emitter
+        bool flipTextureS;
+        bool flipTextureT;
+    } misc;
+    f32 polygonX;
+    f32 polygonY;
+    struct {
+        u8 flags;
+        u8 _[3];
+    } userData;
+};
+
+struct SPLScaleAnimNative {
+    fx16 start;
+    fx16 mid;
+    fx16 end;
     SPLCurveInOut curve;
     struct {
         u16 loop : 1;
@@ -154,10 +294,19 @@ struct SPLScaleAnimTemplate {
     u16 padding;
 };
 
-template<class TColor>
-struct SPLColorAnimTemplate {
-    TColor start;
-    TColor end;
+struct SPLScaleAnim {
+    f32 start;
+    f32 mid;
+    f32 end;
+    SPLCurveInOut curve;
+    struct {
+        bool loop;
+    } flags;
+};
+
+struct SPLColorAnimNative {
+    GXRgb start;
+    GXRgb end;
     SPLCurveInPeakOut curve;
     struct {
         u16 randomStartColor : 1;
@@ -168,7 +317,18 @@ struct SPLColorAnimTemplate {
     u16 padding;
 };
 
-struct SPLAlphaAnim {
+struct SPLColorAnim {
+    glm::vec3 start;
+    glm::vec3 end;
+    SPLCurveInPeakOut curve;
+    struct {
+        bool randomStartColor;
+        bool loop;
+        bool interpolate;
+    } flags;
+};
+
+struct SPLAlphaAnimNative {
     union {
         u16 all;
         struct {
@@ -187,7 +347,20 @@ struct SPLAlphaAnim {
     u16 padding;
 };
 
-struct SPLTexAnim {
+struct SPLAlphaAnim {
+    struct {
+        u8 start; // 0-31
+        u8 mid; // 0-31
+        u8 end; // 0-31
+    } alpha;
+    struct {
+        u8 randomRange;
+        bool loop;
+    } flags;
+    SPLCurveInOut curve;
+};
+
+struct SPLTexAnimNative {
     u8 textures[8];
     struct {
         u32 frameCount : 8;
@@ -198,15 +371,24 @@ struct SPLTexAnim {
     } param;
 };
 
-template<class TFloat16, class TColor>
-struct SPLChildResourceTemplate {
-    SPLChildResourceFlags flags;
-    TFloat16 randomInitVelMag; // Randomization factor for the initial velocity magnitude (0 = no randomization)
-    TFloat16 endScale; // For scaling animations
+struct SPLTexAnim {
+    u8 textures[8];
+    struct {
+        u8 frameCount;
+        u8 step; // Number of frames between each texture frame
+        bool randomizeInit; // Randomize the initial texture frame
+        bool loop;
+    } param;
+};
+
+struct SPLChildResourceNative {
+    SPLChildResourceFlagsNative flags;
+    fx16 randomInitVelMag; // Randomization factor for the initial velocity magnitude (0 = no randomization)
+    fx16 endScale; // For scaling animations
     u16 lifeTime;
     u8 velocityRatio; // Ratio of the parent particle's velocity to inherit (255 = 100%)
     u8 scaleRatio; // Ratio of the parent particle's scale to inherit (255 = 100%)
-    TColor color;
+    GXRgb color;
     struct {
         u32 emissionCount : 8; // Number of particles to emit per emission interval
         u32 emissionDelay : 8; // Delay, as a fraction of the particle's lifetime, before the particle starts emitting
@@ -221,7 +403,28 @@ struct SPLChildResourceTemplate {
     } misc;
 };
 
-union SPLTextureParam {
+struct SPLChildResource {
+    SPLChildResourceFlags flags;
+    f32 randomInitVelMag; // Randomization factor for the initial velocity magnitude (0 = no randomization)
+    f32 endScale; // For scaling animations
+    u16 lifeTime;
+    u8 velocityRatio; // Ratio of the parent particle's velocity to inherit (255 = 100%)
+    u8 scaleRatio; // Ratio of the parent particle's scale to inherit (255 = 100%)
+    glm::vec3 color;
+    struct {
+        u8 emissionCount; // Number of particles to emit per emission interval
+        u8 emissionDelay; // Delay, as a fraction of the particle's lifetime, before the particle starts emitting
+        u8 emissionInterval;
+        u8 texture;
+        u8 textureTileCountS;
+        u8 textureTileCountT;
+        bool flipTextureS;
+        bool flipTextureT;
+        bool dpolFaceEmitter; // If set, the polygon will face the emitter
+    } misc;
+};
+
+union SPLTextureParamNative {
     u32 all;
     struct {
         u32 format : 4; // Maps to GXTexFmt
@@ -236,9 +439,20 @@ union SPLTextureParam {
     };
 };
 
+struct SPLTextureParam {
+    TextureFormat format;
+    u8 s; // Maps to GXTexSizeS
+    u8 t; // Maps to GXTexSizeT
+    TextureRepeat repeat;
+    TextureFlip flip;
+    bool palColor0Transparent;
+    bool useSharedTexture;
+    u8 sharedTexID;
+};
+
 struct SPLTextureResource {
     u32 id;
-    SPLTextureParam param;
+    SPLTextureParamNative param;
     u32 textureSize; // size of the texture data
     u32 paletteOffset; // offset to the palette data from the start of the header
     u32 paletteSize; // size of the palette data
@@ -257,21 +471,18 @@ struct SPLTexture {
     std::shared_ptr<GLTexture> glTexture;
 };
 
-using SPLResourceHeader = SPLResourceHeaderTemplate<f32, f32, glm::vec3, glm::vec3, glm::vec3>;
-using SPLResourceHeaderNative = SPLResourceHeaderTemplate<fx32, fx16, VecFx32, VecFx16, GXRgb>;
-
-using SPLScaleAnim = SPLScaleAnimTemplate<f32>;
-using SPLScaleAnimNative = SPLScaleAnimTemplate<fx16>;
-
-using SPLColorAnim = SPLColorAnimTemplate<glm::vec3>;
-using SPLColorAnimNative = SPLColorAnimTemplate<GXRgb>;
-
-using SPLAlphaAnimNative = SPLAlphaAnim;
-
-using SPLTexAnimNative = SPLTexAnim;
-
-using SPLChildResource = SPLChildResourceTemplate<f32, glm::vec3>;
-using SPLChildResourceNative = SPLChildResourceTemplate<fx16, GXRgb>;
+//using SPLScaleAnim = SPLScaleAnimTemplate<f32>;
+//using SPLScaleAnimNative = SPLScaleAnimTemplate<fx16>;
+//
+//using SPLColorAnim = SPLColorAnimTemplate<glm::vec3>;
+//using SPLColorAnimNative = SPLColorAnimTemplate<GXRgb>;
+//
+//using SPLAlphaAnimNative = SPLAlphaAnim;
+//
+//using SPLTexAnimNative = SPLTexAnim;
+//
+//using SPLChildResource = SPLChildResourceTemplate<f32, glm::vec3>;
+//using SPLChildResourceNative = SPLChildResourceTemplate<fx16, GXRgb>;
 
 struct SPLResource {
     SPLResourceHeader header;

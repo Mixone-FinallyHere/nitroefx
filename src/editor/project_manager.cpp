@@ -47,7 +47,7 @@ void ProjectManager::render() {
         return;
     }
 
-    if (ImGui::Begin("Project##ProjectManager", &m_open)) {
+    if (ImGui::Begin("Project Manager##ProjectManager", &m_open)) {
         if (m_projectPath.empty()) {
             ImGui::Text("No project open");
         } else {

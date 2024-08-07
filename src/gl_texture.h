@@ -7,24 +7,6 @@
 
 struct SPLTexture;
 
-enum class TextureFormat {
-    None = 0,
-    A3I5,
-    Palette4,
-    Palette16,
-    Palette256,
-    Comp4x4,
-    A5I3,
-    Direct,
-};
-
-enum class TextureRepeat {
-    None,
-    S,
-    T,
-    ST,
-};
-
 class GLTexture {
 public:
     explicit GLTexture(const SPLTexture& texture);

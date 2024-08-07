@@ -97,7 +97,7 @@ void GLTexture::createTexture(const SPLTexture& texture) {
             texture.width,
             texture.height,
             texture.paletteData.size(),
-            texture.param.palColor0
+            texture.param.palColor0Transparent
         );
         break;
     case TextureFormat::Palette16:
@@ -107,7 +107,7 @@ void GLTexture::createTexture(const SPLTexture& texture) {
             texture.width,
             texture.height,
             texture.paletteData.size(),
-            texture.param.palColor0
+            texture.param.palColor0Transparent
         );
         break;
     case TextureFormat::Palette256:
@@ -117,7 +117,7 @@ void GLTexture::createTexture(const SPLTexture& texture) {
             texture.width,
             texture.height,
             texture.paletteData.size(),
-            texture.param.palColor0
+            texture.param.palColor0Transparent
         );
         break;
     case TextureFormat::Comp4x4:
@@ -184,7 +184,7 @@ void GLTexture::createTexture(const SPLTexture& texture) {
 
 std::vector<u8> GLTexture::convertA3I5(const u8* tex, const GXRgba* pal, size_t width, size_t height, size_t palSize) {
     std::vector<u8> texture(width * height * 4);
-    const PixelA3I5* pixels = reinterpret_cast<const PixelA3I5*>(tex);
+    const auto pixels = reinterpret_cast<const PixelA3I5*>(tex);
 
     for (size_t i = 0; i < width * height; i++) {
         GXRgba color = pal[pixels[i].color];
@@ -241,9 +241,8 @@ std::vector<u8> GLTexture::convertPalette16(const u8* tex, const GXRgba* pal, si
 
     for (size_t i = 0; i < width * height; i += 2) {
         const u8 pixel = pixels[i / 2];
-        u8 index;
 
-        index = pixel & 0xF;
+        u8 index = pixel & 0xF;
         texture[i * 4 + 0] = pal[index].r8();
         texture[i * 4 + 1] = pal[index].g8();
         texture[i * 4 + 2] = pal[index].b8();

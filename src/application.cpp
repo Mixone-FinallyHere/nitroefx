@@ -168,6 +168,14 @@ void Application::renderMenuBar() {
 			ImGui::EndMenu();
 		}
 
+		if (ImGui::BeginMenu("View")) {
+			if (ImGui::MenuItem("Project Manager")) {
+				g_projectManager->open();
+			}
+
+			ImGui::EndMenu();
+		}
+
 		ImGui::EndMainMenuBar();
 	}
 }

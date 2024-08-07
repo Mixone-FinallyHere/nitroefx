@@ -39,6 +39,8 @@ private:
     std::shared_ptr<SPLCollisionPlaneBehavior> fromNative(const SPLCollisionPlaneBehaviorNative& native);
     std::shared_ptr<SPLConvergenceBehavior> fromNative(const SPLConvergenceBehaviorNative& native);
 
+    SPLTextureParam fromNative(const SPLTextureParamNative& native);
+
 private:
     SPLFileHeader m_header;
     std::vector<SPLResource> m_resources;
