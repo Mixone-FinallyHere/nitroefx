@@ -178,6 +178,14 @@ void Application::renderMenuBar() {
 				g_projectManager->open();
 			}
 
+			if (ImGui::MenuItem("Resource Picker")) {
+				m_editor->openPicker();
+			}
+
+			if (ImGui::MenuItem("Resource Editor")) {
+				m_editor->openEditor();
+			}
+
 			ImGui::EndMenu();
 		}
 

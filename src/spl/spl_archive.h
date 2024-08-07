@@ -13,11 +13,16 @@ public:
     explicit SPLArchive(const std::filesystem::path& filename);
 
     const SPLResource& getResource(size_t index) const { return m_resources[index]; }
+    SPLResource& getResource(size_t index) { return m_resources[index]; }
 
     const std::vector<SPLResource>& getResources() const { return m_resources; }
+    std::vector<SPLResource>& getResources() { return m_resources; }
 
     const SPLTexture& getTexture(size_t index) const { return m_textures[index]; }
+    SPLTexture& getTexture(size_t index) { return m_textures[index]; }
+
     const std::vector<SPLTexture>& getTextures() const { return m_textures; }
+    std::vector<SPLTexture>& getTextures() { return m_textures; }
 
     size_t getResourceCount() const { return m_resources.size(); }
     size_t getTextureCount() const { return m_header.texCount; }

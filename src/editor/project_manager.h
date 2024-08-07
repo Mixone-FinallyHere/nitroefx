@@ -28,6 +28,10 @@ public:
         return m_activeEditor;
     }
 
+    void setActiveEditor(const std::shared_ptr<EditorInstance>& editor) {
+        m_activeEditor = editor;
+    }
+
     const std::filesystem::path& getProjectPath() const {
         return m_projectPath;
     }
