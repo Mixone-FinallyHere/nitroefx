@@ -26,4 +26,5 @@ private:
     bool m_running = true;
     SDL_Window* m_window = nullptr;
     SDL_GLContext m_context = nullptr;
+    std::unique_ptr<Editor> m_editor;
 };

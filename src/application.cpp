@@ -34,7 +34,7 @@ int Application::run(int argc, char** argv) {
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
 
     constexpr auto windowFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI;
-    m_window = SDL_CreateWindow("NitroEFX", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, windowFlags);
+    m_window = SDL_CreateWindow("NitroEFX", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1920, 1080, windowFlags);
     if (m_window == nullptr) {
         spdlog::error("SDL_CreateWindow Error: {}", SDL_GetError());
         return 1;
@@ -57,6 +57,8 @@ int Application::run(int argc, char** argv) {
     ImGui_ImplSDL2_InitForOpenGL(m_window, m_context);
     ImGui_ImplOpenGL3_Init("#version 450");
 
+	m_editor = std::make_unique<Editor>();
+
     while (m_running) {
         pollEvents();
 
@@ -67,6 +69,7 @@ int Application::run(int argc, char** argv) {
 
 		renderMenuBar();
 		g_projectManager->render();
+		m_editor->render();
 
         ImGui::Render();
         glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
@@ -138,8 +141,10 @@ void Application::renderMenuBar() {
 				}
 
 				if (ImGui::MenuItem(ICON_FA_FILE " SPL File", "Ctrl+O")) {
-					auto path = openFile();
-					// TODO: Load the SPL file
+					const auto path = openFile();
+					if (!path.empty()) {
+						g_projectManager->openEditor(path);
+					}
 				}
 
 				ImGui::EndMenu();

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <filesystem>
 #include <memory>
 #include <string_view>
 #include <vector>
@@ -9,7 +10,7 @@
 
 class SPLArchive {
 public:
-    explicit SPLArchive(std::string_view filename);
+    explicit SPLArchive(const std::filesystem::path& filename);
 
     const SPLResource& getResource(size_t index) const { return m_resources[index]; }
 
@@ -22,7 +23,7 @@ public:
     size_t getTextureCount() const { return m_header.texCount; }
 
 private:
-    void load(std::string_view filename);
+    void load(const std::filesystem::path& filename);
 
     static SPLResourceHeader fromNative(const SPLResourceHeaderNative& native);
 

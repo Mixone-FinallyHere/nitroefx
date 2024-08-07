@@ -9,15 +9,15 @@ std::istream& operator>>(std::istream& stream, T& v) {
 }
 
 
-SPLArchive::SPLArchive(std::string_view filename) : m_header() {
+SPLArchive::SPLArchive(const std::filesystem::path& filename) : m_header() {
     load(filename);
 }
 
 
-void SPLArchive::load(std::string_view filename) {
-    std::ifstream file(filename.data(), std::ios::binary | std::ios::in);
+void SPLArchive::load(const std::filesystem::path& filename) {
+    std::ifstream file(filename, std::ios::binary | std::ios::in);
     if (!file) {
-        spdlog::error("Failed to open file: {}", filename);
+        spdlog::error("Failed to open file: {}", filename.string());
         return;
     }
 
@@ -141,6 +141,7 @@ void SPLArchive::load(std::string_view filename) {
         file.seekg(offset + texRes.resourceSize, std::ios::beg);
     }
 
+    // Resolve shared textures
     for (auto& tex : m_textures) {
         if (tex.param.useSharedTexture) {
             tex.textureData = m_textureData[tex.param.sharedTexID];
