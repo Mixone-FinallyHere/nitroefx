@@ -99,17 +99,92 @@ void Application::pollEvents() {
 		case SDL_QUIT:
 			m_running = false;
 			break;
+
 		case SDL_WINDOWEVENT:
 			if (event.window.event == SDL_WINDOWEVENT_CLOSE 
 				&& event.window.windowID == SDL_GetWindowID(m_window)) {
 				m_running = false;
 			}
 			break;
+
+		case SDL_KEYDOWN:
+			handleKeydown(event);
+			break;
+
 		default:
 			break;
 		}
 
 		dispatchEvent(event);
+	}
+}
+
+void Application::handleKeydown(const SDL_Event& event) {
+	const auto io = ImGui::GetIO();
+	if (io.WantTextInput) {
+		return;
+	}
+
+	switch (event.key.keysym.sym) {
+	case SDLK_n:
+		if (event.key.keysym.mod & KMOD_CTRL) {
+			if (event.key.keysym.mod & KMOD_SHIFT) {
+				spdlog::warn("New Project not implemented");
+			} else {
+				spdlog::warn("New SPL File not implemented");
+			}
+		}
+		break;
+
+	case SDLK_o:
+		if (event.key.keysym.mod & KMOD_CTRL) {
+			if (event.key.keysym.mod & KMOD_SHIFT) {
+				const auto path = openProject();
+				if (!path.empty()) {
+					g_projectManager->openProject(path);
+				}
+			} else {
+				const auto path = openFile();
+				if (!path.empty()) {
+					g_projectManager->openEditor(path);
+				}
+			}
+		}
+		
+		break;
+
+	case SDLK_s:
+		if (event.key.keysym.mod & KMOD_CTRL) {
+			if (event.key.keysym.mod & KMOD_SHIFT) {
+				spdlog::warn("Save All not implemented");
+			} else {
+				spdlog::warn("Save not implemented");
+			}
+		}
+		break;
+
+	case SDLK_w:
+		if (event.key.keysym.mod & KMOD_CTRL) {
+			if (event.key.keysym.mod & KMOD_SHIFT) {
+				if (g_projectManager->hasOpenEditors()) {
+					g_projectManager->closeAllEditors();
+				}
+			} else {
+				if (g_projectManager->hasActiveEditor()) {
+					g_projectManager->closeEditor(g_projectManager->getActiveEditor());
+				}
+			}
+		}
+		break;
+
+	case SDLK_F4:
+		if (event.key.keysym.mod & KMOD_ALT) {
+			m_running = false;
+		}
+		break;
+
+	default:
+		break;
 	}
 }
 
@@ -167,7 +242,21 @@ void Application::renderMenuBar() {
 
 			if (ImGui::MenuItem(ICON_FA_XMARK " Close", "Ctrl+W", 
 				false, g_projectManager->hasActiveEditor())) {
-				spdlog::warn("Close not implemented");
+				g_projectManager->closeEditor(g_projectManager->getActiveEditor());
+			}
+
+			if (ImGui::MenuItem(ICON_FA_XMARK " Close All", "Ctrl+Shift+W", 
+				false, g_projectManager->hasOpenEditors())) {
+				g_projectManager->closeAllEditors();
+			}
+
+			if (ImGui::MenuItem(ICON_FA_XMARK " Close Project", nullptr, 
+				false, g_projectManager->hasProject())) {
+				g_projectManager->closeProject();
+			}
+
+			if (ImGui::MenuItem(ICON_FA_POWER_OFF " Exit", "Alt+F4")) {
+				m_running = false;
 			}
 
 			ImGui::EndMenu();

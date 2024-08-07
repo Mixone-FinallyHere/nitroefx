@@ -8,6 +8,30 @@
 
 
 void ProjectManager::openProject(const std::filesystem::path& path) {
+    if (hasProject()) {
+        constexpr SDL_MessageBoxButtonData buttons[] = {
+            { SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, 0, "No" },
+            { SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 1, "Yes" }
+        };
+        const SDL_MessageBoxData data = {
+            SDL_MESSAGEBOX_INFORMATION,
+            nullptr,
+            "Close project?",
+            "You already have a project open. Do you want to close it?",
+            2,
+            buttons,
+            nullptr
+        };
+
+        int button = 0;
+        const auto result = SDL_ShowMessageBox(&data, &button);
+        if (result < 0 || button == 0) {
+            return;
+        }
+
+        closeProject(true);
+    }
+
     m_projectPath = path;
 }
 
@@ -39,6 +63,15 @@ void ProjectManager::closeEditor(const std::shared_ptr<EditorInstance>& editor) 
     }
 }
 
+void ProjectManager::closeAllEditors() {
+    for (const auto& editor : m_openEditors) {
+        editor->notifyClosing();
+    }
+
+    m_openEditors.clear();
+    m_activeEditor.reset();
+}
+
 void ProjectManager::open() {
     m_open = true;
 }
@@ -68,15 +101,17 @@ void ProjectManager::render() {
 }
 
 void ProjectManager::handleEvent(const SDL_Event& event) {
-    if (event.type != SDL_DROPFILE) {
-        return;
-    }
-
-    const std::filesystem::path path = event.drop.file;
-    if (std::filesystem::is_directory(path)) {
-        openProject(path);
-    } else {
-        openEditor(path);
+    switch (event.type) {
+    case SDL_DROPFILE: {
+        const std::filesystem::path path = event.drop.file;
+        if (std::filesystem::is_directory(path)) {
+            openProject(path);
+        } else if (path.extension() == ".spa") {
+            openEditor(path);
+        }
+    } break;
+    default:
+        break;
     }
 }
 

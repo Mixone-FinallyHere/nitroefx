@@ -13,6 +13,7 @@ public:
 
 private:
     void pollEvents();
+    void handleKeydown(const SDL_Event& event);
     void dispatchEvent(const SDL_Event& event);
     void renderMenuBar();
     void setColors();
