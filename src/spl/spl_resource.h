@@ -47,7 +47,7 @@ enum class SPLDrawType : u8 {
     DirectionalPolygonCenter
 };
 
-enum class SPLCircleAxis : u8 {
+enum class SPLEmissionAxis : u8 {
     Z = 0,
     Y,
     X,
@@ -76,7 +76,7 @@ union SPLResourceFlagsNative {
     struct {
         u32 emissionType : 4; // Maps to SPLEmissionType
         u32 drawType : 2;
-        u32 circleAxis : 2; // Maps to SPLCircleAxis
+        u32 circleAxis : 2; // Maps to SPLEmissionAxis
         u32 hasScaleAnim : 1;
         u32 hasColorAnim : 1;
         u32 hasAlphaAnim : 1;
@@ -109,7 +109,7 @@ union SPLResourceFlagsNative {
 struct SPLResourceFlags {
     SPLEmissionType emissionType;
     SPLDrawType drawType;
-    SPLCircleAxis circleAxis;
+    SPLEmissionAxis emissionAxis;
     bool hasScaleAnim;
     bool hasColorAnim;
     bool hasAlphaAnim;
@@ -226,12 +226,12 @@ struct SPLResourceHeaderNative {
         u32 lifeTime : 8;
         u32 initVel : 8; // Attenuation factor for the initial velocity of the particles (0 = no attenuation)
         u32 : 8;
-    } randomAttenuation;
+    } variance;
 
     struct {
         u32 emissionInterval : 8;
         u32 baseAlpha : 8;
-        u32 airResistance : 8;
+        u32 airResistance : 8; // Air resistance factor (0=0.75, 255=1.25)
         u32 textureIndex : 8;
         u32 loopFrames : 8;
         u32 dbbScale : 16;
@@ -264,8 +264,8 @@ struct SPLResourceHeader {
     f32 baseScale;
     f32 aspectRatio;
     f32 startDelay; // Delay, in seconds, before the emitter starts emitting particles
-    s16 minRotation;
-    s16 maxRotation;
+    f32 minRotation;
+    f32 maxRotation;
     u16 initAngle;
     u16 reserved;
     f32 emitterLifeTime; // Time, in seconds, the emitter will live for
@@ -278,12 +278,12 @@ struct SPLResourceHeader {
         f32 baseScale; // Damping factor for the base scale of the particles (0 = no damping)
         f32 lifeTime;
         f32 initVel; // Attenuation factor for the initial velocity of the particles (0 = no attenuation)
-    } randomAttenuation;
+    } variance;
 
     struct {
         f32 emissionInterval; // Time, in seconds, between particle emissions
         f32 baseAlpha;
-        u8 airResistance;
+        f32 airResistance; // Air resistance factor (0.75-1.25)
         u8 textureIndex;
         f32 loopTime; // Time, in seconds, for the texture animation to loop
         u16 dbbScale;

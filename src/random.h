@@ -25,6 +25,19 @@ inline f32 nextF32() {
     return detail::s_distf(detail::s_gen);
 }
 
+inline f32 nextF32N() {
+    return nextF32() * 2.0f - 1.0f;
+}
+
+inline glm::vec3 unitVector() {
+    return glm::normalize(glm::vec3(nextF32N(), nextF32N(), nextF32N()));
+}
+
+inline glm::vec3 unitXY() {
+    return glm::normalize(glm::vec3(nextF32N(), nextF32N(), 0.0f));
+}
+
+
 // Generates a random float in the range [n * (1 - variance), n]
 // n: The base value
 // variance: The variance of the value (0.0f - 1.0f)

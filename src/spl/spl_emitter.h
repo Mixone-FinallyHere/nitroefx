@@ -6,6 +6,7 @@
 
 #include <vector>
 
+class ParticleSystem;
 
 struct SPLEmitterState {
     bool terminate;
@@ -17,17 +18,24 @@ struct SPLEmitterState {
 
 class SPLEmitter {
 public:
-    explicit SPLEmitter(SPLResource *resource, const glm::vec3& pos = {});
+    explicit SPLEmitter(SPLResource *resource, ParticleSystem* system, const glm::vec3& pos = {});
     ~SPLEmitter();
 
-    void update();
+    void update(float deltaTime);
     void render();
+    void emit(u32 count);
+    void emitChildren(const SPLParticle& parent, u32 count);
+
+private:
+    void computeOrthogonalAxes();
+    glm::vec3 tiltCoordinates(const glm::vec3& vec) const;
 
 private:
     SPLResource *m_resource;
+    ParticleSystem* m_system;
 
-    std::vector<SPLParticle> m_particles;
-    std::vector<SPLParticle> m_childParticles;
+    std::vector<SPLParticle*> m_particles;
+    std::vector<SPLParticle*> m_childParticles;
 
     SPLEmitterState m_state;
 

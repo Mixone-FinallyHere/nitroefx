@@ -28,11 +28,11 @@ inline const std::map<SPLDrawType, const char*> g_drawTypeNames = {
     { SPLDrawType::DirectionalPolygonCenter, "Directional Polygon Center" }
 };
 
-inline const std::map<SPLCircleAxis, const char*> g_circleAxisNames = {
-    { SPLCircleAxis::Z, "Z" },
-    { SPLCircleAxis::Y, "Y" },
-    { SPLCircleAxis::X, "X" },
-    { SPLCircleAxis::Emitter, "Emitter" }
+inline const std::map<SPLEmissionAxis, const char*> g_emissionAxisNames = {
+    { SPLEmissionAxis::Z, "Z" },
+    { SPLEmissionAxis::Y, "Y" },
+    { SPLEmissionAxis::X, "X" },
+    { SPLEmissionAxis::Emitter, "Emitter" }
 };
 
 inline const std::map<SPLPolygonRotAxis, const char*> g_polygonRotAxisNames = {
@@ -63,9 +63,9 @@ inline const char* getDrawType(SPLDrawType v) {
     return it != detail::g_drawTypeNames.end() ? it->second : "Unknown";
 }
 
-inline const char* getCircleAxis(SPLCircleAxis v) {
-    const auto it = detail::g_circleAxisNames.find(v);
-    return it != detail::g_circleAxisNames.end() ? it->second : "Unknown";
+inline const char* getEmissionAxis(SPLEmissionAxis v) {
+    const auto it = detail::g_emissionAxisNames.find(v);
+    return it != detail::g_emissionAxisNames.end() ? it->second : "Unknown";
 }
 
 inline const char* getPolygonRotAxis(SPLPolygonRotAxis v) {

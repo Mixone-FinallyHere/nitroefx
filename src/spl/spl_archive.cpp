@@ -1,7 +1,9 @@
 #include "spl_archive.h"
 
+#include <glm/gtc/constants.hpp>
 #include <spdlog/spdlog.h>
 #include <fstream>
+
 
 template<class T, std::enable_if_t<std::is_trivially_copyable_v<T>, bool> = true>
 std::istream& operator>>(std::istream& stream, T& v) {
@@ -156,7 +158,7 @@ SPLResourceHeader SPLArchive::fromNative(const SPLResourceHeaderNative &native) 
         .flags = {
             .emissionType = (SPLEmissionType)native.flags.emissionType,
             .drawType = (SPLDrawType)native.flags.drawType,
-            .circleAxis = (SPLCircleAxis)native.flags.circleAxis,
+            .emissionAxis = (SPLEmissionAxis)native.flags.circleAxis,
             .hasScaleAnim = !!native.flags.hasScaleAnim,
             .hasColorAnim = !!native.flags.hasColorAnim,
             .hasAlphaAnim = !!native.flags.hasAlphaAnim,
@@ -192,20 +194,21 @@ SPLResourceHeader SPLArchive::fromNative(const SPLResourceHeaderNative &native) 
         .baseScale = FX_FX32_TO_F32(native.baseScale),
         .aspectRatio = FX_FX16_TO_F32(native.aspectRatio),
         .startDelay = toSeconds(native.startDelay),
-        .minRotation = native.minRotation,
-        .maxRotation = native.maxRotation,
+        .minRotation = (f32)native.minRotation / 65535.0f * glm::two_pi<f32>(),
+        .maxRotation = (f32)native.maxRotation / 65535.0f * glm::two_pi<f32>(),
         .initAngle = native.initAngle,
         .emitterLifeTime = toSeconds(native.emitterLifeTime),
         .particleLifeTime = toSeconds(native.particleLifeTime),
-        .randomAttenuation = {
-            .baseScale = (f32)native.randomAttenuation.baseScale / 255.0f,
-            .lifeTime = (f32)native.randomAttenuation.lifeTime / 255.0f,
-            .initVel = (f32)native.randomAttenuation.initVel / 255.0f
+        .variance = {
+            .baseScale = (f32)native.variance.baseScale / 255.0f,
+            .lifeTime = (f32)native.variance.lifeTime / 255.0f,
+            .initVel = (f32)native.variance.initVel / 255.0f
         },
         .misc = {
             .emissionInterval = toSeconds(native.misc.emissionInterval),
             .baseAlpha = native.misc.baseAlpha / 31.0f,
-            .airResistance = (u8)native.misc.airResistance,
+            // 0 - 255 -> 0.75 - 1.25 (almost)
+            .airResistance = 0.75f + (f32)native.misc.airResistance / 256.0f * 0.5f,
             .textureIndex = (u8)native.misc.textureIndex,
             .loopTime = toSeconds(native.misc.loopFrames),
             .dbbScale = (u16)native.misc.dbbScale,

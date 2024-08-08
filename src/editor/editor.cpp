@@ -215,10 +215,10 @@ void Editor::renderHeaderEditor(SPLResourceHeader& header) {
             ImGui::EndCombo();
         }
 
-        if (ImGui::BeginCombo("Circle Axis", getCircleAxis(header.flags.circleAxis))) {
-            for (const auto [val, name] : detail::g_circleAxisNames) {
-                if (NOTIFY(ImGui::Selectable(name, header.flags.circleAxis == val))) {
-                    header.flags.circleAxis = val;
+        if (ImGui::BeginCombo("Circle Axis", getEmissionAxis(header.flags.emissionAxis))) {
+            for (const auto [val, name] : detail::g_emissionAxisNames) {
+                if (NOTIFY(ImGui::Selectable(name, header.flags.emissionAxis == val))) {
+                    header.flags.emissionAxis = val;
                 }
             }
 
