@@ -203,11 +203,11 @@ SPLResourceHeader SPLArchive::fromNative(const SPLResourceHeaderNative &native) 
             .initVel = (f32)native.randomAttenuation.initVel / 255.0f
         },
         .misc = {
-            .emissionInterval = (u8)native.misc.emissionInterval,
-            .baseAlpha = (u8)native.misc.baseAlpha,
+            .emissionInterval = toSeconds(native.misc.emissionInterval),
+            .baseAlpha = native.misc.baseAlpha / 31.0f,
             .airResistance = (u8)native.misc.airResistance,
             .textureIndex = (u8)native.misc.textureIndex,
-            .loopFrames = (u8)native.misc.loopFrames,
+            .loopTime = toSeconds(native.misc.loopFrames),
             .dbbScale = (u16)native.misc.dbbScale,
             .textureTileCountS = (u8)native.misc.textureTileCountS,
             .textureTileCountT = (u8)native.misc.textureTileCountT,

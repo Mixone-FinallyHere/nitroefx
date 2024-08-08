@@ -9,6 +9,7 @@ SPLEmitter::SPLEmitter(SPLResource* resource, const glm::vec3& pos) {
     m_velocity = {};
 
     m_age = 0;
+    m_emissionTimer = 0;
 
     m_axis = resource->header.axis;
     m_initAngle = resource->header.initAngle;

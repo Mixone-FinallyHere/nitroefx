@@ -281,11 +281,11 @@ struct SPLResourceHeader {
     } randomAttenuation;
 
     struct {
-        u8 emissionInterval;
-        u8 baseAlpha;
+        f32 emissionInterval; // Time, in seconds, between particle emissions
+        f32 baseAlpha;
         u8 airResistance;
         u8 textureIndex;
-        u8 loopFrames;
+        f32 loopTime; // Time, in seconds, for the texture animation to loop
         u16 dbbScale;
         u8 textureTileCountS; // Number of times to tile the texture in the S direction
         u8 textureTileCountT; // Number of times to tile the texture in the T direction
@@ -489,6 +489,9 @@ struct SPLChildResource {
         bool flipTextureT;
         bool dpolFaceEmitter; // If set, the polygon will face the emitter
     } misc;
+
+    void applyScaleAnim(SPLParticle& ptcl, f32 lifeRate);
+    void applyAlphaAnim(SPLParticle& ptcl, f32 lifeRate);
 };
 
 union SPLTextureParamNative {

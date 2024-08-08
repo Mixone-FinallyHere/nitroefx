@@ -70,3 +70,11 @@ void SPLTexAnim::apply(SPLParticle& ptcl, SPLResource& resource, f32 lifeRate) {
         }
     }
 }
+
+void SPLChildResource::applyScaleAnim(SPLParticle& ptcl, f32 lifeRate) {
+    ptcl.animScale = glm::mix(0.0f, endScale, lifeRate); // scale up
+}
+
+void SPLChildResource::applyAlphaAnim(SPLParticle& ptcl, f32 lifeRate) {
+    ptcl.visibility.animAlpha = glm::mix(1.0f, 0.0f, lifeRate); // fade out
+}

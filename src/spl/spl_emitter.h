@@ -34,7 +34,10 @@ private:
     glm::vec3 m_position;
     glm::vec3 m_velocity;
     glm::vec3 m_particleInitVelocity;
+
     f32 m_age; // age of the emitter, in seconds
+    f32 m_emissionTimer; // time, in seconds, since the last emission
+
     glm::vec3 m_axis;
     u16 m_initAngle;
     f32 m_emissionCount;
@@ -50,7 +53,7 @@ private:
     glm::vec2 m_childTexCoords;
 
     f32 m_emissionInterval; // time, in seconds, between particle emissions
-    u8 m_baseAlpha;
+    f32 m_baseAlpha;
     u8 m_updateCycle; // 0 = every frame, 1 = cycle A, 2 = cycle B, cycles A and B alternate
 
     glm::vec3 m_crossAxis1;
