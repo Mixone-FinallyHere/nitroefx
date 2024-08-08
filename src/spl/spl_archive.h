@@ -1,5 +1,6 @@
 #pragma once
 
+#include <concepts>
 #include <filesystem>
 #include <memory>
 #include <string_view>
@@ -47,11 +48,23 @@ private:
 
     SPLTextureParam fromNative(const SPLTextureParamNative& native);
 
+    template<std::integral T = u32>
+    static f32 toSeconds(T frames) {
+        return static_cast<f32>(frames) / SPL_FRAMES_PER_SECOND;
+    }
+
+    template<std::integral T = u32>
+    static T toFrames(f32 seconds) {
+        return static_cast<T>(seconds * SPL_FRAMES_PER_SECOND);
+    }
+
 private:
     SPLFileHeader m_header;
     std::vector<SPLResource> m_resources;
     std::vector<SPLTexture> m_textures;
     std::vector<std::vector<u8>> m_textureData;
     std::vector<std::vector<u8>> m_paletteData;
+
+    static constexpr u32 SPL_FRAMES_PER_SECOND = 30;
 };
 

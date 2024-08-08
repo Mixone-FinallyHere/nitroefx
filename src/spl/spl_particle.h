@@ -2,17 +2,17 @@
 
 #include <glm/glm.hpp>
 
-#include "spl_list.h"
 #include "types.h"
 
 
-struct SPLParticle : SPLNode<SPLParticle> {
+class SPLParticle {
+public:
     glm::vec3 position; // position of the particle, relative to the emitter
     glm::vec3 velocity;
     u16 rotation;
     s16 angularVelocity;
-    u16 lifeTime;
-    u16 age;
+    f32 lifeTime; // time the particle will live for, in seconds
+    f32 age; // time the particle has been alive for, in seconds
 
     // These two values are essentially 1.0f / lifeTime (or 1.0f / loopTime), represented as an integer
     // They are used to map between age/lifeTime and a [0, 255] range
@@ -28,9 +28,8 @@ struct SPLParticle : SPLNode<SPLParticle> {
     u8 lifeRateOffset;
 
     struct {
-        u16 baseAlpha : 5;
-        u16 animAlpha : 5;
-        u16 currentPolygonID : 6;
+        f32 baseAlpha;
+        f32 animAlpha;
     } visibility;
     f32 baseScale;
     f32 animScale;

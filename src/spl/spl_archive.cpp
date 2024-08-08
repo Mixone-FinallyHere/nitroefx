@@ -191,16 +191,16 @@ SPLResourceHeader SPLArchive::fromNative(const SPLResourceHeaderNative &native) 
         .initVelAxisAmplifier = FX_FX32_TO_F32(native.initVelAxisAmplifier),
         .baseScale = FX_FX32_TO_F32(native.baseScale),
         .aspectRatio = FX_FX16_TO_F32(native.aspectRatio),
-        .startDelay = native.startDelay,
+        .startDelay = toSeconds(native.startDelay),
         .minRotation = native.minRotation,
         .maxRotation = native.maxRotation,
         .initAngle = native.initAngle,
-        .emitterLifeTime = native.emitterLifeTime,
-        .particleLifeTime = native.particleLifeTime,
+        .emitterLifeTime = toSeconds(native.emitterLifeTime),
+        .particleLifeTime = toSeconds(native.particleLifeTime),
         .randomAttenuation = {
-            .baseScale = (u8)native.randomAttenuation.baseScale,
-            .lifeTime = (u8)native.randomAttenuation.lifeTime,
-            .initVel = (u8)native.randomAttenuation.initVel
+            .baseScale = (f32)native.randomAttenuation.baseScale / 255.0f,
+            .lifeTime = (f32)native.randomAttenuation.lifeTime / 255.0f,
+            .initVel = (f32)native.randomAttenuation.initVel / 255.0f
         },
         .misc = {
             .emissionInterval = (u8)native.misc.emissionInterval,
@@ -222,62 +222,19 @@ SPLResourceHeader SPLArchive::fromNative(const SPLResourceHeaderNative &native) 
 }
 
 SPLScaleAnim SPLArchive::fromNative(const SPLScaleAnimNative &native) {
-    return SPLScaleAnim {
-        .start = FX_FX16_TO_F32(native.start),
-        .mid = FX_FX16_TO_F32(native.mid),
-        .end = FX_FX16_TO_F32(native.end),
-        .curve = native.curve,
-        .flags = { .loop = !!native.flags.loop }
-    };
+    return SPLScaleAnim(native);
 }
 
 SPLColorAnim SPLArchive::fromNative(const SPLColorAnimNative &native) {
-    return SPLColorAnim {
-        .start = native.start.toVec3(),
-        .end = native.end.toVec3(),
-        .curve = native.curve,
-        .flags = { 
-            .randomStartColor = !!native.flags.randomStartColor,
-            .loop = !!native.flags.loop,
-            .interpolate = !!native.flags.interpolate
-        }
-    };
+    return SPLColorAnim(native);
 }
 
 SPLAlphaAnim SPLArchive::fromNative(const SPLAlphaAnimNative &native) {
-    return SPLAlphaAnim {
-        .alpha = {
-            .start = (u8)native.alpha.start,
-            .mid = (u8)native.alpha.mid,
-            .end = (u8)native.alpha.end
-        },
-        .flags = {
-            .randomRange = (u8)native.flags.randomRange,
-            .loop = !!native.flags.loop
-        },
-        .curve = native.curve
-    };
+    return SPLAlphaAnim(native);
 }
 
 SPLTexAnim SPLArchive::fromNative(const SPLTexAnimNative &native) {
-    return SPLTexAnim {
-        .textures = {
-            native.textures[0],
-            native.textures[1],
-            native.textures[2],
-            native.textures[3],
-            native.textures[4],
-            native.textures[5],
-            native.textures[6],
-            native.textures[7]
-        },
-        .param = {
-            .frameCount = (u8)native.param.frameCount,
-            .step = (u8)native.param.step,
-            .randomizeInit = !!native.param.randomizeInit,
-            .loop = !!native.param.loop
-        }
-    };
+    return SPLTexAnim(native);
 }
 
 SPLChildResource SPLArchive::fromNative(const SPLChildResourceNative &native) {
@@ -295,13 +252,13 @@ SPLChildResource SPLArchive::fromNative(const SPLChildResourceNative &native) {
         },
         .randomInitVelMag = FX_FX16_TO_F32(native.randomInitVelMag),
         .endScale = FX_FX16_TO_F32(native.endScale),
-        .lifeTime = native.lifeTime,
-        .velocityRatio = native.velocityRatio,
-        .scaleRatio = native.scaleRatio,
+        .lifeTime = toSeconds(native.lifeTime),
+        .velocityRatio = toSeconds(native.velocityRatio),
+        .scaleRatio = toSeconds(native.scaleRatio),
         .misc = {
             .emissionCount = (u8)native.misc.emissionCount,
-            .emissionDelay = (u8)native.misc.emissionDelay,
-            .emissionInterval = (u8)native.misc.emissionInterval,
+            .emissionDelay = (f32)native.misc.emissionDelay / 255.0f,
+            .emissionInterval = toSeconds(native.misc.emissionInterval),
             .texture = (u8)native.misc.texture,
             .textureTileCountS = (u8)native.misc.textureTileCountS,
             .textureTileCountT = (u8)native.misc.textureTileCountT,

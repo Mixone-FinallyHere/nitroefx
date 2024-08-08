@@ -8,8 +8,8 @@
 #include "types.h"
 #include "fx.h"
 
-struct SPLParticle;
-struct SPLEmitter;
+class SPLParticle;
+class SPLEmitter;
 
 enum class SPLSpinAxis : u16 {
     X = 0,

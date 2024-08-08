@@ -1,5 +1,6 @@
 #include "editor_instance.h"
 #include "project_manager.h"
+#include "random.h"
 
 #include <gl/glew.h>
 #include <imgui.h>
@@ -7,9 +8,6 @@
 
 
 namespace {
-
-std::random_device s_rd;
-std::mt19937_64 s_gen(s_rd());
 
 constexpr const char* s_vertexShader = R"(
 #version 450 core
@@ -37,7 +35,7 @@ void main() {
 
 EditorInstance::EditorInstance(const std::filesystem::path& path)
     : m_path(path), m_archive(path) {
-    m_uniqueID = s_gen();
+    m_uniqueID = random::nextU64();
 
     static float triangle[] = {
         -0.5f, -0.5f, 0.0f,

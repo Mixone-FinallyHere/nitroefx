@@ -7,7 +7,6 @@
 #include <imgui_internal.h>
 
 
-
 void Editor::render() {
     const auto& instances = g_projectManager->getOpenEditors();
 

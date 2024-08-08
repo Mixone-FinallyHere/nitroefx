@@ -169,6 +169,14 @@ struct SPLChildResourceFlags {
 struct SPLCurveInOut {
     u8 in;
     u8 out;
+
+    f32 getIn() const {
+        return in / 255.0f;
+    }
+
+    f32 getOut() const {
+        return out / 255.0f;
+    }
 };
 
 struct SPLCurveInPeakOut {
@@ -176,6 +184,18 @@ struct SPLCurveInPeakOut {
     u8 peak;
     u8 out;
     u8 _;
+
+    f32 getIn() const {
+        return in / 255.0f;
+    }
+
+    f32 getPeak() const {
+        return peak / 255.0f;
+    }
+
+    f32 getOut() const {
+        return out / 255.0f;
+    }
 };
 
 struct SPLResourceHeaderNative {
@@ -243,21 +263,21 @@ struct SPLResourceHeader {
     f32 initVelAxisAmplifier;
     f32 baseScale;
     f32 aspectRatio;
-    u16 startDelay; // Delay, in frames, before the emitter starts emitting particles
+    f32 startDelay; // Delay, in seconds, before the emitter starts emitting particles
     s16 minRotation;
     s16 maxRotation;
     u16 initAngle;
     u16 reserved;
-    u16 emitterLifeTime;
-    u16 particleLifeTime;
+    f32 emitterLifeTime; // Time, in seconds, the emitter will live for
+    f32 particleLifeTime; // Time, in seconds, the particles will live for
 
     // All of these values are mapped to the range [0, 1]
     // They are used to attenuate the particle's properties at initialization,
     // acting as a sort of randomization factor which scales down the initial values
     struct {
-        u8 baseScale; // Damping factor for the base scale of the particles (0 = no damping)
-        u8 lifeTime;
-        u8 initVel; // Attenuation factor for the initial velocity of the particles (0 = no attenuation)
+        f32 baseScale; // Damping factor for the base scale of the particles (0 = no damping)
+        f32 lifeTime;
+        f32 initVel; // Attenuation factor for the initial velocity of the particles (0 = no attenuation)
     } randomAttenuation;
 
     struct {
@@ -282,6 +302,11 @@ struct SPLResourceHeader {
     } userData;
 };
 
+struct SPLResource;
+struct SPLAnim {
+    virtual void apply(SPLParticle& ptcl, SPLResource& resource, f32 lifeRate) = 0;
+};
+
 struct SPLScaleAnimNative {
     fx16 start;
     fx16 mid;
@@ -294,7 +319,7 @@ struct SPLScaleAnimNative {
     u16 padding;
 };
 
-struct SPLScaleAnim {
+struct SPLScaleAnim final : SPLAnim {
     f32 start;
     f32 mid;
     f32 end;
@@ -302,6 +327,16 @@ struct SPLScaleAnim {
     struct {
         bool loop;
     } flags;
+
+    explicit SPLScaleAnim(const SPLScaleAnimNative& native) {
+        start = FX_FX32_TO_F32(native.start);
+        mid = FX_FX32_TO_F32(native.mid);
+        end = FX_FX32_TO_F32(native.end);
+        curve = native.curve;
+        flags.loop = native.flags.loop;
+    }
+
+    void apply(SPLParticle& ptcl, SPLResource& resource, f32 lifeRate) override;
 };
 
 struct SPLColorAnimNative {
@@ -317,7 +352,7 @@ struct SPLColorAnimNative {
     u16 padding;
 };
 
-struct SPLColorAnim {
+struct SPLColorAnim final : SPLAnim {
     glm::vec3 start;
     glm::vec3 end;
     SPLCurveInPeakOut curve;
@@ -326,6 +361,17 @@ struct SPLColorAnim {
         bool loop;
         bool interpolate;
     } flags;
+
+    explicit SPLColorAnim(const SPLColorAnimNative& native) {
+        start = native.start.toVec3();
+        end = native.end.toVec3();
+        curve = native.curve;
+        flags.randomStartColor = native.flags.randomStartColor;
+        flags.loop = native.flags.loop;
+        flags.interpolate = native.flags.interpolate;
+    }
+
+    void apply(SPLParticle& ptcl, SPLResource& resource, f32 lifeRate) override;
 };
 
 struct SPLAlphaAnimNative {
@@ -347,17 +393,28 @@ struct SPLAlphaAnimNative {
     u16 padding;
 };
 
-struct SPLAlphaAnim {
+struct SPLAlphaAnim final : SPLAnim {
     struct {
-        u8 start; // 0-31
-        u8 mid; // 0-31
-        u8 end; // 0-31
+        f32 start;
+        f32 mid;
+        f32 end;
     } alpha;
     struct {
-        u8 randomRange;
+        float randomRange;
         bool loop;
     } flags;
     SPLCurveInOut curve;
+
+    explicit SPLAlphaAnim(const SPLAlphaAnimNative& native) {
+        alpha.start = (f32)native.alpha.start / 31.0f;
+        alpha.mid = (f32)native.alpha.mid / 31.0f;
+        alpha.end = (f32)native.alpha.end / 31.0f;
+        flags.randomRange = (f32)native.flags.randomRange / 255.0f;
+        flags.loop = native.flags.loop;
+        curve = native.curve;
+    }
+
+    void apply(SPLParticle& ptcl, SPLResource& resource, f32 lifeRate) override;
 };
 
 struct SPLTexAnimNative {
@@ -371,14 +428,24 @@ struct SPLTexAnimNative {
     } param;
 };
 
-struct SPLTexAnim {
+struct SPLTexAnim final : SPLAnim {
     u8 textures[8];
     struct {
-        u8 frameCount;
-        u8 step; // Number of frames between each texture frame
+        u8 textureCount;
+        f32 step; // Fraction of the particles lifetime for which each frame lasts
         bool randomizeInit; // Randomize the initial texture frame
         bool loop;
     } param;
+
+    explicit SPLTexAnim(const SPLTexAnimNative& native) {
+        std::ranges::copy(native.textures, std::begin(textures));
+        param.textureCount = native.param.frameCount;
+        param.step = native.param.step / 255.0f;
+        param.randomizeInit = native.param.randomizeInit;
+        param.loop = native.param.loop;
+    }
+
+    void apply(SPLParticle& ptcl, SPLResource& resource, f32 lifeRate) override;
 };
 
 struct SPLChildResourceNative {
@@ -407,14 +474,14 @@ struct SPLChildResource {
     SPLChildResourceFlags flags;
     f32 randomInitVelMag; // Randomization factor for the initial velocity magnitude (0 = no randomization)
     f32 endScale; // For scaling animations
-    u16 lifeTime;
-    u8 velocityRatio; // Ratio of the parent particle's velocity to inherit (255 = 100%)
-    u8 scaleRatio; // Ratio of the parent particle's scale to inherit (255 = 100%)
+    f32 lifeTime; // Time, in seconds, the particles will live for
+    f32 velocityRatio; // Ratio of the parent particle's velocity to inherit (1 = 100%)
+    f32 scaleRatio; // Ratio of the parent particle's scale to inherit (1 = 100%)
     glm::vec3 color;
     struct {
         u8 emissionCount; // Number of particles to emit per emission interval
-        u8 emissionDelay; // Delay, as a fraction of the particle's lifetime, before the particle starts emitting
-        u8 emissionInterval;
+        f32 emissionDelay; // Delay, as a fraction of the particle's lifetime, before the particle starts emitting
+        f32 emissionInterval; // Time, in seconds, between particle emissions
         u8 texture;
         u8 textureTileCountS;
         u8 textureTileCountT;
