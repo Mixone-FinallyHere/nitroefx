@@ -18,7 +18,7 @@ struct SPLEmitterState {
 
 class SPLEmitter {
 public:
-    explicit SPLEmitter(SPLResource *resource, ParticleSystem* system, const glm::vec3& pos = {});
+    explicit SPLEmitter(const SPLResource *resource, ParticleSystem* system, const glm::vec3& pos = {});
     ~SPLEmitter();
 
     void update(float deltaTime);
@@ -26,12 +26,14 @@ public:
     void emit(u32 count);
     void emitChildren(const SPLParticle& parent, u32 count);
 
+    bool shouldTerminate() const;
+
 private:
     void computeOrthogonalAxes();
     glm::vec3 tiltCoordinates(const glm::vec3& vec) const;
 
 private:
-    SPLResource *m_resource;
+    const SPLResource *m_resource;
     ParticleSystem* m_system;
 
     std::vector<SPLParticle*> m_particles;
@@ -66,4 +68,6 @@ private:
 
     glm::vec3 m_crossAxis1;
     glm::vec3 m_crossAxis2;
+
+    friend class ParticleSystem;
 };

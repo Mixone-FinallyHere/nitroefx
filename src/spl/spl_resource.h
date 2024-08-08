@@ -304,7 +304,7 @@ struct SPLResourceHeader {
 
 struct SPLResource;
 struct SPLAnim {
-    virtual void apply(SPLParticle& ptcl, SPLResource& resource, f32 lifeRate) = 0;
+    virtual void apply(SPLParticle& ptcl, const SPLResource& resource, f32 lifeRate) const = 0;
 };
 
 struct SPLScaleAnimNative {
@@ -336,7 +336,7 @@ struct SPLScaleAnim final : SPLAnim {
         flags.loop = native.flags.loop;
     }
 
-    void apply(SPLParticle& ptcl, SPLResource& resource, f32 lifeRate) override;
+    void apply(SPLParticle& ptcl, const SPLResource& resource, f32 lifeRate) const override;
 };
 
 struct SPLColorAnimNative {
@@ -371,7 +371,7 @@ struct SPLColorAnim final : SPLAnim {
         flags.interpolate = native.flags.interpolate;
     }
 
-    void apply(SPLParticle& ptcl, SPLResource& resource, f32 lifeRate) override;
+    void apply(SPLParticle& ptcl, const SPLResource& resource, f32 lifeRate) const override;
 };
 
 struct SPLAlphaAnimNative {
@@ -414,7 +414,7 @@ struct SPLAlphaAnim final : SPLAnim {
         curve = native.curve;
     }
 
-    void apply(SPLParticle& ptcl, SPLResource& resource, f32 lifeRate) override;
+    void apply(SPLParticle& ptcl, const SPLResource& resource, f32 lifeRate) const override;
 };
 
 struct SPLTexAnimNative {
@@ -445,7 +445,7 @@ struct SPLTexAnim final : SPLAnim {
         param.loop = native.param.loop;
     }
 
-    void apply(SPLParticle& ptcl, SPLResource& resource, f32 lifeRate) override;
+    void apply(SPLParticle& ptcl, const SPLResource& resource, f32 lifeRate) const override;
 };
 
 struct SPLChildResourceNative {
@@ -490,8 +490,8 @@ struct SPLChildResource {
         bool dpolFaceEmitter; // If set, the polygon will face the emitter
     } misc;
 
-    void applyScaleAnim(SPLParticle& ptcl, f32 lifeRate);
-    void applyAlphaAnim(SPLParticle& ptcl, f32 lifeRate);
+    void applyScaleAnim(SPLParticle& ptcl, f32 lifeRate) const;
+    void applyAlphaAnim(SPLParticle& ptcl, f32 lifeRate) const;
 };
 
 union SPLTextureParamNative {

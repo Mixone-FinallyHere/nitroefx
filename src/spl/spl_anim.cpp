@@ -6,7 +6,7 @@
 #include "random.h"
 
 
-void SPLScaleAnim::apply(SPLParticle& ptcl, SPLResource& resource, f32 lifeRate) {
+void SPLScaleAnim::apply(SPLParticle& ptcl, const SPLResource& resource, f32 lifeRate) const {
     const f32 in = curve.getIn();
     const f32 out = curve.getOut();
 
@@ -19,7 +19,7 @@ void SPLScaleAnim::apply(SPLParticle& ptcl, SPLResource& resource, f32 lifeRate)
     }
 }
 
-void SPLColorAnim::apply(SPLParticle& ptcl, SPLResource& resource, f32 lifeRate) {
+void SPLColorAnim::apply(SPLParticle& ptcl, const SPLResource& resource, f32 lifeRate) const {
     const float in = curve.getIn();
     const float peak = curve.getPeak();
     const float out = curve.getOut();
@@ -43,7 +43,7 @@ void SPLColorAnim::apply(SPLParticle& ptcl, SPLResource& resource, f32 lifeRate)
     }
 }
 
-void SPLAlphaAnim::apply(SPLParticle& ptcl, SPLResource& resource, f32 lifeRate) {
+void SPLAlphaAnim::apply(SPLParticle& ptcl, const SPLResource& resource, f32 lifeRate) const {
     const f32 in = curve.getIn();
     const f32 out = curve.getOut();
 
@@ -61,7 +61,7 @@ void SPLAlphaAnim::apply(SPLParticle& ptcl, SPLResource& resource, f32 lifeRate)
     );
 }
 
-void SPLTexAnim::apply(SPLParticle& ptcl, SPLResource& resource, f32 lifeRate) {
+void SPLTexAnim::apply(SPLParticle& ptcl, const SPLResource& resource, f32 lifeRate) const {
     
     for (int i = 0; i < param.textureCount; i++) {
         if (lifeRate < param.step * (i + 1)) {
@@ -71,10 +71,10 @@ void SPLTexAnim::apply(SPLParticle& ptcl, SPLResource& resource, f32 lifeRate) {
     }
 }
 
-void SPLChildResource::applyScaleAnim(SPLParticle& ptcl, f32 lifeRate) {
+void SPLChildResource::applyScaleAnim(SPLParticle& ptcl, f32 lifeRate) const {
     ptcl.animScale = glm::mix(0.0f, endScale, lifeRate); // scale up
 }
 
-void SPLChildResource::applyAlphaAnim(SPLParticle& ptcl, f32 lifeRate) {
+void SPLChildResource::applyAlphaAnim(SPLParticle& ptcl, f32 lifeRate) const {
     ptcl.visibility.animAlpha = glm::mix(1.0f, 0.0f, lifeRate); // fade out
 }

@@ -7,7 +7,7 @@
 #include "random.h"
 
 
-SPLEmitter::SPLEmitter(SPLResource* resource, ParticleSystem* system, const glm::vec3& pos) {
+SPLEmitter::SPLEmitter(const SPLResource* resource, ParticleSystem* system, const glm::vec3& pos) {
     m_resource = resource;
     m_system = system;
     m_state = {};
@@ -82,10 +82,10 @@ void SPLEmitter::update(float deltaTime) {
     }
 
     struct AnimFunc {
-        SPLAnim* anim;
+        const SPLAnim* anim;
         bool loop;
 
-        void operator()(SPLParticle& ptcl, SPLResource& resource, f32 lifeRate) const {
+        void operator()(SPLParticle& ptcl, const SPLResource& resource, f32 lifeRate) const {
             anim->apply(ptcl, resource, lifeRate);
         }
     };
@@ -94,7 +94,7 @@ void SPLEmitter::update(float deltaTime) {
     int animFuncCount = 0;
 
     if (header.flags.hasScaleAnim && m_resource->scaleAnim) {
-        animFuncs[animFuncCount++] = {
+        animFuncs[animFuncCount++] = AnimFunc{
             &m_resource->scaleAnim.value(),
             m_resource->scaleAnim->flags.loop
         };
@@ -438,6 +438,15 @@ void SPLEmitter::emitChildren(const SPLParticle& parent, u32 count) {
         ptcl->texture = child.misc.texture;
         ptcl->lifeRateOffset = 0;
     }
+}
+
+bool SPLEmitter::shouldTerminate() const {
+    const auto& header = m_resource->header;
+    return (header.flags.selfMaintaining 
+        && header.emitterLifeTime > 0 
+        && m_state.started 
+        && m_age >= header.emitterLifeTime)
+        || (m_particles.empty() && m_childParticles.empty());
 }
 
 void SPLEmitter::computeOrthogonalAxes() {
