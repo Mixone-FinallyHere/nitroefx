@@ -23,14 +23,17 @@ constexpr auto s_vertexShader = R"(
 #version 450 core
 
 layout(location = 0) in vec3 position;
-layout(location = 1) in mat4 transform;
+layout(location = 1) in vec4 color;
+layout(location = 2) in mat4 transform;
 
+out vec4 fragColor;
 
 uniform mat4 view;
 uniform mat4 proj;
 
 void main() {
     gl_Position = proj * view * transform * vec4(position, 1.0);
+    fragColor = color;
 }
 )";
 
@@ -39,8 +42,10 @@ constexpr auto s_fragmentShader = R"(
 
 layout(location = 0) out vec4 color;
 
+in vec4 fragColor;
+
 void main() {
-    color = vec4(0.0, 0.5, 1.0, 1.0);
+    color = fragColor;
 }
 )";
 
@@ -72,10 +77,15 @@ ParticleRenderer::ParticleRenderer(u32 maxInstances) : m_maxInstances(maxInstanc
     glCall(glBindBuffer(GL_ARRAY_BUFFER, m_transformVbo))
     glCall(glBufferData(GL_ARRAY_BUFFER, m_maxInstances * sizeof(glm::mat4), nullptr, GL_DYNAMIC_DRAW))
 
+    glCall(glEnableVertexAttribArray(1))
+    glCall(glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(ParticleInstance), nullptr))
+    glCall(glVertexAttribDivisor(1, 1))
+
     for (u32 i = 0; i < 4; i++) {
-        glCall(glEnableVertexAttribArray(1 + i))
-        glCall(glVertexAttribPointer(1 + i, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void*)(sizeof(f32) * i * 4)))
-        glCall(glVertexAttribDivisor(1 + i, 1))
+        const size_t offset = offsetof(ParticleInstance, transform) + sizeof(glm::vec4) * i;
+        glCall(glEnableVertexAttribArray(2 + i))
+        glCall(glVertexAttribPointer(2 + i, 4, GL_FLOAT, GL_FALSE, sizeof(ParticleInstance), (void*)offset))
+        glCall(glVertexAttribDivisor(2 + i, 1))
     }
 
     glCall(glBindVertexArray(0))
@@ -137,19 +147,19 @@ void ParticleRenderer::end() {
         return;
     }
 
-    glCall(glBindBuffer(GL_ARRAY_BUFFER, m_transformVbo));
-    glCall(glBufferSubData(GL_ARRAY_BUFFER, 0, m_transforms.size() * sizeof(glm::mat4), m_transforms.data()));
+    glCall(glBindBuffer(GL_ARRAY_BUFFER, m_transformVbo))
+    glCall(glBufferSubData(GL_ARRAY_BUFFER, 0, m_transforms.size() * sizeof(ParticleInstance), m_transforms.data()))
 
-    glCall(glUseProgram(m_shader));
-    glCall(glUniformMatrix4fv(m_viewLocation, 1, GL_FALSE, glm::value_ptr(m_view)));
-    glCall(glUniformMatrix4fv(m_projLocation, 1, GL_FALSE, glm::value_ptr(m_proj)));
+    glCall(glUseProgram(m_shader))
+    glCall(glUniformMatrix4fv(m_viewLocation, 1, GL_FALSE, glm::value_ptr(m_view)))
+    glCall(glUniformMatrix4fv(m_projLocation, 1, GL_FALSE, glm::value_ptr(m_proj)))
 
-    glCall(glBindVertexArray(m_vao));
-    glCall(glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr, (s32)m_transforms.size()));
-    glCall(glBindVertexArray(0));
-    glCall(glUseProgram(0));
+    glCall(glBindVertexArray(m_vao))
+    glCall(glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr, (s32)m_transforms.size()))
+    glCall(glBindVertexArray(0))
+    glCall(glUseProgram(0))
 }
 
 void ParticleRenderer::submit(const ParticleInstance& instance) {
-    m_transforms.push_back(instance.transform);
+    m_transforms.push_back(instance);
 }

@@ -31,6 +31,10 @@ public:
         return m_uniqueID;
     }
 
+    ParticleSystem& getParticleSystem() {
+        return m_particleSystem;
+    }
+
 private:
     std::filesystem::path m_path;
     SPLArchive m_archive;

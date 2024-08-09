@@ -76,18 +76,12 @@ void SPLEmitter::update(float deltaTime) {
     const auto& header = m_resource->header;
     constexpr auto wrap_f32 = [](f32 x) { return x - std::floor(x); };
 
-#if !ALLOW_DEATH_EMISSIONS
-    if (m_age <= header.emitterLifeTime) {
-#endif
-
+    if (m_age == 0.0f || m_age <= header.emitterLifeTime) {
         while (m_emissionTimer >= header.misc.emissionInterval) {
             emit((u32)header.emissionCount);
             m_emissionTimer -= header.misc.emissionInterval;
         }
-
-#if !ALLOW_DEATH_EMISSIONS
     }
-#endif
 
     struct AnimFunc {
         const SPLAnim* anim;
@@ -152,12 +146,12 @@ void SPLEmitter::update(float deltaTime) {
             behavior->apply(*ptcl, acc, *this);
         }
 
-        ptcl->rotation += ptcl->angularVelocity;
+        ptcl->rotation += ptcl->angularVelocity * deltaTime;
 
         ptcl->velocity *= header.misc.airResistance;
-        ptcl->velocity += acc;
+        ptcl->velocity += acc * deltaTime;
 
-        ptcl->position += ptcl->velocity + m_velocity;
+        ptcl->position += (ptcl->velocity + m_velocity) * deltaTime;
 
         if (header.flags.hasChildResource && m_resource->childResource) {
             const auto& child = m_resource->childResource.value();

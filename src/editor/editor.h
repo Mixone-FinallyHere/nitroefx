@@ -24,6 +24,7 @@ private:
 private:
     bool m_picker_open = true;
     bool m_editor_open = true;
+    float m_timeScale = 1.0f;
 
     std::unordered_map<u64, int> m_selectedResources;
     std::weak_ptr<EditorInstance> m_activeEditor;

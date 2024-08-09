@@ -75,7 +75,7 @@ void Editor::updateParticles(float deltaTime) {
         return;
     }
 
-    editor->updateParticles(deltaTime);
+    editor->updateParticles(deltaTime * m_timeScale);
 }
 
 void Editor::renderResourcePicker() {
@@ -150,6 +150,8 @@ void Editor::renderResourcePicker() {
 
 void Editor::renderResourceEditor() {
     if (ImGui::Begin("Resource Editor##Editor", &m_editor_open)) {
+        ImGui::SliderFloat("Global Time Scale", &m_timeScale, 0.0f, 2.0f, "%.2f");
+
         const auto& editor = g_projectManager->getActiveEditor();
         if (!editor) {
             ImGui::Text("No editor open");
@@ -171,6 +173,10 @@ void Editor::renderResourceEditor() {
         if (m_selectedResources[id] != -1) {
             auto& resource = resources[m_selectedResources[id]];
             const auto& texture = textures[resource.header.misc.textureIndex];
+
+            if (ImGui::Button("Play Selected Emitter")) {
+                editor->getParticleSystem().addEmitter(resource);
+            }
 
             if (ImGui::CollapsingHeader("General")) {
                 renderHeaderEditor(resource.header);

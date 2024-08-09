@@ -7,8 +7,8 @@
 
 
 struct ParticleInstance {
+    glm::vec4 color;
     glm::mat4 transform;
-
 };
 
 class ParticleRenderer {
@@ -33,5 +33,5 @@ private:
     s32 m_viewLocation;
     s32 m_projLocation;
 
-    std::vector<glm::mat4> m_transforms;
+    std::vector<ParticleInstance> m_transforms;
 };

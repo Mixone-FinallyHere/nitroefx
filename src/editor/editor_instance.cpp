@@ -40,7 +40,7 @@ EditorInstance::EditorInstance(const std::filesystem::path& path)
     : m_path(path), m_archive(path), m_particleSystem(1000) {
     m_uniqueID = random::nextU64();
 
-    m_particleSystem.addEmitter(m_archive.getResource(0), true);
+    //m_particleSystem.addEmitter(m_archive.getResource(0), true);
 
     // will be updated in renderParticles
     m_proj = glm::mat4(1.0f);
@@ -109,9 +109,9 @@ void EditorInstance::renderParticles() {
     glClear(GL_COLOR_BUFFER_BIT);
 
     m_particleSystem.render(
-        glm::lookAt(glm::vec3(0, 1, 3), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0)),
+        glm::lookAt(glm::vec3(0, 1, 6), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0)),
         m_proj,
-        glm::vec3(0, 1, 3)
+        glm::vec3(0, 1, 6)
     );
 
     m_viewport.unbind();
