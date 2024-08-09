@@ -171,11 +171,19 @@ void Editor::renderResourceEditor() {
         }
 
         if (m_selectedResources[id] != -1) {
+            static bool looped = false;
             auto& resource = resources[m_selectedResources[id]];
             const auto& texture = textures[resource.header.misc.textureIndex];
 
             if (ImGui::Button("Play Selected Emitter")) {
-                editor->getParticleSystem().addEmitter(resource);
+                editor->getParticleSystem().addEmitter(resource, looped);
+            }
+
+            ImGui::SameLine();
+            ImGui::Checkbox("Spawn Looped Emitter", &looped);
+
+            if (ImGui::Button("Kill Emitters")) {
+                editor->getParticleSystem().killAllEmitters();
             }
 
             if (ImGui::CollapsingHeader("General")) {

@@ -9,7 +9,7 @@ class ParticleRenderer;
 
 class SPLParticle {
 public:
-    void render(ParticleRenderer* renderer, const glm::vec3& cameraPos) const;
+    void render(ParticleRenderer* renderer, const glm::vec3& cameraPos, f32 s, f32 t) const;
     glm::vec3 getWorldPosition() const;
 
     glm::vec3 position; // position of the particle, relative to the emitter

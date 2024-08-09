@@ -1,7 +1,7 @@
 #include "particle_system.h"
 
 
-ParticleSystem::ParticleSystem(u32 maxParticles) : m_renderer(maxParticles) {
+ParticleSystem::ParticleSystem(u32 maxParticles, u32 textureArray) : m_renderer(maxParticles, textureArray) {
     m_particles = new SPLParticle[maxParticles];
 
     for (u32 i = 0; i < maxParticles; i++) {
@@ -55,6 +55,18 @@ void ParticleSystem::render(const glm::mat4& view, const glm::mat4& proj, const 
 std::weak_ptr<SPLEmitter> ParticleSystem::addEmitter(const SPLResource& resource, bool looping) {
     m_emitters.emplace_back(std::make_shared<SPLEmitter>(&resource, this, looping));
     return m_emitters.back();
+}
+
+void ParticleSystem::killEmitter(const std::weak_ptr<SPLEmitter>& emitter) const {
+    if (const auto shared = emitter.lock()) {
+        shared->m_state.terminate = true;
+    }
+}
+
+void ParticleSystem::killAllEmitters() const {
+    for (const auto& emitter : m_emitters) {
+        emitter->m_state.terminate = true;
+    }
 }
 
 SPLParticle* ParticleSystem::allocateParticle() {

@@ -1,8 +1,11 @@
 #include "spl_archive.h"
+#include "gl_util.h"
 
+#include <gl/glew.h>
 #include <glm/gtc/constants.hpp>
 #include <spdlog/spdlog.h>
 #include <fstream>
+
 
 
 template<class T, std::enable_if_t<std::is_trivially_copyable_v<T>, bool> = true>
@@ -151,6 +154,28 @@ void SPLArchive::load(const std::filesystem::path& filename) {
             tex.glTexture = m_textures[tex.param.sharedTexID].glTexture;
         }
     }
+
+    // Create Texture Array
+    glCall(glGenTextures(1, &m_textureArray));
+
+    for (u32 i = 0; i < m_textures.size(); i++) {
+        glCall(glTextureView(
+            m_textureArray,
+            GL_TEXTURE_2D_ARRAY,
+            m_textures[i].glTexture->getHandle(),
+            GL_RGBA8,
+            0,
+            1,
+            i,
+            1
+        ));
+    }
+
+    glCall(glBindTexture(GL_TEXTURE_2D_ARRAY, m_textureArray));
+    glCall(glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST));
+    glCall(glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST));
+    glCall(glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
+    glCall(glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
 }
 
 SPLResourceHeader SPLArchive::fromNative(const SPLResourceHeaderNative &native) {

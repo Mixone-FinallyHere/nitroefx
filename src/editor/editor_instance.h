@@ -47,8 +47,4 @@ private:
 
     bool m_modified = false; // Has the file been modified?
     u64 m_uniqueID;
-
-    u32 m_vertexBuffer;
-    u32 m_vertexArray;
-    u32 m_shaderProgram;
 };

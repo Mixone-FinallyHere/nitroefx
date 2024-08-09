@@ -25,6 +25,8 @@ public:
     const std::vector<SPLTexture>& getTextures() const { return m_textures; }
     std::vector<SPLTexture>& getTextures() { return m_textures; }
 
+    u32 getTextureArray() const { return m_textureArray; }
+
     size_t getResourceCount() const { return m_resources.size(); }
     size_t getTextureCount() const { return m_header.texCount; }
 
@@ -64,6 +66,7 @@ private:
     std::vector<SPLTexture> m_textures;
     std::vector<std::vector<u8>> m_textureData;
     std::vector<std::vector<u8>> m_paletteData;
+    u32 m_textureArray;
 
     static constexpr u32 SPL_FRAMES_PER_SECOND = 30;
 };

@@ -1,82 +1,22 @@
 #include "editor_instance.h"
 #include "project_manager.h"
 #include "random.h"
+#include "gl_util.h"
 
 #include <gl/glew.h>
 #include <imgui.h>
 #include <random>
-
-#include "glm/ext/matrix_clip_space.hpp"
-#include "glm/ext/matrix_transform.hpp"
-
-
-namespace {
-
-constexpr auto s_vertexShader = R"(
-#version 450 core
-
-layout (location = 0) in vec3 pos;
-
-void main() {
-    gl_Position = vec4(pos, 1.0);
-}
-)";
-
-constexpr auto s_fragmentShader = R"(
-#version 450 core
-out vec4 FragColor;
-
-void main() {
-    FragColor = vec4(1.0, 0.0, 0.0, 1.0);
-}
-)";
-
-#define glCall(x) x; if (const auto error = glGetError()) { spdlog::error("OpenGL error: {}", error); }
-
-}
+#include <glm/ext/matrix_clip_space.hpp>
+#include <glm/ext/matrix_transform.hpp>
 
 
 EditorInstance::EditorInstance(const std::filesystem::path& path)
-    : m_path(path), m_archive(path), m_particleSystem(1000) {
+    : m_path(path), m_archive(path), m_particleSystem(1000, m_archive.getTextureArray()) {
     m_uniqueID = random::nextU64();
-
-    //m_particleSystem.addEmitter(m_archive.getResource(0), true);
 
     // will be updated in renderParticles
     m_proj = glm::mat4(1.0f);
     m_updateProj = true;
-
-    //static float triangle[] = {
-    //    -0.5f, -0.5f, 0.0f,
-    //     0.5f, -0.5f, 0.0f,
-    //     0.0f,  0.5f, 0.0f
-    //};
-
-    //glCall(glGenVertexArrays(1, &m_vertexArray));
-    //glCall(glBindVertexArray(m_vertexArray));
-
-    //glCall(glGenBuffers(1, &m_vertexBuffer));
-    //glCall(glBindBuffer(GL_ARRAY_BUFFER, m_vertexBuffer));
-    //glCall(glBufferData(GL_ARRAY_BUFFER, sizeof(triangle), triangle, GL_STATIC_DRAW));
-
-    //glCall(glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), nullptr));
-    //glCall(glEnableVertexAttribArray(0));
-
-    //const u32 vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    //glCall(glShaderSource(vertexShader, 1, &s_vertexShader, nullptr));
-    //glCall(glCompileShader(vertexShader));
-
-    //const u32 fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    //glCall(glShaderSource(fragmentShader, 1, &s_fragmentShader, nullptr));
-    //glCall(glCompileShader(fragmentShader));
-
-    //m_shaderProgram = glCreateProgram();
-    //glCall(glAttachShader(m_shaderProgram, vertexShader));
-    //glCall(glAttachShader(m_shaderProgram, fragmentShader));
-    //glCall(glLinkProgram(m_shaderProgram));
-
-    //glCall(glDeleteShader(vertexShader));
-    //glCall(glDeleteShader(fragmentShader));
 }
 
 std::pair<bool, bool> EditorInstance::render() {
@@ -106,7 +46,7 @@ void EditorInstance::renderParticles() {
     m_viewport.bind();
 
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     m_particleSystem.render(
         glm::lookAt(glm::vec3(0, 1, 6), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0)),

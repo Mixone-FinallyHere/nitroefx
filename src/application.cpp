@@ -18,6 +18,24 @@
 #include <tinyfiledialogs.h>
 
 
+static void debugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam) {
+	switch (severity) {
+	case GL_DEBUG_SEVERITY_HIGH:
+		spdlog::critical("OpenGL Error: {}", message);
+		break;
+	case GL_DEBUG_SEVERITY_MEDIUM:
+		spdlog::warn("OpenGL Error: {}", message);
+		break;
+	case GL_DEBUG_SEVERITY_LOW:
+		spdlog::info("OpenGL Error: {}", message);
+		break;
+	case GL_DEBUG_SEVERITY_NOTIFICATION:
+		spdlog::debug("OpenGL Error: {}", message);
+		break;
+	default:
+		break;
+	}
+}
 
 int Application::run(int argc, char** argv) {
     SDL_SetMainReady();
@@ -51,6 +69,14 @@ int Application::run(int argc, char** argv) {
 		spdlog::error("GLEW Error: {}", (const char*)glewGetErrorString(glewError));
 		return 1;
 	}
+
+	glEnable(GL_BLEND);
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_DEBUG_OUTPUT);
+	glDebugMessageCallback(debugCallback, nullptr);
+
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glDepthFunc(GL_LESS);
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();

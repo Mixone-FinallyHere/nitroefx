@@ -76,7 +76,7 @@ void SPLEmitter::update(float deltaTime) {
     const auto& header = m_resource->header;
     constexpr auto wrap_f32 = [](f32 x) { return x - std::floor(x); };
 
-    if (m_age == 0.0f || m_age <= header.emitterLifeTime) {
+    if (!m_state.terminate && (m_age == 0.0f || m_age <= header.emitterLifeTime)) {
         while (m_emissionTimer >= header.misc.emissionInterval) {
             emit((u32)header.emissionCount);
             m_emissionTimer -= header.misc.emissionInterval;
@@ -236,7 +236,7 @@ void SPLEmitter::update(float deltaTime) {
 void SPLEmitter::render(const glm::vec3& cameraPos) {
     ParticleRenderer* renderer = m_system->getRenderer();
     for (const auto ptcl : std::views::reverse(m_particles)) {
-        ptcl->render(renderer, cameraPos);
+        ptcl->render(renderer, cameraPos, m_texCoords.s, m_texCoords.t);
     }
 }
 
@@ -453,7 +453,7 @@ void SPLEmitter::emitChildren(const SPLParticle& parent, u32 count) {
 bool SPLEmitter::shouldTerminate() const {
     #define EITHER(a, b) ((a) || (b))
 
-    if (m_state.looping) {
+    if (m_state.looping && !m_state.terminate) {
         return false;
     }
 

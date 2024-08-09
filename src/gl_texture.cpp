@@ -1,5 +1,6 @@
 #include "gl_texture.h"
 #include "spl/spl_resource.h"
+#include "gl_util.h"
 
 #include <gl/glew.h>
 
@@ -62,15 +63,15 @@ GLTexture::~GLTexture() {
         return;
     }
 
-    glDeleteTextures(1, &m_texture);
+    glCall(glDeleteTextures(1, &m_texture));
 }
 
 void GLTexture::bind() const {
-    glBindTexture(GL_TEXTURE_2D, m_texture);
+    glCall(glBindTexture(GL_TEXTURE_2D, m_texture));
 }
 
 void GLTexture::unbind() {
-    glBindTexture(GL_TEXTURE_2D, 0);
+    glCall(glBindTexture(GL_TEXTURE_2D, 0));
 }
 
 void GLTexture::createTexture(const SPLTexture& texture) {
@@ -152,35 +153,48 @@ void GLTexture::createTexture(const SPLTexture& texture) {
     const auto repeat = (TextureRepeat)texture.param.repeat;
 
     // Step 2: Upload to GPU
-    glGenTextures(1, &m_texture);
-    glBindTexture(GL_TEXTURE_2D, m_texture);
+    glCall(glGenTextures(1, &m_texture));
+    glCall(glBindTexture(GL_TEXTURE_2D, m_texture));
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(
+    glCall(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST));
+    glCall(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST));
+    glCall(glTexParameteri(
         GL_TEXTURE_2D,
         GL_TEXTURE_WRAP_S,
         repeat == TextureRepeat::S || repeat == TextureRepeat::ST ? GL_REPEAT : GL_CLAMP_TO_EDGE
-    );
-    glTexParameteri(
+    ));
+    glCall(glTexParameteri(
         GL_TEXTURE_2D,
         GL_TEXTURE_WRAP_T,
         repeat == TextureRepeat::T || repeat == TextureRepeat::ST ? GL_REPEAT : GL_CLAMP_TO_EDGE
-    );
+    ));
 
-    glTexImage2D(
+    // Required for glTextureView (see spl_archive.cpp)
+    glCall(glTexStorage2D(
+        GL_TEXTURE_2D,
+        1,
+        GL_RGBA8,
+        (s32)m_width,
+        (s32)m_height
+    ));
+
+    glCall(glTexSubImage2D(
         GL_TEXTURE_2D,
         0,
-        GL_RGBA,
+        0,
+        0,
         (s32)m_width,
         (s32)m_height,
-        0,
         GL_RGBA,
         GL_UNSIGNED_BYTE,
         textureData.data()
-    );
+    ));
 
-    glBindTexture(GL_TEXTURE_2D, 0);
+    int immutableFormat;
+    glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_IMMUTABLE_FORMAT, &immutableFormat);
+    assert(immutableFormat == GL_TRUE);
+
+    glCall(glBindTexture(GL_TEXTURE_2D, 0));
 }
 
 
