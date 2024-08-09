@@ -1,7 +1,7 @@
 #include "particle_system.h"
 
 
-ParticleSystem::ParticleSystem(u32 maxParticles) {
+ParticleSystem::ParticleSystem(u32 maxParticles) : m_renderer(maxParticles) {
     m_particles = new SPLParticle[maxParticles];
 
     for (u32 i = 0; i < maxParticles; i++) {
@@ -14,22 +14,23 @@ ParticleSystem::~ParticleSystem() {
 }
 
 void ParticleSystem::update(float deltaTime) {
+    
     for (auto it = m_emitters.begin(); it != m_emitters.end();) {
-        auto& emitter = *it;
-        const auto& header = emitter.m_resource->header;
+        const auto& emitter = *it;
+        const auto& header = emitter->m_resource->header;
 
-        if (!emitter.m_state.started && emitter.m_age >= header.startDelay) {
-            emitter.m_state.started = true;
-            emitter.m_age = 0;
+        if (!emitter->m_state.started && emitter->m_age >= header.startDelay) {
+            emitter->m_state.started = true;
+            emitter->m_age = 0;
         }
 
-        if (!emitter.m_state.paused) {
-            if (emitter.m_updateCycle == 0 || (u8)m_cycle == emitter.m_updateCycle - 1) {
-                emitter.update(deltaTime);
+        if (!emitter->m_state.paused) {
+            if (emitter->m_updateCycle == 0 || (u8)m_cycle == emitter->m_updateCycle - 1) {
+                emitter->update(deltaTime);
             }
         }
 
-        if (emitter.shouldTerminate()) {
+        if (emitter->shouldTerminate()) {
             it = m_emitters.erase(it);
         } else {
             ++it;
@@ -39,8 +40,21 @@ void ParticleSystem::update(float deltaTime) {
     m_cycle = !m_cycle;
 }
 
-void ParticleSystem::addEmitter(const SPLResource& resource) {
-    m_emitters.emplace_back(&resource, this);
+void ParticleSystem::render(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& cameraPos) {
+    m_renderer.begin(view, proj);
+
+    for (auto& emitter : m_emitters) {
+        if (!emitter->m_state.renderingDisabled) {
+            emitter->render(cameraPos);
+        }
+    }
+
+    m_renderer.end();
+}
+
+std::weak_ptr<SPLEmitter> ParticleSystem::addEmitter(const SPLResource& resource, bool looping) {
+    m_emitters.emplace_back(std::make_shared<SPLEmitter>(&resource, this, looping));
+    return m_emitters.back();
 }
 
 SPLParticle* ParticleSystem::allocateParticle() {

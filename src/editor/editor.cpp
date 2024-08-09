@@ -69,6 +69,15 @@ void Editor::openEditor() {
     m_editor_open = true;
 }
 
+void Editor::updateParticles(float deltaTime) {
+    const auto& editor = g_projectManager->getActiveEditor();
+    if (!editor) {
+        return;
+    }
+
+    editor->updateParticles(deltaTime);
+}
+
 void Editor::renderResourcePicker() {
     if (ImGui::Begin("Resource Picker##Editor", &m_picker_open)) {
 

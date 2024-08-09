@@ -6,10 +6,13 @@
 #include <imgui.h>
 #include <random>
 
+#include "glm/ext/matrix_clip_space.hpp"
+#include "glm/ext/matrix_transform.hpp"
+
 
 namespace {
 
-constexpr const char* s_vertexShader = R"(
+constexpr auto s_vertexShader = R"(
 #version 450 core
 
 layout (location = 0) in vec3 pos;
@@ -19,7 +22,7 @@ void main() {
 }
 )";
 
-constexpr const char* s_fragmentShader = R"(
+constexpr auto s_fragmentShader = R"(
 #version 450 core
 out vec4 FragColor;
 
@@ -34,40 +37,46 @@ void main() {
 
 
 EditorInstance::EditorInstance(const std::filesystem::path& path)
-    : m_path(path), m_archive(path) {
+    : m_path(path), m_archive(path), m_particleSystem(1000) {
     m_uniqueID = random::nextU64();
 
-    static float triangle[] = {
-        -0.5f, -0.5f, 0.0f,
-         0.5f, -0.5f, 0.0f,
-         0.0f,  0.5f, 0.0f
-    };
+    m_particleSystem.addEmitter(m_archive.getResource(0), true);
 
-    glCall(glGenVertexArrays(1, &m_vertexArray));
-    glCall(glBindVertexArray(m_vertexArray));
+    // will be updated in renderParticles
+    m_proj = glm::mat4(1.0f);
+    m_updateProj = true;
 
-    glCall(glGenBuffers(1, &m_vertexBuffer));
-    glCall(glBindBuffer(GL_ARRAY_BUFFER, m_vertexBuffer));
-    glCall(glBufferData(GL_ARRAY_BUFFER, sizeof(triangle), triangle, GL_STATIC_DRAW));
+    //static float triangle[] = {
+    //    -0.5f, -0.5f, 0.0f,
+    //     0.5f, -0.5f, 0.0f,
+    //     0.0f,  0.5f, 0.0f
+    //};
 
-    glCall(glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), nullptr));
-    glCall(glEnableVertexAttribArray(0));
+    //glCall(glGenVertexArrays(1, &m_vertexArray));
+    //glCall(glBindVertexArray(m_vertexArray));
 
-    const u32 vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glCall(glShaderSource(vertexShader, 1, &s_vertexShader, nullptr));
-    glCall(glCompileShader(vertexShader));
+    //glCall(glGenBuffers(1, &m_vertexBuffer));
+    //glCall(glBindBuffer(GL_ARRAY_BUFFER, m_vertexBuffer));
+    //glCall(glBufferData(GL_ARRAY_BUFFER, sizeof(triangle), triangle, GL_STATIC_DRAW));
 
-    const u32 fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glCall(glShaderSource(fragmentShader, 1, &s_fragmentShader, nullptr));
-    glCall(glCompileShader(fragmentShader));
+    //glCall(glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), nullptr));
+    //glCall(glEnableVertexAttribArray(0));
 
-    m_shaderProgram = glCreateProgram();
-    glCall(glAttachShader(m_shaderProgram, vertexShader));
-    glCall(glAttachShader(m_shaderProgram, fragmentShader));
-    glCall(glLinkProgram(m_shaderProgram));
+    //const u32 vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    //glCall(glShaderSource(vertexShader, 1, &s_vertexShader, nullptr));
+    //glCall(glCompileShader(vertexShader));
 
-    glCall(glDeleteShader(vertexShader));
-    glCall(glDeleteShader(fragmentShader));
+    //const u32 fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    //glCall(glShaderSource(fragmentShader, 1, &s_fragmentShader, nullptr));
+    //glCall(glCompileShader(fragmentShader));
+
+    //m_shaderProgram = glCreateProgram();
+    //glCall(glAttachShader(m_shaderProgram, vertexShader));
+    //glCall(glAttachShader(m_shaderProgram, fragmentShader));
+    //glCall(glLinkProgram(m_shaderProgram));
+
+    //glCall(glDeleteShader(vertexShader));
+    //glCall(glDeleteShader(fragmentShader));
 }
 
 std::pair<bool, bool> EditorInstance::render() {
@@ -89,23 +98,27 @@ std::pair<bool, bool> EditorInstance::render() {
 }
 
 void EditorInstance::renderParticles() {
-    if (m_size != m_viewport.getSize()) {
+    if (m_updateProj || m_size != m_viewport.getSize()) {
         m_viewport.resize(m_size);
+        m_proj = glm::perspective(glm::radians(45.0f), m_size.x / m_size.y, 0.1f, 500.0f);
     }
 
     m_viewport.bind();
 
-    glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    glUseProgram(m_shaderProgram);
-    glBindVertexArray(m_vertexArray);
-    glDrawArrays(GL_TRIANGLES, 0, 3);
-    glBindVertexArray(0);
-    glUseProgram(0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    m_particleSystem.render(
+        glm::lookAt(glm::vec3(0, 1, 3), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0)),
+        m_proj,
+        glm::vec3(0, 1, 3)
+    );
 
     m_viewport.unbind();
+}
+
+void EditorInstance::updateParticles(float deltaTime) {
+    m_particleSystem.update(deltaTime);
 }
 
 bool EditorInstance::notifyClosing() {

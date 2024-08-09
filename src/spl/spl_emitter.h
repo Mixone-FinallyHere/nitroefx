@@ -14,15 +14,16 @@ struct SPLEmitterState {
     bool paused;
     bool renderingDisabled;
     bool started;
+    bool looping;
 };
 
 class SPLEmitter {
 public:
-    explicit SPLEmitter(const SPLResource *resource, ParticleSystem* system, const glm::vec3& pos = {});
+    explicit SPLEmitter(const SPLResource *resource, ParticleSystem* system, bool looping = false, const glm::vec3& pos = {});
     ~SPLEmitter();
 
     void update(float deltaTime);
-    void render();
+    void render(const glm::vec3& cameraPos);
     void emit(u32 count);
     void emitChildren(const SPLParticle& parent, u32 count);
 

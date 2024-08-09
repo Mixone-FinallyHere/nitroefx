@@ -2,25 +2,30 @@
 
 #include "spl/spl_particle.h"
 #include "spl/spl_emitter.h"
+#include "particle_renderer.h"
 
-#include <list>
 #include <queue>
+#include <vector>
 
 class ParticleSystem {
 public:
-    ParticleSystem(u32 maxParticles);
+    explicit ParticleSystem(u32 maxParticles);
     ~ParticleSystem();
 
     void update(float deltaTime);
+    void render(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& cameraPos);
 
-    void addEmitter(const SPLResource& resource);
+    std::weak_ptr<SPLEmitter> addEmitter(const SPLResource& resource, bool looping = false);
 
     SPLParticle* allocateParticle();
     void freeParticle(SPLParticle* particle);
 
+    ParticleRenderer* getRenderer() { return &m_renderer; }
+
 private:
+    ParticleRenderer m_renderer;
     std::queue<SPLParticle*> m_availableParticles;
-    std::list<SPLEmitter> m_emitters;
+    std::vector<std::shared_ptr<SPLEmitter>> m_emitters;
     bool m_cycle =false;
 
     SPLParticle* m_particles;

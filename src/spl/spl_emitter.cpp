@@ -3,14 +3,16 @@
 
 #include <glm/gtc/random.hpp>
 #include <glm/gtc/constants.hpp>
+#include <ranges>
 
 #include "random.h"
 
+#define ALLOW_DEATH_EMISSIONS 1
 
-SPLEmitter::SPLEmitter(const SPLResource* resource, ParticleSystem* system, const glm::vec3& pos) {
+SPLEmitter::SPLEmitter(const SPLResource* resource, ParticleSystem* system, bool looping, const glm::vec3& pos) {
     m_resource = resource;
     m_system = system;
-    m_state = {};
+    m_state = { .looping = looping };
 
     m_position = pos + resource->header.emitterBasePos;
     m_particleInitVelocity = {};
@@ -74,12 +76,18 @@ void SPLEmitter::update(float deltaTime) {
     const auto& header = m_resource->header;
     constexpr auto wrap_f32 = [](f32 x) { return x - std::floor(x); };
 
+#if !ALLOW_DEATH_EMISSIONS
     if (m_age <= header.emitterLifeTime) {
+#endif
+
         while (m_emissionTimer >= header.misc.emissionInterval) {
             emit((u32)header.emissionCount);
             m_emissionTimer -= header.misc.emissionInterval;
         }
+
+#if !ALLOW_DEATH_EMISSIONS
     }
+#endif
 
     struct AnimFunc {
         const SPLAnim* anim;
@@ -212,9 +220,13 @@ void SPLEmitter::update(float deltaTime) {
         }
     }
 
+    if (m_state.looping && m_age > header.emitterLifeTime) {
+        m_age = 0;
+        m_emissionTimer = 0;
+    }
+
     m_age += deltaTime;
     m_emissionTimer += deltaTime;
-
 
     for (const auto ptcl : particlesToRemove) {
         std::erase(m_particles, ptcl);
@@ -227,7 +239,11 @@ void SPLEmitter::update(float deltaTime) {
     }
 }
 
-void SPLEmitter::render() {
+void SPLEmitter::render(const glm::vec3& cameraPos) {
+    ParticleRenderer* renderer = m_system->getRenderer();
+    for (const auto ptcl : std::views::reverse(m_particles)) {
+        ptcl->render(renderer, cameraPos);
+    }
 }
 
 void SPLEmitter::emit(u32 count) {
@@ -441,12 +457,17 @@ void SPLEmitter::emitChildren(const SPLParticle& parent, u32 count) {
 }
 
 bool SPLEmitter::shouldTerminate() const {
+    #define EITHER(a, b) ((a) || (b))
+
+    if (m_state.looping) {
+        return false;
+    }
+
     const auto& header = m_resource->header;
-    return (header.flags.selfMaintaining 
-        && header.emitterLifeTime > 0 
-        && m_state.started 
-        && m_age >= header.emitterLifeTime)
-        || (m_particles.empty() && m_childParticles.empty());
+    return EITHER(
+        header.flags.selfMaintaining && header.emitterLifeTime > 0 && m_state.started && m_age >= header.emitterLifeTime,
+        m_state.terminate
+    ) && m_particles.empty() && m_childParticles.empty();
 }
 
 void SPLEmitter::computeOrthogonalAxes() {

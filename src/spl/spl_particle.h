@@ -1,12 +1,17 @@
 #pragma once
 
-#include <glm/glm.hpp>
-
 #include "types.h"
 
+#include <glm/glm.hpp>
+
+
+class ParticleRenderer;
 
 class SPLParticle {
 public:
+    void render(ParticleRenderer* renderer, const glm::vec3& cameraPos) const;
+    glm::vec3 getWorldPosition() const;
+
     glm::vec3 position; // position of the particle, relative to the emitter
     glm::vec3 velocity;
     f32 rotation;

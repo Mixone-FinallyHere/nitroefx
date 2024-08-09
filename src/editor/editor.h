@@ -13,6 +13,7 @@ public:
     void renderParticles();
     void openPicker();
     void openEditor();
+    void updateParticles(float deltaTime);
 
 private:
     void renderResourcePicker();

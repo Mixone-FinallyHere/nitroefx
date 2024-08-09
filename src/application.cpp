@@ -9,6 +9,7 @@
 #include <imgui_impl_sdl2.h>
 #include <imgui_impl_opengl3.h>
 #include <spdlog/spdlog.h>
+#include <chrono>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -65,10 +66,14 @@ int Application::run(int argc, char** argv) {
     ImGui_ImplOpenGL3_Init("#version 450");
 
 	m_editor = std::make_unique<Editor>();
+	std::chrono::time_point<std::chrono::high_resolution_clock> lastFrame = std::chrono::high_resolution_clock::now();
 
     while (m_running) {
+		const auto now = std::chrono::high_resolution_clock::now();
+		const auto delta = std::chrono::duration<float>(now - lastFrame).count();
         pollEvents();
 
+		m_editor->updateParticles(delta);
 		m_editor->renderParticles();
 
         ImGui_ImplOpenGL3_NewFrame();
@@ -95,6 +100,7 @@ int Application::run(int argc, char** argv) {
         }
 
         SDL_GL_SwapWindow(m_window);
+		lastFrame = now;
     }
 
     return 0;
