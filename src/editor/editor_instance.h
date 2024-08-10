@@ -2,11 +2,13 @@
 
 #include <filesystem>
 #include <utility> // std::pair
+#include <SDL2/SDL_events.h>
 
-#include "spl/spl_archive.h"
+#include "camera.h"
 #include "gl_viewport.h"
 #include "particle_renderer.h"
 #include "particle_system.h"
+#include "spl/spl_archive.h"
 
 
 class EditorInstance {
@@ -16,6 +18,7 @@ public:
     std::pair<bool, bool> render();
     void renderParticles();
     void updateParticles(float deltaTime);
+    void handleEvent(const SDL_Event& event);
 
     bool notifyClosing();
     bool valueChanged(bool changed);
@@ -40,9 +43,9 @@ private:
     SPLArchive m_archive;
     GLViewport m_viewport = GLViewport({ 800, 600 });
     ParticleSystem m_particleSystem;
+    Camera m_camera;
 
     glm::vec2 m_size = { 800, 600 };
-    glm::mat4 m_proj;
     bool m_updateProj;
 
     bool m_modified = false; // Has the file been modified?

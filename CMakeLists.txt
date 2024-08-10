@@ -28,7 +28,7 @@ if (WIN32 AND NOT CMAKE_BUILD_TYPE MATCHES Debug)
 endif()
 
 target_include_directories(nitroefx PRIVATE src external/tinyfiledialogs)
-target_compile_definitions(nitroefx PRIVATE SDL_MAIN_HANDLED)
+target_compile_definitions(nitroefx PRIVATE SDL_MAIN_HANDLED GLM_ENABLE_EXPERIMENTAL)
 target_link_libraries(nitroefx PRIVATE 
     SDL2::SDL2 
     SDL2::SDL2main 

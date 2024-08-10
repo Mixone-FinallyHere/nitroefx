@@ -247,6 +247,7 @@ void Application::handleKeydown(const SDL_Event& event) {
 
 void Application::dispatchEvent(const SDL_Event& event) {
 	g_projectManager->handleEvent(event);
+	m_editor->handleEvent(event);
 }
 
 void Application::renderMenuBar() {

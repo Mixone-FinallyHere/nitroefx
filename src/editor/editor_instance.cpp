@@ -11,11 +11,10 @@
 
 
 EditorInstance::EditorInstance(const std::filesystem::path& path)
-    : m_path(path), m_archive(path), m_particleSystem(1000, m_archive.getTextures()) {
+    : m_path(path), m_archive(path), m_particleSystem(1000, m_archive.getTextures())
+    , m_camera(glm::radians(45.0f), { 800, 800 }, 1.0f, 500.0f) {
     m_uniqueID = random::nextU64();
 
-    // will be updated in renderParticles
-    m_proj = glm::mat4(1.0f);
     m_updateProj = true;
 }
 
@@ -25,6 +24,7 @@ std::pair<bool, bool> EditorInstance::render() {
     const auto name = m_modified ? m_path.filename().string() + "*" : m_path.filename().string();
     if (ImGui::BeginTabItem(name.c_str(), &open)) {
         active = true;
+        m_camera.setActive(true);
 
         const ImVec2 size = ImGui::GetContentRegionAvail();
         m_size = { size.x, size.y };
@@ -32,6 +32,8 @@ std::pair<bool, bool> EditorInstance::render() {
         ImGui::Image((ImTextureID)(uintptr_t)m_viewport.getTexture(), size);
 
         ImGui::EndTabItem();
+    } else {
+        m_camera.setActive(false);
     }
 
     return { open, active };
@@ -40,7 +42,7 @@ std::pair<bool, bool> EditorInstance::render() {
 void EditorInstance::renderParticles() {
     if (m_updateProj || m_size != m_viewport.getSize()) {
         m_viewport.resize(m_size);
-        m_proj = glm::perspective(glm::radians(45.0f), m_size.x / m_size.y, 1.0f, 500.0f);
+        m_camera.setViewport(m_size.x, m_size.y);
     }
 
     m_viewport.bind();
@@ -49,16 +51,27 @@ void EditorInstance::renderParticles() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     m_particleSystem.render(
-        glm::lookAt(glm::vec3(0, 1, 6), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0)),
-        m_proj,
-        glm::vec3(0, 1, 6)
+        m_camera.getView(),
+        m_camera.getProj() ,
+        m_camera.getPosition()
     );
 
     m_viewport.unbind();
 }
 
 void EditorInstance::updateParticles(float deltaTime) {
+    m_camera.update();
     m_particleSystem.update(deltaTime);
+}
+
+void EditorInstance::handleEvent(const SDL_Event& event) {
+    m_camera.handleEvent(event);
+
+    if (event.type == SDL_KEYDOWN) {
+        if (event.key.keysym.sym == SDLK_r && event.key.keysym.mod & KMOD_CTRL) {
+            m_camera.reset();
+        }
+    }
 }
 
 bool EditorInstance::notifyClosing() {

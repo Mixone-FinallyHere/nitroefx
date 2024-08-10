@@ -135,6 +135,15 @@ void Editor::killEmitters() {
     });
 }
 
+void Editor::handleEvent(const SDL_Event& event) {
+    const auto& editor = g_projectManager->getActiveEditor();
+    if (!editor) {
+        return;
+    }
+
+    editor->handleEvent(event);
+}
+
 void Editor::renderResourcePicker() {
     if (ImGui::Begin("Resource Picker##Editor", &m_picker_open)) {
 

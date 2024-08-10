@@ -24,6 +24,8 @@ public:
     void playEmitterAction(EmitterSpawnType spawnType);
     void killEmitters();
 
+    void handleEvent(const SDL_Event& event);
+
 private:
     void renderResourcePicker();
     void renderResourceEditor();
