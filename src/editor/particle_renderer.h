@@ -3,24 +3,27 @@
 #include "types.h"
 #include "spl/spl_particle.h"
 
+#include <span>
+#include <unordered_map>
 #include <vector>
+
+#include "spl/spl_resource.h"
 
 
 struct ParticleInstance {
     glm::vec4 color;
     glm::mat4 transform;
     glm::vec2 texCoords[4];
-    f32 texIndex;
 };
 
 class ParticleRenderer {
 public:
-    explicit ParticleRenderer(u32 maxInstances, u32 textureArray);
+    explicit ParticleRenderer(u32 maxInstances, std::span<const SPLTexture> textures);
 
     void begin(const glm::mat4& view, const glm::mat4& proj);
     void end();
 
-    void submit(const ParticleInstance& instance);
+    void submit(u32 texture, const ParticleInstance& instance);
 
 private:
     u32 m_maxInstances;
@@ -29,14 +32,13 @@ private:
     u32 m_ibo;
     u32 m_shader;
     u32 m_transformVbo;
-    u32 m_textureArray;
 
+    std::span<const SPLTexture> m_textures;
     glm::mat4 m_view;
     glm::mat4 m_proj;
     s32 m_viewLocation;
     s32 m_projLocation;
     s32 m_textureLocation;
 
-    std::vector<ParticleInstance> m_transforms;
-
+    std::vector<std::vector<ParticleInstance>> m_particles;
 };

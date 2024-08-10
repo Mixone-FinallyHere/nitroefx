@@ -11,7 +11,7 @@
 
 
 EditorInstance::EditorInstance(const std::filesystem::path& path)
-    : m_path(path), m_archive(path), m_particleSystem(1000, m_archive.getTextureArray()) {
+    : m_path(path), m_archive(path), m_particleSystem(1000, m_archive.getTextures()) {
     m_uniqueID = random::nextU64();
 
     // will be updated in renderParticles
@@ -40,7 +40,7 @@ std::pair<bool, bool> EditorInstance::render() {
 void EditorInstance::renderParticles() {
     if (m_updateProj || m_size != m_viewport.getSize()) {
         m_viewport.resize(m_size);
-        m_proj = glm::perspective(glm::radians(45.0f), m_size.x / m_size.y, 0.1f, 500.0f);
+        m_proj = glm::perspective(glm::radians(45.0f), m_size.x / m_size.y, 1.0f, 500.0f);
     }
 
     m_viewport.bind();

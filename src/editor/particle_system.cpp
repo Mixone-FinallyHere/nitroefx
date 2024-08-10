@@ -1,7 +1,8 @@
 #include "particle_system.h"
 
 
-ParticleSystem::ParticleSystem(u32 maxParticles, u32 textureArray) : m_renderer(maxParticles, textureArray) {
+ParticleSystem::ParticleSystem(u32 maxParticles, std::span<const SPLTexture> textures)
+    : m_renderer(maxParticles, textures) {
     m_particles = new SPLParticle[maxParticles];
 
     for (u32 i = 0; i < maxParticles; i++) {

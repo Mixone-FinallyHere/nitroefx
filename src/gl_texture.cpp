@@ -161,12 +161,12 @@ void GLTexture::createTexture(const SPLTexture& texture) {
     glCall(glTexParameteri(
         GL_TEXTURE_2D,
         GL_TEXTURE_WRAP_S,
-        repeat == TextureRepeat::S || repeat == TextureRepeat::ST ? GL_REPEAT : GL_CLAMP_TO_EDGE
+        repeat == TextureRepeat::S || repeat == TextureRepeat::ST ? GL_MIRRORED_REPEAT : GL_CLAMP_TO_EDGE
     ));
     glCall(glTexParameteri(
         GL_TEXTURE_2D,
         GL_TEXTURE_WRAP_T,
-        repeat == TextureRepeat::T || repeat == TextureRepeat::ST ? GL_REPEAT : GL_CLAMP_TO_EDGE
+        repeat == TextureRepeat::T || repeat == TextureRepeat::ST ? GL_MIRRORED_REPEAT : GL_CLAMP_TO_EDGE
     ));
 
     // Required for glTextureView (see spl_archive.cpp)
@@ -189,10 +189,6 @@ void GLTexture::createTexture(const SPLTexture& texture) {
         GL_UNSIGNED_BYTE,
         textureData.data()
     ));
-
-    int immutableFormat;
-    glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_IMMUTABLE_FORMAT, &immutableFormat);
-    assert(immutableFormat == GL_TRUE);
 
     glCall(glBindTexture(GL_TEXTURE_2D, 0));
 }

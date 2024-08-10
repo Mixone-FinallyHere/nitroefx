@@ -9,7 +9,7 @@
 
 class ParticleSystem {
 public:
-    explicit ParticleSystem(u32 maxParticles, u32 textureArray);
+    explicit ParticleSystem(u32 maxParticles, std::span<const SPLTexture> textures);
     ~ParticleSystem();
 
     void update(float deltaTime);

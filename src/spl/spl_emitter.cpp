@@ -7,7 +7,6 @@
 
 #include "random.h"
 
-#define ALLOW_DEATH_EMISSIONS 1
 
 SPLEmitter::SPLEmitter(const SPLResource* resource, ParticleSystem* system, bool looping, const glm::vec3& pos) {
     m_resource = resource;
@@ -76,12 +75,19 @@ void SPLEmitter::update(float deltaTime) {
     const auto& header = m_resource->header;
     constexpr auto wrap_f32 = [](f32 x) { return x - std::floor(x); };
 
-    if (!m_state.terminate && (m_age == 0.0f || m_age <= header.emitterLifeTime)) {
-        while (m_emissionTimer >= header.misc.emissionInterval) {
+    if (!m_state.terminate) {
+        if (m_age <= header.emitterLifeTime) {
+            while (m_emissionTimer >= header.misc.emissionInterval) {
+                emit((u32)header.emissionCount);
+                m_emissionTimer -= header.misc.emissionInterval;
+            }
+        }
+        if (m_age == 0.0f) { // Special handling for the first frame, where lifeTime == emissionInterval
             emit((u32)header.emissionCount);
-            m_emissionTimer -= header.misc.emissionInterval;
         }
     }
+
+    
 
     struct AnimFunc {
         const SPLAnim* anim;
@@ -214,13 +220,13 @@ void SPLEmitter::update(float deltaTime) {
         }
     }
 
+    m_age += deltaTime;
+    m_emissionTimer += deltaTime;
+
     if (m_state.looping && m_age > header.emitterLifeTime) {
         m_age = 0;
         m_emissionTimer = 0;
     }
-
-    m_age += deltaTime;
-    m_emissionTimer += deltaTime;
 
     for (const auto ptcl : particlesToRemove) {
         std::erase(m_particles, ptcl);
