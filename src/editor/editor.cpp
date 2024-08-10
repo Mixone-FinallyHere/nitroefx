@@ -2,9 +2,21 @@
 #include "project_manager.h"
 #include "spl/enum_names.h"
 
+#include <array>
 #include <fmt/format.h>
 #include <imgui.h>
 #include <imgui_internal.h>
+
+
+namespace {
+
+constexpr std::array s_emitterSpawnTypes = {
+    "Single Shot",
+    "Looped",
+    "Interval"
+};
+
+}
 
 
 void Editor::render() {
@@ -75,7 +87,52 @@ void Editor::updateParticles(float deltaTime) {
         return;
     }
 
+    for (auto& task : m_emitterTasks) {
+        const auto now = std::chrono::steady_clock::now();
+        if (task.editorID == editor->getUniqueID() && now - task.time >= task.interval) {
+            editor->getParticleSystem().addEmitter(
+                editor->getArchive().getResources()[task.resourceIndex], 
+                false
+            );
+            task.time = now;
+        }
+    }
+
     editor->updateParticles(deltaTime * m_timeScale);
+}
+
+void Editor::playEmitterAction(EmitterSpawnType spawnType) {
+    const auto& editor = g_projectManager->getActiveEditor();
+    if (!editor) {
+        return;
+    }
+
+    const auto resourceIndex = m_selectedResources[editor->getUniqueID()];
+    editor->getParticleSystem().addEmitter(
+        editor->getArchive().getResource(resourceIndex),
+        spawnType == EmitterSpawnType::Looped
+    );
+
+    if (spawnType == EmitterSpawnType::Interval) {
+        m_emitterTasks.emplace_back(
+            resourceIndex,
+            std::chrono::steady_clock::now(),
+            std::chrono::duration<float>(m_emitterInterval),
+            editor->getUniqueID()
+        );
+    }
+}
+
+void Editor::killEmitters() {
+    const auto& editor = g_projectManager->getActiveEditor();
+    if (!editor) {
+        return;
+    }
+
+    editor->getParticleSystem().killAllEmitters();
+    std::erase_if(m_emitterTasks, [id = editor->getUniqueID()](const auto& task) {
+        return task.editorID == id;
+    });
 }
 
 void Editor::renderResourcePicker() {
@@ -171,19 +228,25 @@ void Editor::renderResourceEditor() {
         }
 
         if (m_selectedResources[id] != -1) {
-            static bool looped = false;
             auto& resource = resources[m_selectedResources[id]];
             const auto& texture = textures[resource.header.misc.textureIndex];
 
-            if (ImGui::Button("Play Selected Emitter")) {
-                editor->getParticleSystem().addEmitter(resource, looped);
+            if (ImGui::Button("Play Emitter")) {
+                playEmitterAction(m_emitterSpawnType);
             }
 
             ImGui::SameLine();
-            ImGui::Checkbox("Spawn Looped Emitter", &looped);
+            ImGui::SetNextItemWidth(150);
+            ImGui::Combo("##SpawnType", (int*)&m_emitterSpawnType, s_emitterSpawnTypes.data(), s_emitterSpawnTypes.size());
+
+            if (m_emitterSpawnType == EmitterSpawnType::Interval) {
+                ImGui::SameLine();
+                ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+                ImGui::InputFloat("##Interval", &m_emitterInterval, 0.1f, 1.0f, "%.2fs");
+            }
 
             if (ImGui::Button("Kill Emitters")) {
-                editor->getParticleSystem().killAllEmitters();
+                killEmitters();
             }
 
             if (ImGui::CollapsingHeader("General")) {

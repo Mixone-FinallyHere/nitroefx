@@ -218,6 +218,22 @@ void Application::handleKeydown(const SDL_Event& event) {
 		}
 		break;
 
+	case SDLK_p:
+		if (event.key.keysym.mod & KMOD_CTRL) {
+			if (event.key.keysym.mod & KMOD_SHIFT) {
+				m_editor->playEmitterAction(EmitterSpawnType::Looped);
+			} else {
+				m_editor->playEmitterAction(EmitterSpawnType::SingleShot);
+			}
+		}
+		break;
+
+	case SDLK_k:
+		if (event.key.keysym.mod & KMOD_CTRL) {
+			m_editor->killEmitters();
+		}
+		break;
+
 	case SDLK_F4:
 		if (event.key.keysym.mod & KMOD_ALT) {
 			m_running = false;
@@ -235,6 +251,10 @@ void Application::dispatchEvent(const SDL_Event& event) {
 
 void Application::renderMenuBar() {
 	if (ImGui::BeginMainMenuBar()) {
+		const bool hasProject = g_projectManager->hasProject();
+		const bool hasActiveEditor = g_projectManager->hasActiveEditor();
+		const bool hasOpenEditors = g_projectManager->hasOpenEditors();
+
 		if (ImGui::BeginMenu("File")) {
 			if (ImGui::BeginMenu("New")) {
 				if (ImGui::MenuItem(ICON_FA_FOLDER_PLUS " Project", "Ctrl+Shift+N")) {
@@ -266,38 +286,56 @@ void Application::renderMenuBar() {
 				ImGui::EndMenu();
 			}
 
-			if (ImGui::MenuItem(ICON_FA_FLOPPY_DISK " Save", "Ctrl+S", 
-				false, g_projectManager->hasActiveEditor())) {
+			if (ImGui::MenuItem(ICON_FA_FLOPPY_DISK " Save", "Ctrl+S", false, hasActiveEditor)) {
 				spdlog::warn("Save not implemented");
 			}
 
-			if (ImGui::MenuItem(ICON_FA_FLOPPY_DISK " Save As...", nullptr, 
-				false, g_projectManager->hasActiveEditor())) {
+			if (ImGui::MenuItem(ICON_FA_FLOPPY_DISK " Save As...", nullptr, false, hasActiveEditor)) {
 				spdlog::warn("Save As not implemented");
 			}
 
-			if (ImGui::MenuItem(ICON_FA_FLOPPY_DISK " Save All", "Ctrl+Shift+S", 
-				false, g_projectManager->hasOpenEditors())) {
+			if (ImGui::MenuItem(ICON_FA_FLOPPY_DISK " Save All", "Ctrl+Shift+S", false, hasOpenEditors)) {
 				spdlog::warn("Save All not implemented");
 			}
 
-			if (ImGui::MenuItem(ICON_FA_XMARK " Close", "Ctrl+W", 
-				false, g_projectManager->hasActiveEditor())) {
+			if (ImGui::MenuItem(ICON_FA_XMARK " Close", "Ctrl+W", false, hasActiveEditor)) {
 				g_projectManager->closeEditor(g_projectManager->getActiveEditor());
 			}
 
-			if (ImGui::MenuItem(ICON_FA_XMARK " Close All", "Ctrl+Shift+W", 
-				false, g_projectManager->hasOpenEditors())) {
+			if (ImGui::MenuItem(ICON_FA_XMARK " Close All", "Ctrl+Shift+W", false, hasOpenEditors)) {
 				g_projectManager->closeAllEditors();
 			}
 
-			if (ImGui::MenuItem(ICON_FA_XMARK " Close Project", nullptr, 
-				false, g_projectManager->hasProject())) {
+			if (ImGui::MenuItem(ICON_FA_XMARK " Close Project", nullptr, false, hasProject)) {
 				g_projectManager->closeProject();
 			}
 
 			if (ImGui::MenuItem(ICON_FA_POWER_OFF " Exit", "Alt+F4")) {
 				m_running = false;
+			}
+
+			ImGui::EndMenu();
+		}
+
+		if (ImGui::BeginMenu("Edit")) {
+			if (ImGui::MenuItem("Undo", "Ctrl+Z", false, false)) {
+				spdlog::warn("Undo not implemented");
+			}
+
+			if (ImGui::MenuItem("Redo", "Ctrl+Y", false, false)) {
+				spdlog::warn("Redo not implemented");
+			}
+
+			if (ImGui::MenuItem("Play Single Shot Emitter", "Ctrl+P", false, hasActiveEditor)) {
+				m_editor->playEmitterAction(EmitterSpawnType::SingleShot);
+			}
+
+			if (ImGui::MenuItem("Play Looped Emitter", "Ctrl+Shift+P", false, hasActiveEditor)) {
+				m_editor->playEmitterAction(EmitterSpawnType::Looped);
+			}
+
+			if (ImGui::MenuItem("Kill Emitters", "Ctrl+K", false, hasActiveEditor)) {
+				m_editor->killEmitters();
 			}
 
 			ImGui::EndMenu();
