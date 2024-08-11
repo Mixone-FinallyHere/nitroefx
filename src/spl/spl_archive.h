@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "spl_resource.h"
+#include "glm/gtc/constants.hpp"
 
 
 class SPLArchive {
@@ -58,6 +59,16 @@ private:
     template<std::integral T = u32>
     static T toFrames(f32 seconds) {
         return static_cast<T>(seconds * SPL_FRAMES_PER_SECOND);
+    }
+
+    template<std::integral T = u16>
+    static f32 toAngle(T index) {
+        return static_cast<f32>(index) / 65535.0f * glm::two_pi<f32>();
+    }
+
+    template<std::integral T = u16>
+    static T toIndex(f32 angle) {
+        return static_cast<T>(angle / glm::two_pi<f32>()) * (T)0xFFFF;
     }
 
 private:

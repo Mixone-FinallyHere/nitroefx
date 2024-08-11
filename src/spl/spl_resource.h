@@ -266,7 +266,7 @@ struct SPLResourceHeader {
     f32 startDelay; // Delay, in seconds, before the emitter starts emitting particles
     f32 minRotation;
     f32 maxRotation;
-    u16 initAngle;
+    f32 initAngle;
     u16 reserved;
     f32 emitterLifeTime; // Time, in seconds, the emitter will live for
     f32 particleLifeTime; // Time, in seconds, the particles will live for

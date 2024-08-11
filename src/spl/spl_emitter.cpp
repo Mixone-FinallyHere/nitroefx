@@ -76,18 +76,17 @@ void SPLEmitter::update(float deltaTime) {
     constexpr auto wrap_f32 = [](f32 x) { return x - std::floor(x); };
 
     if (!m_state.terminate) {
-        if (m_age <= header.emitterLifeTime) {
-            while (m_emissionTimer >= header.misc.emissionInterval) {
-                emit((u32)header.emissionCount);
-                m_emissionTimer -= header.misc.emissionInterval;
+        if (header.misc.emissionInterval == 0.0f || m_age == 0.0f) { // Special handling for the first frame, where lifeTime == emissionInterval
+            emit((u32)header.emissionCount);
+        } else {
+            if (m_age <= header.emitterLifeTime) {
+                while (m_emissionTimer >= header.misc.emissionInterval) {
+                    emit((u32)header.emissionCount);
+                    m_emissionTimer -= header.misc.emissionInterval;
+                }
             }
         }
-        if (m_age == 0.0f) { // Special handling for the first frame, where lifeTime == emissionInterval
-            emit((u32)header.emissionCount);
-        }
     }
-
-    
 
     struct AnimFunc {
         const SPLAnim* anim;
@@ -164,9 +163,13 @@ void SPLEmitter::update(float deltaTime) {
             const auto lifeRate = ptcl->age / ptcl->lifeTime;
 
             if (lifeRate >= child.misc.emissionDelay) {
-                while (ptcl->emissionTimer >= child.misc.emissionInterval) {
+                if (child.misc.emissionInterval == 0.0f || ptcl->age == 0.0f) {
                     emitChildren(*ptcl, child.misc.emissionCount);
-                    ptcl->emissionTimer -= child.misc.emissionInterval;
+                } else {
+                    while (ptcl->emissionTimer >= child.misc.emissionInterval) {
+                        emitChildren(*ptcl, child.misc.emissionCount);
+                        ptcl->emissionTimer -= child.misc.emissionInterval;
+                    }
                 }
             }
         }
@@ -244,6 +247,10 @@ void SPLEmitter::render(const glm::vec3& cameraPos) {
     for (const auto ptcl : std::views::reverse(m_particles)) {
         ptcl->render(renderer, cameraPos, m_texCoords.s, m_texCoords.t);
     }
+
+    for (const auto ptcl : std::views::reverse(m_childParticles)) {
+        ptcl->render(renderer, cameraPos, m_childTexCoords.s, m_childTexCoords.t);
+    }
 }
 
 void SPLEmitter::emit(u32 count) {
@@ -272,6 +279,7 @@ void SPLEmitter::emit(u32 count) {
         }
 
         m_particles.push_back(ptcl);
+        ptcl->emitter = this;
 
         switch (header.flags.emissionType) {
         case SPLEmissionType::Point: {
@@ -381,6 +389,7 @@ void SPLEmitter::emit(u32 count) {
 
         ptcl->lifeTime = random::scaledRange(header.particleLifeTime, header.variance.lifeTime);
         ptcl->age = 0;
+        ptcl->emissionTimer = 0;
 
         if (header.flags.hasTexAnim && m_resource->texAnim) {
             const auto& texAnim = m_resource->texAnim.value();
@@ -411,6 +420,7 @@ void SPLEmitter::emitChildren(const SPLParticle& parent, u32 count) {
         }
 
         m_childParticles.push_back(ptcl);
+        ptcl->emitter = this;
 
         ptcl->position = parent.position;
         ptcl->velocity = parent.velocity * child.velocityRatio + glm::vec3(
@@ -450,6 +460,7 @@ void SPLEmitter::emitChildren(const SPLParticle& parent, u32 count) {
 
         ptcl->lifeTime = child.lifeTime;
         ptcl->age = 0;
+        ptcl->emissionTimer = 0;
 
         ptcl->texture = child.misc.texture;
         ptcl->lifeRateOffset = 0;

@@ -197,9 +197,9 @@ SPLResourceHeader SPLArchive::fromNative(const SPLResourceHeaderNative &native) 
         .baseScale = FX_FX32_TO_F32(native.baseScale),
         .aspectRatio = FX_FX16_TO_F32(native.aspectRatio),
         .startDelay = toSeconds(native.startDelay),
-        .minRotation = (f32)native.minRotation / 65535.0f * glm::two_pi<f32>(),
-        .maxRotation = (f32)native.maxRotation / 65535.0f * glm::two_pi<f32>(),
-        .initAngle = native.initAngle,
+        .minRotation = toAngle(native.minRotation),
+        .maxRotation = toAngle(native.maxRotation),
+        .initAngle = toAngle(native.initAngle),
         .emitterLifeTime = toSeconds(native.emitterLifeTime),
         .particleLifeTime = toSeconds(native.particleLifeTime),
         .variance = {

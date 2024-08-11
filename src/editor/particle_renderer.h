@@ -25,6 +25,8 @@ public:
 
     void submit(u32 texture, const ParticleInstance& instance);
 
+    const glm::mat4& getView() const { return m_view; }
+
 private:
     u32 m_maxInstances;
     u32 m_vao;

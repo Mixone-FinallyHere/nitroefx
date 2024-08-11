@@ -29,6 +29,8 @@ public:
 
     bool shouldTerminate() const;
 
+    const SPLResource* getResource() const { return m_resource; }
+
 private:
     void computeOrthogonalAxes();
     glm::vec3 tiltCoordinates(const glm::vec3& vec) const;

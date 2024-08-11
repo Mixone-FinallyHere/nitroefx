@@ -327,7 +327,7 @@ void Editor::renderHeaderEditor(SPLResourceHeader& header) {
         NOTIFY(ImGui::Checkbox("Random Init Angle", &header.flags.randomInitAngle));
         help("Whether particles should have a randomized initial angle");
 
-
+        NOTIFY(ImGui::SliderFloat("Radius", &header.radius, 0.01f, 20.0f, "%.3f", ImGuiSliderFlags_Logarithmic));
 
         ImGui::TreePop();
     }
