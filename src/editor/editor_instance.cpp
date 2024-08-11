@@ -61,7 +61,7 @@ void EditorInstance::renderParticles() {
 
 void EditorInstance::updateParticles(float deltaTime) {
     m_camera.update();
-    m_particleSystem.update(deltaTime * 30.0f);
+    m_particleSystem.update(deltaTime);
 }
 
 void EditorInstance::handleEvent(const SDL_Event& event) {
