@@ -52,7 +52,7 @@ private:
     f32 m_emissionTimer; // time, in seconds, since the last emission
 
     glm::vec3 m_axis;
-    u16 m_initAngle;
+    f32 m_initAngle;
     f32 m_emissionCount;
     f32 m_radius;
     f32 m_length;
@@ -73,4 +73,5 @@ private:
     glm::vec3 m_crossAxis2;
 
     friend class ParticleSystem;
+    friend struct SPLCollisionPlaneBehavior;
 };

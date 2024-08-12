@@ -148,7 +148,7 @@ void SPLEmitter::update(float deltaTime) {
         glm::vec3 acc{};
 
         for (const auto& behavior : m_resource->behaviors) {
-            behavior->apply(*ptcl, acc, *this);
+            behavior->apply(*ptcl, acc, *this, deltaTime);
         }
 
         ptcl->rotation += ptcl->angularVelocity * deltaTime;
@@ -203,7 +203,7 @@ void SPLEmitter::update(float deltaTime) {
 
             if (child.flags.usesBehaviors) {
                 for (const auto& behavior : m_resource->behaviors) {
-                    behavior->apply(*ptcl, acc, *this);
+                    behavior->apply(*ptcl, acc, *this, deltaTime);
                 }
             }
 

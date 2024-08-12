@@ -1,12 +1,12 @@
 #pragma once
+#include "types.h"
+#include "fx.h"
 
+#include <chrono>
 #include <functional>
-
 #include <glm/glm.hpp>
 #include <spdlog/spdlog.h>
 
-#include "types.h"
-#include "fx.h"
 
 class SPLParticle;
 class SPLEmitter;
@@ -23,7 +23,7 @@ enum class SPLCollisionType : u16 {
 };
 
 struct SPLBehavior {
-    virtual void apply(SPLParticle& particle, glm::vec3& acceleration, SPLEmitter& emitter) = 0;
+    virtual void apply(SPLParticle& particle, glm::vec3& acceleration, SPLEmitter& emitter, float dt) = 0;
 };
 
 // Applies a gravity behavior to particles
@@ -77,21 +77,17 @@ struct SPLGravityBehavior : SPLBehavior {
     explicit SPLGravityBehavior(const SPLGravityBehaviorNative& native) 
         : magnitude(native.magnitude.toVec3()) {}
 
-    void apply(SPLParticle& particle, glm::vec3& acceleration, SPLEmitter& emitter) override {
-        spdlog::warn("SPLGravityBehavior::apply not implemented");
-    }
+    void apply(SPLParticle& particle, glm::vec3& acceleration, SPLEmitter& emitter, float dt) override;
 };
 
 struct SPLRandomBehavior : SPLBehavior {
     glm::vec3 magnitude;
-    u16 applyInterval;
+    f32 applyInterval;
+    std::chrono::time_point<std::chrono::steady_clock> lastApplication;
 
-    explicit SPLRandomBehavior(const SPLRandomBehaviorNative& native) 
-        : magnitude(native.magnitude.toVec3()), applyInterval(native.applyInterval) {}
+    explicit SPLRandomBehavior(const SPLRandomBehaviorNative& native);
 
-    void apply(SPLParticle& particle, glm::vec3& acceleration, SPLEmitter& emitter) override {
-        spdlog::warn("SPLRandomBehavior::apply not implemented");
-    }
+    void apply(SPLParticle& particle, glm::vec3& acceleration, SPLEmitter& emitter, float dt) override;
 };
 
 struct SPLMagnetBehavior : SPLBehavior {
@@ -101,21 +97,16 @@ struct SPLMagnetBehavior : SPLBehavior {
     explicit SPLMagnetBehavior(const SPLMagnetBehaviorNative& native) 
         : target(native.target.toVec3()), force(FX_FX16_TO_F32(native.force)) {}
 
-    void apply(SPLParticle& particle, glm::vec3& acceleration, SPLEmitter& emitter) override {
-        spdlog::warn("SPLMagnetBehavior::apply not implemented");
-    }
+    void apply(SPLParticle& particle, glm::vec3& acceleration, SPLEmitter& emitter, float dt) override;
 };
 
 struct SPLSpinBehavior : SPLBehavior {
-    u16 angle;
+    f32 angle;
     SPLSpinAxis axis;
 
-    explicit SPLSpinBehavior(const SPLSpinBehaviorNative& native) 
-        : angle(native.angle), axis(static_cast<SPLSpinAxis>(native.axis)) {}
+    explicit SPLSpinBehavior(const SPLSpinBehaviorNative& native);
 
-    void apply(SPLParticle& particle, glm::vec3& acceleration, SPLEmitter& emitter) override {
-        spdlog::warn("SPLSpinBehavior::apply not implemented");
-    }
+    void apply(SPLParticle& particle, glm::vec3& acceleration, SPLEmitter& emitter, float dt) override;
 };
 
 struct SPLCollisionPlaneBehavior : SPLBehavior {
@@ -127,9 +118,7 @@ struct SPLCollisionPlaneBehavior : SPLBehavior {
         : y(FX_FX32_TO_F32(native.y)), elasticity(FX_FX16_TO_F32(native.elasticity)), 
         collisionType(static_cast<SPLCollisionType>(native.flags.collisionType)) {}
 
-    void apply(SPLParticle& particle, glm::vec3& acceleration, SPLEmitter& emitter) override {
-        spdlog::warn("SPLCollisionPlaneBehavior::apply not implemented");
-    }
+    void apply(SPLParticle& particle, glm::vec3& acceleration, SPLEmitter& emitter, float dt) override;
 };
 
 struct SPLConvergenceBehavior : SPLBehavior {
@@ -139,9 +128,7 @@ struct SPLConvergenceBehavior : SPLBehavior {
     explicit SPLConvergenceBehavior(const SPLConvergenceBehaviorNative& native) 
         : target(native.target.toVec3()), force(FX_FX16_TO_F32(native.force)) {}
 
-    void apply(SPLParticle& particle, glm::vec3& acceleration, SPLEmitter& emitter) override {
-        spdlog::warn("SPLConvergenceBehavior::apply not implemented");
-    }
+    void apply(SPLParticle& particle, glm::vec3& acceleration, SPLEmitter& emitter, float dt) override;
 };
 
 

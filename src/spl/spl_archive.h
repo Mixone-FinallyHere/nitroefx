@@ -81,5 +81,6 @@ private:
     std::vector<std::vector<u8>> m_paletteData;
     u32 m_textureArray;
 
+    friend struct SPLBehavior;
 };
 
