@@ -31,6 +31,8 @@ public:
     size_t getResourceCount() const { return m_resources.size(); }
     size_t getTextureCount() const { return m_header.texCount; }
 
+    static constexpr u32 SPL_FRAMES_PER_SECOND = 30;
+
 private:
     void load(const std::filesystem::path& filename);
 
@@ -79,6 +81,5 @@ private:
     std::vector<std::vector<u8>> m_paletteData;
     u32 m_textureArray;
 
-    static constexpr u32 SPL_FRAMES_PER_SECOND = 30;
 };
 

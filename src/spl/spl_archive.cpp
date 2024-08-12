@@ -187,7 +187,7 @@ SPLResourceHeader SPLArchive::fromNative(const SPLResourceHeaderNative &native) 
             .childHasFixedPolygonID = !!native.flags.childHasFixedPolygonID
         },
         .emitterBasePos = native.emitterBasePos.toVec3(),
-        .emissionCount = FX_FX32_TO_F32(native.emissionCount),
+        .emissionCount = (u32)native.emissionCount >> FX32_SHIFT,
         .radius = FX_FX32_TO_F32(native.radius),
         .length = FX_FX32_TO_F32(native.length),
         .axis = native.axis.toVec3(),
@@ -214,7 +214,7 @@ SPLResourceHeader SPLArchive::fromNative(const SPLResourceHeaderNative &native) 
             .airResistance = 0.75f + (f32)native.misc.airResistance / 256.0f * 0.5f,
             .textureIndex = (u8)native.misc.textureIndex,
             .loopTime = toSeconds(native.misc.loopFrames),
-            .dbbScale = (u16)native.misc.dbbScale,
+            .dbbScale = FX_FX16_TO_F32(native.misc.dbbScale),
             .textureTileCountS = (u8)native.misc.textureTileCountS,
             .textureTileCountT = (u8)native.misc.textureTileCountT,
             .scaleAnimDir = (SPLScaleAnimDir)native.misc.scaleAnimDir,

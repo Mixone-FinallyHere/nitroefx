@@ -52,8 +52,8 @@ SPLEmitter::SPLEmitter(const SPLResource* resource, ParticleSystem* system, bool
 
     if (resource->header.flags.hasChildResource && resource->childResource) {
         m_childTexCoords = {
-            resource->childResource->misc.textureTileCountS,
-            resource->childResource->misc.textureTileCountT
+            glm::pow(2.0f, resource->childResource->misc.textureTileCountS),
+            glm::pow(2.0f, resource->childResource->misc.textureTileCountT)
         };
 
         if (resource->childResource->misc.flipTextureS) {
@@ -207,12 +207,12 @@ void SPLEmitter::update(float deltaTime) {
                 }
             }
 
-            ptcl->rotation += ptcl->angularVelocity;
+            ptcl->rotation += ptcl->angularVelocity * deltaTime;
 
             ptcl->velocity *= header.misc.airResistance;
-            ptcl->velocity += acc;
+            ptcl->velocity += acc * deltaTime;
 
-            ptcl->position += ptcl->velocity + m_velocity;
+            ptcl->position += (ptcl->velocity + m_velocity) * deltaTime;
 
             ptcl->age += deltaTime;
             ptcl->emissionTimer += deltaTime;

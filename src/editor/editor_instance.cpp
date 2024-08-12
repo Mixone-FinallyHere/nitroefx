@@ -21,6 +21,9 @@ EditorInstance::EditorInstance(const std::filesystem::path& path)
 std::pair<bool, bool> EditorInstance::render() {
     bool open = true;
     bool active = false;
+
+    m_camera.setViewportHovered(false);
+
     const auto name = m_modified ? m_path.filename().string() + "*" : m_path.filename().string();
     if (ImGui::BeginTabItem(name.c_str(), &open)) {
         active = true;
@@ -30,6 +33,9 @@ std::pair<bool, bool> EditorInstance::render() {
         m_size = { size.x, size.y };
 
         ImGui::Image((ImTextureID)(uintptr_t)m_viewport.getTexture(), size);
+        if (ImGui::IsItemHovered()) {
+            m_camera.setViewportHovered(true);
+        }
 
         ImGui::EndTabItem();
     } else {
@@ -47,7 +53,7 @@ void EditorInstance::renderParticles() {
 
     m_viewport.bind();
 
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClearColor(0.4f, 0.4f, 0.4f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     m_particleSystem.render(

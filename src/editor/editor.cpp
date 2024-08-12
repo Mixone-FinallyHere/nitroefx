@@ -1,11 +1,15 @@
 #include "editor.h"
 #include "project_manager.h"
 #include "spl/enum_names.h"
+#include "help_messages.h"
 
 #include <array>
 #include <fmt/format.h>
+#include <glm/gtc/type_ptr.hpp>
+#include <glm/gtc/integer.hpp>
 #include <imgui.h>
 #include <imgui_internal.h>
+
 
 
 namespace {
@@ -271,12 +275,13 @@ void Editor::renderResourceEditor() {
 
 void Editor::renderHeaderEditor(SPLResourceHeader& header) {
 #define NOTIFY(action) m_activeEditor.lock()->valueChanged(action)
+#define HELP(name) help_popup(help::name)
 
     if (m_activeEditor.expired()) {
         return;
     }
 
-    constexpr auto help = [](std::string_view text) {
+    constexpr auto help_popup = [](std::string_view text) {
         ImGui::SameLine();
         ImGui::TextDisabled("(?)");
         if (ImGui::BeginItemTooltip())
@@ -288,46 +293,221 @@ void Editor::renderHeaderEditor(SPLResourceHeader& header) {
         }
     };
 
-    if (ImGui::TreeNode("Attributes")) {
-        if (ImGui::BeginCombo("Emission Type", getEmissionType(header.flags.emissionType))) {
+    auto& flags = header.flags;
+    auto& misc = header.misc;
+    constexpr f32 frameTime = 1.0f / (f32)SPLArchive::SPL_FRAMES_PER_SECOND;
+
+    if (ImGui::TreeNode("Emitter Settings")) {
+        if (ImGui::BeginCombo("Emission Type", getEmissionType(flags.emissionType))) {
             for (const auto [val, name] : detail::g_emissionTypeNames) {
-                if (NOTIFY(ImGui::Selectable(name, header.flags.emissionType == val))) {
-                    header.flags.emissionType = val;
+                if (NOTIFY(ImGui::Selectable(name, flags.emissionType == val))) {
+                    flags.emissionType = val;
                 }
             }
 
             ImGui::EndCombo();
         }
-        help("The shape in which particles are emitted");
+        HELP(emissionType);
 
-        if (ImGui::BeginCombo("Draw Type", getDrawType(header.flags.drawType))) {
-            for (const auto [val, name] : detail::g_drawTypeNames) {
-                if (NOTIFY(ImGui::Selectable(name, header.flags.drawType == val))) {
-                    header.flags.drawType = val;
-                }
-            }
-
-            ImGui::EndCombo();
-        }
-
-        if (ImGui::BeginCombo("Circle Axis", getEmissionAxis(header.flags.emissionAxis))) {
+        if (ImGui::BeginCombo("Emission Axis", getEmissionAxis(flags.emissionAxis))) {
             for (const auto [val, name] : detail::g_emissionAxisNames) {
-                if (NOTIFY(ImGui::Selectable(name, header.flags.emissionAxis == val))) {
-                    header.flags.emissionAxis = val;
+                if (NOTIFY(ImGui::Selectable(name, flags.emissionAxis == val))) {
+                    flags.emissionAxis = val;
                 }
             }
 
             ImGui::EndCombo();
         }
-        help("For oriented emission shapes, this gives the axis of these shapes");
+        HELP(emissionAxis);
 
-        NOTIFY(ImGui::Checkbox("Rotate", &header.flags.hasRotation));
-        help("Whether particles should rotate");
+        NOTIFY(ImGui::Checkbox("Self Maintaining", &flags.selfMaintaining));
+        HELP(selfMaintaining);
 
-        NOTIFY(ImGui::Checkbox("Random Init Angle", &header.flags.randomInitAngle));
-        help("Whether particles should have a randomized initial angle");
+        NOTIFY(ImGui::Checkbox("Draw Children First", &flags.drawChildrenFirst));
+        HELP(drawChildrenFirst);
+
+        NOTIFY(ImGui::Checkbox("Hide Parent", &flags.hideParent));
+        HELP(hideParent);
+
+        NOTIFY(ImGui::Checkbox("Use View Space", &flags.useViewSpace));
+        HELP(useViewSpace);
+
+        NOTIFY(ImGui::Checkbox("Has Fixed Polygon ID", &flags.hasFixedPolygonID));
+        HELP(hasFixedPolygonID);
+
+        NOTIFY(ImGui::Checkbox("Child Fixed Polygon ID", &flags.childHasFixedPolygonID));
+        HELP(childHasFixedPolygonID);
+
+        NOTIFY(ImGui::DragFloat3("Emitter Base Pos", glm::value_ptr(header.emitterBasePos), 0.01f));
+        HELP(emitterBasePos);
+
+        NOTIFY(ImGui::SliderFloat("Lifetime", &header.emitterLifeTime, frameTime, 60, "%.4fs", ImGuiSliderFlags_Logarithmic));
+        HELP(emitterLifeTime);
+
+        NOTIFY(ImGui::DragInt("Emission Amount", (int*)&header.emissionCount, 1, 0, 20));
+        HELP(emissionCount);
+
+        // The in-file value is 8 bits, 255 = 255 frames of delay, 255f / 30fps = 8.5s
+        NOTIFY(ImGui::SliderFloat("Emission Interval", &misc.emissionInterval, frameTime, 8.5f, "%.4fs"));
+        HELP(emissionInterval);
+
+        u32 emissions = (u32)glm::ceil(header.emitterLifeTime / misc.emissionInterval);
+        const u32 maxEmissions = (u32)(header.emitterLifeTime / frameTime);
+        if (NOTIFY(ImGui::SliderInt("Emissions", (int*)&emissions, 1, maxEmissions))) {
+            misc.emissionInterval = header.emitterLifeTime / (f32)emissions;
+        }
+        HELP(emissions);
+
+        NOTIFY(ImGui::SliderFloat("Start Delay", &header.startDelay, 0, header.emitterLifeTime, "%.2fs"));
+        HELP(startDelay);
 
         NOTIFY(ImGui::SliderFloat("Radius", &header.radius, 0.01f, 20.0f, "%.3f", ImGuiSliderFlags_Logarithmic));
+        HELP(radius);
+
+        NOTIFY(ImGui::SliderFloat("Length", &header.length, 0.01f, 20.0f, "%.3f", ImGuiSliderFlags_Logarithmic));
+        HELP(length);
+
+        NOTIFY(ImGui::DragFloat3("Axis", glm::value_ptr(header.axis)));
+        HELP(axis);
+
+        ImGui::TreePop();
+    }
+
+    if (ImGui::TreeNode("Particle Settings")) {
+        if (ImGui::BeginCombo("Draw Type", getDrawType(flags.drawType))) {
+            for (const auto [val, name] : detail::g_drawTypeNames) {
+                if (NOTIFY(ImGui::Selectable(name, flags.drawType == val))) {
+                    flags.drawType = val;
+                }
+            }
+
+            ImGui::EndCombo();
+        }
+        HELP(drawType);
+
+        NOTIFY(ImGui::Checkbox("Rotate", &flags.hasRotation));
+        HELP(hasRotation);
+
+        NOTIFY(ImGui::Checkbox("Random Init Angle", &flags.randomInitAngle));
+        HELP(randomInitAngle);
+
+        NOTIFY(ImGui::Checkbox("Follow Emitter", &flags.followEmitter));
+        HELP(followEmitter);
+
+        if (ImGui::BeginCombo("Polygon Rotation Axis", getPolygonRotAxis(flags.polygonRotAxis))) {
+            for (const auto [val, name] : detail::g_polygonRotAxisNames) {
+                if (NOTIFY(ImGui::Selectable(name, flags.polygonRotAxis == val))) {
+                    flags.polygonRotAxis = val;
+                }
+            }
+
+            ImGui::EndCombo();
+        }
+        HELP(polygonRotAxis);
+
+        ImGui::TextUnformatted("Polygon Reference Plane");
+        HELP(polygonReferencePlane);
+        ImGui::Indent();
+        if (NOTIFY(ImGui::RadioButton("XY", flags.polygonReferencePlane == 0))) flags.polygonReferencePlane = 0;
+        if (NOTIFY(ImGui::RadioButton("XZ", flags.polygonReferencePlane == 1))) flags.polygonReferencePlane = 1;
+        ImGui::Unindent();
+
+        NOTIFY(ImGui::ColorEdit3("Color", glm::value_ptr(header.color)));
+        HELP(color);
+
+        NOTIFY(ImGui::SliderFloat("Base Scale", &header.baseScale, 0.01f, 10.0f, "%.3f", ImGuiSliderFlags_Logarithmic));
+        HELP(baseScale);
+
+        NOTIFY(ImGui::SliderAngle("Init Angle", &header.initAngle, 0));
+        HELP(initAngle);
+
+        NOTIFY(ImGui::SliderFloat("Base Alpha", &misc.baseAlpha, 0, 1));
+        HELP(baseAlpha);
+
+        NOTIFY(ImGui::SliderFloat("Lifetime", &header.particleLifeTime, frameTime, 60, "%.4fs", ImGuiSliderFlags_Logarithmic));
+        HELP(particleLifeTime);
+
+        NOTIFY(ImGui::DragFloat("Aspect Ratio", &header.aspectRatio, 0.05f));
+        HELP(aspectRatio);
+
+        NOTIFY(ImGui::DragFloat("Init Velocity Pos Amplifier", &header.initVelPosAmplifier, 0.1f, -10, 10, "%.3f", ImGuiSliderFlags_Logarithmic));
+        HELP(initVelPosAmplifier);
+
+        NOTIFY(ImGui::DragFloat("Init Velocity Axis Amplifier", &header.initVelAxisAmplifier, 0.1f, -10, 10, "%.3f", ImGuiSliderFlags_Logarithmic));
+        HELP(initVelAxisAmplifier);
+
+        ImGui::TextUnformatted("Rotation Speed");
+        HELP(rotationSpeed);
+        ImGui::Indent();
+        NOTIFY(ImGui::SliderAngle("Min", &header.minRotation, 0, header.maxRotation * 180 / glm::pi<f32>()));
+        NOTIFY(ImGui::SliderAngle("Max", &header.maxRotation, header.minRotation * 180 / glm::pi<f32>(), 360));
+        ImGui::Unindent();
+
+        ImGui::TextUnformatted("Variance");
+        HELP(variance);
+        ImGui::Indent();
+        NOTIFY(ImGui::SliderFloat("Base Scale##variance", &header.variance.baseScale, 0, 1));
+        NOTIFY(ImGui::SliderFloat("Particle Lifetime##variance", &header.variance.lifeTime, 0, 1));
+        NOTIFY(ImGui::SliderFloat("Init Velocity##variance", &header.variance.initVel, 0, 1));
+        ImGui::Unindent();
+
+        NOTIFY(ImGui::SliderFloat("Air Resistance", &misc.airResistance, 0.75f, 1.25f));
+        HELP(airResistance);
+
+        NOTIFY(ImGui::SliderFloat("Loop Time", &misc.loopTime, frameTime, 8.5f, "%.4fs"));
+        HELP(loopTime);
+
+        u32 loops = (u32)glm::ceil(header.particleLifeTime / misc.loopTime);
+        const u32 maxLoops = (u32)(header.particleLifeTime / frameTime);
+        if (NOTIFY(ImGui::SliderInt("Loops", (int*)&loops, 1, maxLoops))) {
+            misc.loopTime = header.particleLifeTime / (f32)loops;
+        }
+        HELP(loops);
+
+        NOTIFY(ImGui::Checkbox("Randomize Looped Anim", &flags.randomizeLoopedAnim));
+        HELP(randomizeLoopedAnim);
+
+        NOTIFY(ImGui::SliderFloat("DBB Scale", &misc.dbbScale, -8.0f, 7.0f));
+        HELP(dbbScale);
+
+        if (ImGui::BeginCombo("Scale Anim Axis", getScaleAnimDir(misc.scaleAnimDir))) {
+            for (const auto [val, name] : detail::g_scaleAnimDirNames) {
+                if (NOTIFY(ImGui::Selectable(name, misc.scaleAnimDir == val))) {
+                    misc.scaleAnimDir = val;
+                }
+            }
+
+            ImGui::EndCombo();
+        }
+        HELP(scaleAnimDir);
+
+        ImGui::TextUnformatted("Texture Tiling");
+        HELP(textureTiling);
+        ImGui::Indent();
+        int tileCount = 1 << misc.textureTileCountS;
+        NOTIFY(ImGui::SliderInt("S", &tileCount, 1, 8));
+        misc.textureTileCountS = glm::log2(tileCount);
+
+        tileCount = 1 << misc.textureTileCountT;
+        NOTIFY(ImGui::SliderInt("T", &tileCount, 1, 8));
+        misc.textureTileCountT = glm::log2(tileCount);
+        ImGui::Unindent();
+
+        NOTIFY(ImGui::Checkbox("DPol Face Emitter", &misc.dpolFaceEmitter));
+        HELP(dpolFaceEmitter);
+
+        NOTIFY(ImGui::Checkbox("Flip X", &misc.flipTextureS));
+        HELP(flipTextureX);
+
+        NOTIFY(ImGui::Checkbox("Flip Y", &misc.flipTextureT));
+        HELP(flipTextureY);
+
+        ImGui::TextUnformatted("Polygon Offset");
+        HELP(polygonOffset);
+        ImGui::Indent();
+        NOTIFY(ImGui::SliderFloat("X", &header.polygonX, -2, 2));
+        NOTIFY(ImGui::SliderFloat("Y", &header.polygonY, -2, 2));
+        ImGui::Unindent();
 
         ImGui::TreePop();
     }

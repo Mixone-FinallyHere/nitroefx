@@ -21,6 +21,7 @@ public:
 
     bool isActive() const { return m_active; }
     void setActive(bool active) { m_active = active; }
+    void setViewportHovered(bool hovered) { m_viewportHovered = hovered; }
 
     const glm::mat4& getView() const;
     const glm::mat4& getProj() const;
@@ -78,6 +79,7 @@ private:
 
     glm::vec2 m_viewport;
 
+    bool m_viewportHovered;
     bool m_active = false;
     bool m_projDirty = true;
 

@@ -254,7 +254,7 @@ struct SPLResourceHeaderNative {
 struct SPLResourceHeader {
     SPLResourceFlags flags;
     glm::vec3 emitterBasePos;
-    f32 emissionCount; // Number of particles to emit per emission interval
+    u32 emissionCount; // Number of particles to emit per emission interval
     f32 radius; // Used for circle, sphere, and cylinder emissions
     f32 length; // Used for cylinder emission
     glm::vec3 axis;
@@ -286,7 +286,7 @@ struct SPLResourceHeader {
         f32 airResistance; // Air resistance factor (0.75-1.25)
         u8 textureIndex;
         f32 loopTime; // Time, in seconds, for the texture animation to loop
-        u16 dbbScale;
+        f32 dbbScale;
         u8 textureTileCountS; // Number of times to tile the texture in the S direction
         u8 textureTileCountT; // Number of times to tile the texture in the T direction
         SPLScaleAnimDir scaleAnimDir;

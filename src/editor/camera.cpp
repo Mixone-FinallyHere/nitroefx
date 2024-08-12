@@ -56,7 +56,7 @@ void Camera::update() {
 }
 
 void Camera::handleEvent(const SDL_Event& event) {
-    if (!m_active) {
+    if (!m_active || !m_viewportHovered) {
         return;
     }
 

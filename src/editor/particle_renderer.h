@@ -42,5 +42,6 @@ private:
     s32 m_projLocation;
     s32 m_textureLocation;
 
+    size_t m_particleCount = 0;
     std::vector<std::vector<ParticleInstance>> m_particles;
 };

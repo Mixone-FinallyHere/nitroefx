@@ -3,17 +3,18 @@
 
 #include <algorithm>
 #include <gl/glew.h>
-#include <spdlog/spdlog.h>
 #include <glm/gtc/type_ptr.hpp>
-
+#include <numeric>
+#include <ranges>
+#include <spdlog/spdlog.h>
 
 namespace {
 
 constexpr f32 s_quadVertices[12] = {
-    -0.5f, -0.5f, 0.0f, // bottom left
-     0.5f, -0.5f, 0.0f, // bottom right
-     0.5f,  0.5f, 0.0f, // top right
-    -0.5f,  0.5f, 0.0f  // top left
+    -1.0f, -1.0f, 0.0f, // bottom left
+     1.0f, -1.0f, 0.0f, // bottom right
+     1.0f,  1.0f, 0.0f, // top right
+    -1.0f,  1.0f, 0.0f  // top left
 };
 
 constexpr u32 s_quadIndices[6] = {
@@ -89,7 +90,7 @@ ParticleRenderer::ParticleRenderer(u32 maxInstances, std::span<const SPLTexture>
 
     glCall(glGenBuffers(1, &m_transformVbo));
     glCall(glBindBuffer(GL_ARRAY_BUFFER, m_transformVbo));
-    glCall(glBufferData(GL_ARRAY_BUFFER, m_maxInstances * sizeof(glm::mat4), nullptr, GL_DYNAMIC_DRAW));
+    glCall(glBufferData(GL_ARRAY_BUFFER, m_maxInstances * sizeof(ParticleInstance), nullptr, GL_DYNAMIC_DRAW));
 
     // Color
     glCall(glEnableVertexAttribArray(1));
@@ -172,6 +173,7 @@ void ParticleRenderer::begin(const glm::mat4& view, const glm::mat4& proj) {
         particles.clear();
     }
 
+    m_particleCount = 0;
     m_view = view;
     m_proj = proj;
 }
@@ -201,10 +203,15 @@ void ParticleRenderer::end() {
 }
 
 void ParticleRenderer::submit(u32 texture, const ParticleInstance& instance) {
+    if (m_particleCount >= m_maxInstances) {
+        return;
+    }
+
     if (texture >= m_textures.size()) {
         spdlog::warn("Invalid texture index: {}", texture);
         texture = 0;
     }
 
     m_particles[texture].push_back(instance);
+    ++m_particleCount;
 }
