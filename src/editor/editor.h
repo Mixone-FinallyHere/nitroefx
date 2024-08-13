@@ -40,6 +40,11 @@ private:
     bool renderCollisionPlaneBehaviorEditor(const std::shared_ptr<SPLCollisionPlaneBehavior>& collisionPlane);
     bool renderConvergenceBehaviorEditor(const std::shared_ptr<SPLConvergenceBehavior>& convergence);
 
+    void renderAnimationEditor(SPLResource& res);
+
+    void renderChildrenEditor(SPLResource& res);
+
+
 private:
     bool m_picker_open = true;
     bool m_editor_open = true;

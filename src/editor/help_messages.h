@@ -56,6 +56,19 @@ S(flipTextureX) = "Whether to flip the texture on the X axis";
 S(flipTextureY) = "Whether to flip the texture on the Y axis";
 S(polygonOffset) = "An offset, in model-space, for the particle polygon";
 
+S(childEmissionDelay) = "The delay, as a fraction of the particles lifetime, until it starts emitting children";
+S(childEmissionInterval) = "The time, in seconds, between child particle emissions";
+S(childEmissions) = "The number of emissions the particle will do across its lifespan";
+S(childRotation) = "Specifies the rotation attributes inherited from the parent";
+S(usesBehaviors) = "Whether the child particle uses behaviors (it will use the behaviors of the parent)";
+S(randomInitVelMag) = "Specifies a range [-n, n) of random values which will be added to the initial velocity";
+S(velocityRatio) = "The ratio of the velocity inherited from the parent";
+S(scaleRatio) = "The ratio of the scale inherited from the parent";
+S(useChildColor) = "Whether to use the color specified above. Otherwise the parent particles color will be inherited";
+S(hasScaleAnim) = "Whether child particles use a scale animation";
+S(endScale) = "The final scale value the child particles grow to";
+S(hasAlphaAnim) = "Whether child particles have a fade-out animation";
+
 }
 
 #undef S

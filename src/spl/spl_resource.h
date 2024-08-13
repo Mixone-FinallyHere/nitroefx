@@ -163,7 +163,7 @@ struct SPLChildResourceFlags {
     bool useChildColor;
     SPLDrawType drawType;
     SPLPolygonRotAxis polygonRotAxis;
-    u8 polygonReferencePlane; // 0=XY, 1=XZ
+    int polygonReferencePlane; // 0=XY, 1=XZ
 };
 
 struct SPLCurveInOut {
@@ -501,7 +501,7 @@ struct SPLChildResource {
     f32 scaleRatio; // Ratio of the parent particle's scale to inherit (1 = 100%)
     glm::vec3 color;
     struct {
-        u8 emissionCount; // Number of particles to emit per emission interval
+        u32 emissionCount; // Number of particles to emit per emission interval
         f32 emissionDelay; // Delay, as a fraction of the particle's lifetime, before the particle starts emitting
         f32 emissionInterval; // Time, in seconds, between particle emissions
         u8 texture;

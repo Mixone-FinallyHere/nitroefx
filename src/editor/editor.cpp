@@ -10,6 +10,9 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
+#define LOCK_EDITOR() auto activeEditor_locked = m_activeEditor.lock()
+#define NOTIFY(action) activeEditor_locked->valueChanged(action)
+#define HELP(name) helpPopup(help::name)
 
 
 namespace {
@@ -277,6 +280,13 @@ void Editor::renderResourceEditor() {
                     ImGui::EndTabItem();
                 }
 
+                if (ImGui::BeginTabItem("Children")) {
+                    ImGui::BeginChild("##childEditor", {}, ImGuiChildFlags_Border);
+                    renderChildrenEditor(resource);
+                    ImGui::EndChild();
+                    ImGui::EndTabItem();
+                }
+
                 ImGui::EndTabBar();
             }
         }
@@ -288,14 +298,13 @@ void Editor::renderResourceEditor() {
 }
 
 void Editor::renderHeaderEditor(SPLResourceHeader& header) const {
-#define NOTIFY(action) m_activeEditor.lock()->valueChanged(action)
-#define HELP(name) help_popup(help::name)
-
     if (m_activeEditor.expired()) {
         return;
     }
 
-    constexpr auto help_popup = [](std::string_view text) {
+    LOCK_EDITOR();
+
+    constexpr auto helpPopup = [](std::string_view text) {
         ImGui::SameLine();
         ImGui::TextDisabled("(?)");
         if (ImGui::BeginItemTooltip())
@@ -430,8 +439,8 @@ void Editor::renderHeaderEditor(SPLResourceHeader& header) const {
         ImGui::TextUnformatted("Polygon Reference Plane");
         HELP(polygonReferencePlane);
         ImGui::Indent();
-        if (NOTIFY(ImGui::RadioButton("XY", flags.polygonReferencePlane == 0))) flags.polygonReferencePlane = 0;
-        if (NOTIFY(ImGui::RadioButton("XZ", flags.polygonReferencePlane == 1))) flags.polygonReferencePlane = 1;
+        NOTIFY(ImGui::RadioButton("XY", &flags.polygonReferencePlane, 0));
+        NOTIFY(ImGui::RadioButton("XZ", &flags.polygonReferencePlane, 1));
         ImGui::Unindent();
 
         NOTIFY(ImGui::ColorEdit3("Color", glm::value_ptr(header.color)));
@@ -536,6 +545,7 @@ void Editor::renderHeaderEditor(SPLResourceHeader& header) const {
 }
 
 void Editor::renderBehaviorEditor(SPLResource& res) {
+    LOCK_EDITOR();
     std::vector<std::shared_ptr<SPLBehavior>> toRemove;
 
     if (ImGui::Button("Add Behavior...")) {
@@ -543,32 +553,32 @@ void Editor::renderBehaviorEditor(SPLResource& res) {
     }
 
     if (ImGui::BeginPopup("##addBehavior")) {
-        if (ImGui::MenuItem("Gravity", nullptr, false, !res.header.flags.hasGravityBehavior)) {
+        if (NOTIFY(ImGui::MenuItem("Gravity", nullptr, false, !res.header.flags.hasGravityBehavior))) {
             res.behaviors.push_back(std::make_shared<SPLGravityBehavior>(glm::vec3(0, 0, 0)));
             res.header.addBehavior(SPLBehaviorType::Gravity);
         }
 
-        if (ImGui::MenuItem("Random", nullptr, false, !res.header.flags.hasRandomBehavior)) {
+        if (NOTIFY(ImGui::MenuItem("Random", nullptr, false, !res.header.flags.hasRandomBehavior))) {
             res.behaviors.push_back(std::make_shared<SPLRandomBehavior>(glm::vec3(0, 0, 0), 1));
             res.header.addBehavior(SPLBehaviorType::Random);
         }
 
-        if (ImGui::MenuItem("Magnet", nullptr, false, !res.header.flags.hasMagnetBehavior)) {
+        if (NOTIFY(ImGui::MenuItem("Magnet", nullptr, false, !res.header.flags.hasMagnetBehavior))) {
             res.behaviors.push_back(std::make_shared<SPLMagnetBehavior>(glm::vec3(0, 0, 0), 0));
             res.header.addBehavior(SPLBehaviorType::Magnet);
         }
 
-        if (ImGui::MenuItem("Spin", nullptr, false, !res.header.flags.hasSpinBehavior)) {
+        if (NOTIFY(ImGui::MenuItem("Spin", nullptr, false, !res.header.flags.hasSpinBehavior))) {
             res.behaviors.push_back(std::make_shared<SPLSpinBehavior>(0, SPLSpinAxis::Y));
             res.header.addBehavior(SPLBehaviorType::Spin);
         }
 
-        if (ImGui::MenuItem("Collision Plane", nullptr, false, !res.header.flags.hasCollisionPlaneBehavior)) {
+        if (NOTIFY(ImGui::MenuItem("Collision Plane", nullptr, false, !res.header.flags.hasCollisionPlaneBehavior))) {
             res.behaviors.push_back(std::make_shared<SPLCollisionPlaneBehavior>(0, 0, SPLCollisionType::Bounce));
             res.header.addBehavior(SPLBehaviorType::CollisionPlane);
         }
 
-        if (ImGui::MenuItem("Convergence", nullptr, false, !res.header.flags.hasConvergenceBehavior)) {
+        if (NOTIFY(ImGui::MenuItem("Convergence", nullptr, false, !res.header.flags.hasConvergenceBehavior))) {
             res.behaviors.push_back(std::make_shared<SPLConvergenceBehavior>(glm::vec3(0, 0, 0), 0));
             res.header.addBehavior(SPLBehaviorType::Convergence);
         }
@@ -602,7 +612,7 @@ void Editor::renderBehaviorEditor(SPLResource& res) {
         }
 
         if (context) {
-            if (ImGui::MenuItem("Delete")) {
+            if (NOTIFY(ImGui::MenuItem("Delete"))) {
                 toRemove.push_back(bhv);
             }
 
@@ -619,6 +629,7 @@ void Editor::renderBehaviorEditor(SPLResource& res) {
 }
 
 bool Editor::renderGravityBehaviorEditor(const std::shared_ptr<SPLGravityBehavior>& gravity) {
+    LOCK_EDITOR();
     static bool hovered = false;
     if (hovered) {
         ImGui::PushStyleColor(ImGuiCol_Border, ImGui::ColorConvertFloat4ToU32({ 0.7f, 0.3f, 0.7f, 1.0f }));
@@ -639,6 +650,7 @@ bool Editor::renderGravityBehaviorEditor(const std::shared_ptr<SPLGravityBehavio
 }
 
 bool Editor::renderRandomBehaviorEditor(const std::shared_ptr<SPLRandomBehavior>& random) {
+    LOCK_EDITOR();
     static bool hovered = false;
     if (hovered) {
         ImGui::PushStyleColor(ImGuiCol_Border, ImGui::ColorConvertFloat4ToU32({ 0.7f, 0.3f, 0.7f, 1.0f }));
@@ -660,6 +672,7 @@ bool Editor::renderRandomBehaviorEditor(const std::shared_ptr<SPLRandomBehavior>
 }
 
 bool Editor::renderMagnetBehaviorEditor(const std::shared_ptr<SPLMagnetBehavior>& magnet) {
+    LOCK_EDITOR();
     static bool hovered = false;
     if (hovered) {
         ImGui::PushStyleColor(ImGuiCol_Border, ImGui::ColorConvertFloat4ToU32({ 0.7f, 0.3f, 0.7f, 1.0f }));
@@ -681,6 +694,7 @@ bool Editor::renderMagnetBehaviorEditor(const std::shared_ptr<SPLMagnetBehavior>
 }
 
 bool Editor::renderSpinBehaviorEditor(const std::shared_ptr<SPLSpinBehavior>& spin) {
+    LOCK_EDITOR();
     static bool hovered = false;
     if (hovered) {
         ImGui::PushStyleColor(ImGuiCol_Border, ImGui::ColorConvertFloat4ToU32({ 0.7f, 0.3f, 0.7f, 1.0f }));
@@ -707,6 +721,7 @@ bool Editor::renderSpinBehaviorEditor(const std::shared_ptr<SPLSpinBehavior>& sp
 }
 
 bool Editor::renderCollisionPlaneBehaviorEditor(const std::shared_ptr<SPLCollisionPlaneBehavior>& collisionPlane) {
+    LOCK_EDITOR();
     static bool hovered = false;
     if (hovered) {
         ImGui::PushStyleColor(ImGuiCol_Border, ImGui::ColorConvertFloat4ToU32({ 0.7f, 0.3f, 0.7f, 1.0f }));
@@ -733,6 +748,7 @@ bool Editor::renderCollisionPlaneBehaviorEditor(const std::shared_ptr<SPLCollisi
 }
 
 bool Editor::renderConvergenceBehaviorEditor(const std::shared_ptr<SPLConvergenceBehavior>& convergence) {
+    LOCK_EDITOR();
     static bool hovered = false;
     if (hovered) {
         ImGui::PushStyleColor(ImGuiCol_Border, ImGui::ColorConvertFloat4ToU32({ 0.7f, 0.3f, 0.7f, 1.0f }));
@@ -751,4 +767,197 @@ bool Editor::renderConvergenceBehaviorEditor(const std::shared_ptr<SPLConvergenc
 
     hovered = ImGui::IsItemHovered();
     return ImGui::BeginPopupContextItem("##behaviorContext");
+}
+
+void Editor::renderAnimationEditor(SPLResource& res) {
+}
+
+void Editor::renderChildrenEditor(SPLResource& res) {
+    if (m_activeEditor.expired()) {
+        return;
+    }
+
+    LOCK_EDITOR();
+
+    if (!res.childResource) {
+        ImGui::TextUnformatted("This resource does not have an associated child resource.");
+        if (ImGui::Button("Add Child Resource")) {
+            res.childResource = SPLChildResource{
+                .flags = {
+                    .usesBehaviors = false,
+                    .hasScaleAnim = false,
+                    .hasAlphaAnim = false,
+                    .rotationType = SPLChildRotationType::None,
+                    .followEmitter = false,
+                    .useChildColor = false,
+                    .drawType = SPLDrawType::Billboard,
+                    .polygonRotAxis = SPLPolygonRotAxis::Y,
+                    .polygonReferencePlane = 0
+                },
+                .randomInitVelMag = 0.0f,
+                .endScale = 1.0f,
+                .lifeTime = 1.0f / SPLArchive::SPL_FRAMES_PER_SECOND,
+                .velocityRatio = 1.0f,
+                .scaleRatio = 1.0f,
+                .color = {},
+                .misc = {
+                    .emissionCount = 0,
+                    .emissionDelay = 0,
+                    .emissionInterval = 1.0f / SPLArchive::SPL_FRAMES_PER_SECOND,
+                    .texture = 0,
+                    .textureTileCountS = 1,
+                    .textureTileCountT = 1,
+                    .flipTextureS = false,
+                    .flipTextureT = false,
+                    .dpolFaceEmitter = false
+                }
+            };
+        }
+
+        return;
+    }
+
+    auto& child = res.childResource.value();
+    constexpr f32 frameTime = 1.0f / (f32)SPLArchive::SPL_FRAMES_PER_SECOND;
+    constexpr auto helpPopup = [](std::string_view text) {
+        ImGui::SameLine();
+        ImGui::TextDisabled("(?)");
+        if (ImGui::BeginItemTooltip())
+        {
+            ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+            ImGui::TextUnformatted(text.data());
+            ImGui::PopTextWrapPos();
+            ImGui::EndTooltip();
+        }
+    };
+
+    bool open = ImGui::TreeNodeEx("##parentSettings", ImGuiTreeNodeFlags_SpanAvailWidth);
+    ImGui::SameLine();
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 5);
+    ImGui::SeparatorText("Parent Settings");
+    if (open) {
+        NOTIFY(ImGui::DragInt("Emission Amount", (int*)&child.misc.emissionCount, 1, 0, 20));
+        HELP(emissionCount);
+
+        NOTIFY(ImGui::SliderFloat("Emission Delay", &child.misc.emissionDelay, 0, 1));
+        HELP(childEmissionDelay);
+
+        NOTIFY(ImGui::SliderFloat("Emission Interval", &child.misc.emissionInterval, frameTime, 8.5f, "%.4fs"));
+        HELP(childEmissionInterval);
+
+        u32 emissions = (u32)glm::ceil(res.header.particleLifeTime / child.misc.emissionInterval);
+        const u32 maxEmissions = (u32)(res.header.particleLifeTime / frameTime);
+        if (NOTIFY(ImGui::SliderInt("Emissions", (int*)&emissions, 1, maxEmissions))) {
+            child.misc.emissionInterval = res.header.particleLifeTime / (f32)emissions;
+        }
+        HELP(childEmissions);
+
+        ImGui::TreePop();
+    }
+
+    open = ImGui::TreeNodeEx("##childSettings", ImGuiTreeNodeFlags_SpanAvailWidth);
+    ImGui::SameLine();
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 5);
+    ImGui::SeparatorText("Child Settings");
+    if (open) {
+        auto& flags = child.flags;
+        auto& misc = child.misc;
+
+        if (ImGui::BeginCombo("Draw Type", getDrawType(flags.drawType))) {
+            for (const auto [val, name] : detail::g_drawTypeNames) {
+                if (NOTIFY(ImGui::Selectable(name, flags.drawType == val))) {
+                    flags.drawType = val;
+                }
+            }
+
+            ImGui::EndCombo();
+        }
+        HELP(drawType);
+
+        if (ImGui::BeginCombo("Child Rotation", getChildRotType(flags.rotationType))) {
+            for (const auto [val, name] : detail::g_childRotTypeNames) {
+                if (NOTIFY(ImGui::Selectable(name, flags.rotationType == val))) {
+                    flags.rotationType = val;
+                }
+            }
+
+            ImGui::EndCombo();
+        }
+        HELP(childRotation);
+
+        if (ImGui::BeginCombo("Polygon Rotation Axis", getPolygonRotAxis(flags.polygonRotAxis))) {
+            for (const auto [val, name] : detail::g_polygonRotAxisNames) {
+                if (NOTIFY(ImGui::Selectable(name, flags.polygonRotAxis == val))) {
+                    flags.polygonRotAxis = val;
+                }
+            }
+
+            ImGui::EndCombo();
+        }
+        HELP(polygonRotAxis);
+
+        ImGui::TextUnformatted("Polygon Reference Plane");
+        HELP(polygonReferencePlane);
+        ImGui::Indent();
+        NOTIFY(ImGui::RadioButton("XY", &flags.polygonReferencePlane, 0));
+        NOTIFY(ImGui::RadioButton("XZ", &flags.polygonReferencePlane, 1));
+        ImGui::Unindent();
+
+        NOTIFY(ImGui::Checkbox("Uses Behaviors", &flags.usesBehaviors));
+        HELP(usesBehaviors);
+
+        NOTIFY(ImGui::Checkbox("Follow Emitter", &flags.followEmitter));
+        HELP(followEmitter);
+
+        NOTIFY(ImGui::SliderFloat("Lifetime", &child.lifeTime, frameTime, 60, "%.4fs", ImGuiSliderFlags_Logarithmic));
+        HELP(particleLifeTime);
+
+        NOTIFY(ImGui::SliderFloat("Initial Velocity Random", &child.randomInitVelMag, -3, 3, "%.3f", ImGuiSliderFlags_Logarithmic));
+        HELP(randomInitVelMag);
+
+        NOTIFY(ImGui::SliderFloat("Velocity Ratio", &child.velocityRatio, 0, 1));
+        HELP(velocityRatio);
+
+        NOTIFY(ImGui::SliderFloat("Scale Ratio", &child.scaleRatio, 0, 1));
+        HELP(scaleRatio);
+
+        NOTIFY(ImGui::ColorEdit3("Color", glm::value_ptr(child.color)));
+        HELP(color);
+
+        NOTIFY(ImGui::Checkbox("Use Color", &flags.useChildColor));
+        HELP(useChildColor);
+
+        ImGui::TextUnformatted("Texture Tiling");
+        HELP(textureTiling);
+        ImGui::Indent();
+        int tileCount = 1 << misc.textureTileCountS;
+        NOTIFY(ImGui::SliderInt("S", &tileCount, 1, 8));
+        misc.textureTileCountS = glm::log2(tileCount);
+
+        tileCount = 1 << misc.textureTileCountT;
+        NOTIFY(ImGui::SliderInt("T", &tileCount, 1, 8));
+        misc.textureTileCountT = glm::log2(tileCount);
+        ImGui::Unindent();
+
+        NOTIFY(ImGui::Checkbox("DPol Face Emitter", &misc.dpolFaceEmitter));
+        HELP(dpolFaceEmitter);
+
+        NOTIFY(ImGui::Checkbox("Flip X", &misc.flipTextureS));
+        HELP(flipTextureX);
+
+        NOTIFY(ImGui::Checkbox("Flip Y", &misc.flipTextureT));
+        HELP(flipTextureY);
+
+        NOTIFY(ImGui::Checkbox("Scale Animation", &flags.hasScaleAnim));
+        HELP(hasScaleAnim);
+        if (flags.hasScaleAnim) {
+            NOTIFY(ImGui::SliderFloat("End Scale", &child.endScale, 0, 5, "%.3f", ImGuiSliderFlags_Logarithmic));
+            HELP(endScale);
+        }
+
+        NOTIFY(ImGui::Checkbox("Fade Out", &flags.hasAlphaAnim));
+        HELP(hasAlphaAnim);
+
+        ImGui::TreePop();
+    }
 }
