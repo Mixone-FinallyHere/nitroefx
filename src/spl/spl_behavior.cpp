@@ -8,10 +8,10 @@
 
 
 void SPLGravityBehavior::apply(SPLParticle& particle, glm::vec3& acceleration, SPLEmitter& emitter, float dt) {
-    acceleration += magnitude * dt;
+    acceleration += magnitude;
 }
 
-SPLRandomBehavior::SPLRandomBehavior(const SPLRandomBehaviorNative& native) {
+SPLRandomBehavior::SPLRandomBehavior(const SPLRandomBehaviorNative& native) : SPLBehavior(SPLBehaviorType::Random) {
     magnitude = native.magnitude.toVec3();
     applyInterval = (f32)native.applyInterval / SPLArchive::SPL_FRAMES_PER_SECOND;
     lastApplication = std::chrono::steady_clock::now();
@@ -29,10 +29,10 @@ void SPLRandomBehavior::apply(SPLParticle& particle, glm::vec3& acceleration, SP
 }
 
 void SPLMagnetBehavior::apply(SPLParticle& particle, glm::vec3& acceleration, SPLEmitter& emitter, float dt) {
-    acceleration += force * (target - (particle.position + particle.velocity)) * dt;
+    acceleration += force * (target - (particle.position + particle.velocity));
 }
 
-SPLSpinBehavior::SPLSpinBehavior(const SPLSpinBehaviorNative& native) {
+SPLSpinBehavior::SPLSpinBehavior(const SPLSpinBehaviorNative& native) : SPLBehavior(SPLBehaviorType::Spin) {
     axis = (SPLSpinAxis)native.axis;
     angle = static_cast<f32>(native.angle) / 65535.0f * glm::two_pi<f32>();
 }

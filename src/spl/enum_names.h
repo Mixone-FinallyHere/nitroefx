@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <map>
 
 #include "spl_resource.h"
@@ -50,6 +51,17 @@ inline const std::map<SPLScaleAnimDir, const char*> g_scaleAnimDirNames = {
     { SPLScaleAnimDir::XY, "XY" },
     { SPLScaleAnimDir::X, "X" },
     { SPLScaleAnimDir::Y, "Y" }
+};
+
+inline constexpr std::array g_spinAxisNames = {
+    "X",
+    "Y",
+    "Z"
+};
+
+inline constexpr std::array g_collisionType = {
+    "Kill",
+    "Bounce"
 };
 } // namespace detail
 

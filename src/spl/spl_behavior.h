@@ -11,18 +11,30 @@
 class SPLParticle;
 class SPLEmitter;
 
-enum class SPLSpinAxis : u16 {
+enum class SPLSpinAxis {
     X = 0,
     Y,
     Z
 };
 
-enum class SPLCollisionType : u16 {
+enum class SPLCollisionType {
     Kill = 0,
     Bounce,
 };
 
+enum class SPLBehaviorType {
+    Gravity,
+    Random,
+    Magnet,
+    Spin,
+    CollisionPlane,
+    Convergence,
+};
+
 struct SPLBehavior {
+    SPLBehaviorType type;
+
+    explicit SPLBehavior(SPLBehaviorType type) : type(type) {}
     virtual void apply(SPLParticle& particle, glm::vec3& acceleration, SPLEmitter& emitter, float dt) = 0;
 };
 
@@ -75,7 +87,12 @@ struct SPLGravityBehavior : SPLBehavior {
     glm::vec3 magnitude;
 
     explicit SPLGravityBehavior(const SPLGravityBehaviorNative& native) 
-        : magnitude(native.magnitude.toVec3()) {}
+        : SPLBehavior(SPLBehaviorType::Gravity)
+        , magnitude(native.magnitude.toVec3()) {}
+
+    explicit SPLGravityBehavior(const glm::vec3& mag)
+        : SPLBehavior(SPLBehaviorType::Gravity)
+        , magnitude(mag) {}
 
     void apply(SPLParticle& particle, glm::vec3& acceleration, SPLEmitter& emitter, float dt) override;
 };
@@ -87,6 +104,12 @@ struct SPLRandomBehavior : SPLBehavior {
 
     explicit SPLRandomBehavior(const SPLRandomBehaviorNative& native);
 
+    SPLRandomBehavior(const glm::vec3& mag, f32 interval)
+        : SPLBehavior(SPLBehaviorType::Random)
+        , magnitude(mag)
+        , applyInterval(interval)
+        , lastApplication(std::chrono::steady_clock::now()) {}
+
     void apply(SPLParticle& particle, glm::vec3& acceleration, SPLEmitter& emitter, float dt) override;
 };
 
@@ -95,7 +118,14 @@ struct SPLMagnetBehavior : SPLBehavior {
     f32 force;
 
     explicit SPLMagnetBehavior(const SPLMagnetBehaviorNative& native) 
-        : target(native.target.toVec3()), force(FX_FX16_TO_F32(native.force)) {}
+        : SPLBehavior(SPLBehaviorType::Magnet)
+        , target(native.target.toVec3())
+        , force(FX_FX16_TO_F32(native.force)) {}
+
+    SPLMagnetBehavior(const glm::vec3& target, f32 force)
+        : SPLBehavior(SPLBehaviorType::Magnet)
+        , target(target)
+        , force(force) {}
 
     void apply(SPLParticle& particle, glm::vec3& acceleration, SPLEmitter& emitter, float dt) override;
 };
@@ -106,6 +136,11 @@ struct SPLSpinBehavior : SPLBehavior {
 
     explicit SPLSpinBehavior(const SPLSpinBehaviorNative& native);
 
+    SPLSpinBehavior(f32 angle, SPLSpinAxis axis)
+        : SPLBehavior(SPLBehaviorType::Spin)
+        , angle(angle)
+        , axis(axis) {}
+
     void apply(SPLParticle& particle, glm::vec3& acceleration, SPLEmitter& emitter, float dt) override;
 };
 
@@ -115,8 +150,16 @@ struct SPLCollisionPlaneBehavior : SPLBehavior {
     SPLCollisionType collisionType;
 
     explicit SPLCollisionPlaneBehavior(const SPLCollisionPlaneBehaviorNative& native) 
-        : y(FX_FX32_TO_F32(native.y)), elasticity(FX_FX16_TO_F32(native.elasticity)), 
-        collisionType(static_cast<SPLCollisionType>(native.flags.collisionType)) {}
+        : SPLBehavior(SPLBehaviorType::CollisionPlane)
+        , y(FX_FX32_TO_F32(native.y))
+        , elasticity(FX_FX16_TO_F32(native.elasticity))
+        , collisionType(static_cast<SPLCollisionType>(native.flags.collisionType)) {}
+
+    SPLCollisionPlaneBehavior(f32 y, f32 elasticity, SPLCollisionType type)
+        : SPLBehavior(SPLBehaviorType::CollisionPlane)
+        , y(y)
+        , elasticity(elasticity)
+        , collisionType(type) {}
 
     void apply(SPLParticle& particle, glm::vec3& acceleration, SPLEmitter& emitter, float dt) override;
 };
@@ -126,7 +169,14 @@ struct SPLConvergenceBehavior : SPLBehavior {
     f32 force;
 
     explicit SPLConvergenceBehavior(const SPLConvergenceBehaviorNative& native) 
-        : target(native.target.toVec3()), force(FX_FX16_TO_F32(native.force)) {}
+        : SPLBehavior(SPLBehaviorType::Convergence)
+        , target(native.target.toVec3())
+        , force(FX_FX16_TO_F32(native.force)) {}
+
+    SPLConvergenceBehavior(const glm::vec3& target, f32 force)
+        : SPLBehavior(SPLBehaviorType::Convergence)
+        , target(target)
+        , force(force) {}
 
     void apply(SPLParticle& particle, glm::vec3& acceleration, SPLEmitter& emitter, float dt) override;
 };

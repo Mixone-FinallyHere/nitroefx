@@ -30,7 +30,15 @@ private:
     void renderResourcePicker();
     void renderResourceEditor();
 
-    void renderHeaderEditor(SPLResourceHeader& header);
+    void renderHeaderEditor(SPLResourceHeader& header) const;
+    void renderBehaviorEditor(SPLResource& res);
+
+    bool renderGravityBehaviorEditor(const std::shared_ptr<SPLGravityBehavior>& gravity);
+    bool renderRandomBehaviorEditor(const std::shared_ptr<SPLRandomBehavior>& random);
+    bool renderMagnetBehaviorEditor(const std::shared_ptr<SPLMagnetBehavior>& magnet);
+    bool renderSpinBehaviorEditor(const std::shared_ptr<SPLSpinBehavior>& spin);
+    bool renderCollisionPlaneBehaviorEditor(const std::shared_ptr<SPLCollisionPlaneBehavior>& collisionPlane);
+    bool renderConvergenceBehaviorEditor(const std::shared_ptr<SPLConvergenceBehavior>& convergence);
 
 private:
     bool m_picker_open = true;

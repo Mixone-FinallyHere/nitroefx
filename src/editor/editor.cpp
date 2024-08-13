@@ -262,8 +262,22 @@ void Editor::renderResourceEditor() {
                 killEmitters();
             }
 
-            if (ImGui::CollapsingHeader("General")) {
-                renderHeaderEditor(resource.header);
+            if (ImGui::BeginTabBar("##editorTabs")) {
+                if (ImGui::BeginTabItem("General")) {
+                    ImGui::BeginChild("##headerEditor", {}, ImGuiChildFlags_Border);
+                    renderHeaderEditor(resource.header);
+                    ImGui::EndChild();
+                    ImGui::EndTabItem();
+                }
+
+                if (ImGui::BeginTabItem("Behaviors")) {
+                    ImGui::BeginChild("##headerEditor", {}, ImGuiChildFlags_Border);
+                    renderBehaviorEditor(resource);
+                    ImGui::EndChild();
+                    ImGui::EndTabItem();
+                }
+
+                ImGui::EndTabBar();
             }
         }
     }
@@ -273,7 +287,7 @@ void Editor::renderResourceEditor() {
     m_activeEditor.reset();
 }
 
-void Editor::renderHeaderEditor(SPLResourceHeader& header) {
+void Editor::renderHeaderEditor(SPLResourceHeader& header) const {
 #define NOTIFY(action) m_activeEditor.lock()->valueChanged(action)
 #define HELP(name) help_popup(help::name)
 
@@ -297,7 +311,11 @@ void Editor::renderHeaderEditor(SPLResourceHeader& header) {
     auto& misc = header.misc;
     constexpr f32 frameTime = 1.0f / (f32)SPLArchive::SPL_FRAMES_PER_SECOND;
 
-    if (ImGui::TreeNode("Emitter Settings")) {
+    auto open = ImGui::TreeNodeEx("##emitterSettings", ImGuiTreeNodeFlags_SpanAvailWidth);
+    ImGui::SameLine();
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 5);
+    ImGui::SeparatorText("Emitter Settings");
+    if (open) {
         if (ImGui::BeginCombo("Emission Type", getEmissionType(flags.emissionType))) {
             for (const auto [val, name] : detail::g_emissionTypeNames) {
                 if (NOTIFY(ImGui::Selectable(name, flags.emissionType == val))) {
@@ -373,7 +391,11 @@ void Editor::renderHeaderEditor(SPLResourceHeader& header) {
         ImGui::TreePop();
     }
 
-    if (ImGui::TreeNode("Particle Settings")) {
+    open = ImGui::TreeNodeEx("##particleSettings", ImGuiTreeNodeFlags_SpanAvailWidth);
+    ImGui::SameLine();
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 5);
+    ImGui::SeparatorText("Particle Settings");
+    if (open) {
         if (ImGui::BeginCombo("Draw Type", getDrawType(flags.drawType))) {
             for (const auto [val, name] : detail::g_drawTypeNames) {
                 if (NOTIFY(ImGui::Selectable(name, flags.drawType == val))) {
@@ -511,4 +533,222 @@ void Editor::renderHeaderEditor(SPLResourceHeader& header) {
 
         ImGui::TreePop();
     }
+}
+
+void Editor::renderBehaviorEditor(SPLResource& res) {
+    std::vector<std::shared_ptr<SPLBehavior>> toRemove;
+
+    if (ImGui::Button("Add Behavior...")) {
+        ImGui::OpenPopup("##addBehavior");
+    }
+
+    if (ImGui::BeginPopup("##addBehavior")) {
+        if (ImGui::MenuItem("Gravity", nullptr, false, !res.header.flags.hasGravityBehavior)) {
+            res.behaviors.push_back(std::make_shared<SPLGravityBehavior>(glm::vec3(0, 0, 0)));
+            res.header.addBehavior(SPLBehaviorType::Gravity);
+        }
+
+        if (ImGui::MenuItem("Random", nullptr, false, !res.header.flags.hasRandomBehavior)) {
+            res.behaviors.push_back(std::make_shared<SPLRandomBehavior>(glm::vec3(0, 0, 0), 1));
+            res.header.addBehavior(SPLBehaviorType::Random);
+        }
+
+        if (ImGui::MenuItem("Magnet", nullptr, false, !res.header.flags.hasMagnetBehavior)) {
+            res.behaviors.push_back(std::make_shared<SPLMagnetBehavior>(glm::vec3(0, 0, 0), 0));
+            res.header.addBehavior(SPLBehaviorType::Magnet);
+        }
+
+        if (ImGui::MenuItem("Spin", nullptr, false, !res.header.flags.hasSpinBehavior)) {
+            res.behaviors.push_back(std::make_shared<SPLSpinBehavior>(0, SPLSpinAxis::Y));
+            res.header.addBehavior(SPLBehaviorType::Spin);
+        }
+
+        if (ImGui::MenuItem("Collision Plane", nullptr, false, !res.header.flags.hasCollisionPlaneBehavior)) {
+            res.behaviors.push_back(std::make_shared<SPLCollisionPlaneBehavior>(0, 0, SPLCollisionType::Bounce));
+            res.header.addBehavior(SPLBehaviorType::CollisionPlane);
+        }
+
+        if (ImGui::MenuItem("Convergence", nullptr, false, !res.header.flags.hasConvergenceBehavior)) {
+            res.behaviors.push_back(std::make_shared<SPLConvergenceBehavior>(glm::vec3(0, 0, 0), 0));
+            res.header.addBehavior(SPLBehaviorType::Convergence);
+        }
+
+        ImGui::EndPopup();
+    }
+
+    for (const auto& bhv : res.behaviors) {
+        ImGui::PushID(bhv.get());
+
+        bool context = false;
+        switch (bhv->type) {
+        case SPLBehaviorType::Gravity:
+            context = renderGravityBehaviorEditor(std::static_pointer_cast<SPLGravityBehavior>(bhv));
+            break;
+        case SPLBehaviorType::Random:
+            context = renderRandomBehaviorEditor(std::static_pointer_cast<SPLRandomBehavior>(bhv));
+            break;
+        case SPLBehaviorType::Magnet:
+            context = renderMagnetBehaviorEditor(std::static_pointer_cast<SPLMagnetBehavior>(bhv));
+            break;
+        case SPLBehaviorType::Spin:
+            context = renderSpinBehaviorEditor(std::static_pointer_cast<SPLSpinBehavior>(bhv));
+            break;
+        case SPLBehaviorType::CollisionPlane:
+            context = renderCollisionPlaneBehaviorEditor(std::static_pointer_cast<SPLCollisionPlaneBehavior>(bhv));
+            break;
+        case SPLBehaviorType::Convergence:
+            context = renderConvergenceBehaviorEditor(std::static_pointer_cast<SPLConvergenceBehavior>(bhv));
+            break;
+        }
+
+        if (context) {
+            if (ImGui::MenuItem("Delete")) {
+                toRemove.push_back(bhv);
+            }
+
+            ImGui::EndPopup();
+        }
+
+        ImGui::PopID();
+    }
+
+    for (const auto& r : toRemove) {
+        std::erase(res.behaviors, r);
+        res.header.removeBehavior(r->type);
+    }
+}
+
+bool Editor::renderGravityBehaviorEditor(const std::shared_ptr<SPLGravityBehavior>& gravity) {
+    static bool hovered = false;
+    if (hovered) {
+        ImGui::PushStyleColor(ImGuiCol_Border, ImGui::ColorConvertFloat4ToU32({ 0.7f, 0.3f, 0.7f, 1.0f }));
+    }
+    ImGui::BeginChild("##gravityEditor", {}, ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY);
+    ImGui::TextUnformatted("Gravity");
+
+    NOTIFY(ImGui::DragFloat3("Magnitude", glm::value_ptr(gravity->magnitude)));
+
+    ImGui::EndChild();
+
+    if (hovered) {
+        ImGui::PopStyleColor();
+    }
+
+    hovered = ImGui::IsItemHovered();
+    return ImGui::BeginPopupContextItem("##behaviorContext");
+}
+
+bool Editor::renderRandomBehaviorEditor(const std::shared_ptr<SPLRandomBehavior>& random) {
+    static bool hovered = false;
+    if (hovered) {
+        ImGui::PushStyleColor(ImGuiCol_Border, ImGui::ColorConvertFloat4ToU32({ 0.7f, 0.3f, 0.7f, 1.0f }));
+    }
+    ImGui::BeginChild("##randomEditor", {}, ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY);
+    ImGui::TextUnformatted("Random");
+
+    NOTIFY(ImGui::DragFloat3("Magnitude", glm::value_ptr(random->magnitude)));
+    NOTIFY(ImGui::SliderFloat("Apply Interval", &random->applyInterval, 0, 5, "%.3fs", ImGuiSliderFlags_Logarithmic));
+
+    ImGui::EndChild();
+
+    if (hovered) {
+        ImGui::PopStyleColor();
+    }
+
+    hovered = ImGui::IsItemHovered();
+    return ImGui::BeginPopupContextItem("##behaviorContext");
+}
+
+bool Editor::renderMagnetBehaviorEditor(const std::shared_ptr<SPLMagnetBehavior>& magnet) {
+    static bool hovered = false;
+    if (hovered) {
+        ImGui::PushStyleColor(ImGuiCol_Border, ImGui::ColorConvertFloat4ToU32({ 0.7f, 0.3f, 0.7f, 1.0f }));
+    }
+    ImGui::BeginChild("##magnetEditor", {}, ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY);
+    ImGui::TextUnformatted("Magnet");
+
+    NOTIFY(ImGui::DragFloat3("Target", glm::value_ptr(magnet->target), 0.05f, -5.0f, 5.0f));
+    NOTIFY(ImGui::SliderFloat("Force", &magnet->force, 0, 5, "%.3f", ImGuiSliderFlags_Logarithmic));
+
+    ImGui::EndChild();
+
+    if (hovered) {
+        ImGui::PopStyleColor();
+    }
+
+    hovered = ImGui::IsItemHovered();
+    return ImGui::BeginPopupContextItem("##behaviorContext");
+}
+
+bool Editor::renderSpinBehaviorEditor(const std::shared_ptr<SPLSpinBehavior>& spin) {
+    static bool hovered = false;
+    if (hovered) {
+        ImGui::PushStyleColor(ImGuiCol_Border, ImGui::ColorConvertFloat4ToU32({ 0.7f, 0.3f, 0.7f, 1.0f }));
+    }
+    ImGui::BeginChild("##spinEditor", {}, ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY);
+    ImGui::TextUnformatted("Spin");
+
+    NOTIFY(ImGui::SliderAngle("Angle", &spin->angle));
+    ImGui::TextUnformatted("Axis");
+    ImGui::Indent();
+    NOTIFY(ImGui::RadioButton("X", (int*)&spin->axis, 0));
+    NOTIFY(ImGui::RadioButton("Y", (int*)&spin->axis, 1));
+    NOTIFY(ImGui::RadioButton("Z", (int*)&spin->axis, 2));
+    ImGui::Unindent();
+
+    ImGui::EndChild();
+
+    if (hovered) {
+        ImGui::PopStyleColor();
+    }
+
+    hovered = ImGui::IsItemHovered();
+    return ImGui::BeginPopupContextItem("##behaviorContext");
+}
+
+bool Editor::renderCollisionPlaneBehaviorEditor(const std::shared_ptr<SPLCollisionPlaneBehavior>& collisionPlane) {
+    static bool hovered = false;
+    if (hovered) {
+        ImGui::PushStyleColor(ImGuiCol_Border, ImGui::ColorConvertFloat4ToU32({ 0.7f, 0.3f, 0.7f, 1.0f }));
+    }
+    ImGui::BeginChild("##collisionPlaneEditor", {}, ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY);
+    ImGui::TextUnformatted("Collision Plane");
+
+    NOTIFY(ImGui::DragFloat("Height", &collisionPlane->y, 0.05f));
+    NOTIFY(ImGui::SliderFloat("Elasticity", &collisionPlane->elasticity, 0, 2, "%.3f", ImGuiSliderFlags_Logarithmic));
+    ImGui::TextUnformatted("Collision Type");
+    ImGui::Indent();
+    NOTIFY(ImGui::RadioButton("Kill", (int*)&collisionPlane->collisionType, 0));
+    NOTIFY(ImGui::RadioButton("Bounce", (int*)&collisionPlane->collisionType, 1));
+    ImGui::Unindent();
+
+    ImGui::EndChild();
+
+    if (hovered) {
+        ImGui::PopStyleColor();
+    }
+
+    hovered = ImGui::IsItemHovered();
+    return ImGui::BeginPopupContextItem("##behaviorContext");
+}
+
+bool Editor::renderConvergenceBehaviorEditor(const std::shared_ptr<SPLConvergenceBehavior>& convergence) {
+    static bool hovered = false;
+    if (hovered) {
+        ImGui::PushStyleColor(ImGuiCol_Border, ImGui::ColorConvertFloat4ToU32({ 0.7f, 0.3f, 0.7f, 1.0f }));
+    }
+    ImGui::BeginChild("##convergenceEditor", {}, ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY);
+    ImGui::TextUnformatted("Convergence");
+
+    NOTIFY(ImGui::DragFloat3("Target", glm::value_ptr(convergence->target), 0.05f, -5.0f, 5.0f));
+    NOTIFY(ImGui::SliderFloat("Force", &convergence->force, -5, 5, "%.3f", ImGuiSliderFlags_Logarithmic));
+
+    ImGui::EndChild();
+
+    if (hovered) {
+        ImGui::PopStyleColor();
+    }
+
+    hovered = ImGui::IsItemHovered();
+    return ImGui::BeginPopupContextItem("##behaviorContext");
 }

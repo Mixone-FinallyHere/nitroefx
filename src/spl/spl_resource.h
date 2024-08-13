@@ -123,7 +123,7 @@ struct SPLResourceFlags {
     bool followEmitter;
     bool hasChildResource;
     SPLPolygonRotAxis polygonRotAxis; // The axis to rotate the polygon around when using the 'polygon' draw types
-    u8 polygonReferencePlane;
+    int polygonReferencePlane;
     bool randomizeLoopedAnim;
     bool drawChildrenFirst; // If set, child particles will be rendered before parent particles
     bool hideParent; // If set, only child particles will be rendered
@@ -300,6 +300,28 @@ struct SPLResourceHeader {
         u8 flags;
         u8 _[3];
     } userData;
+
+    void addBehavior(SPLBehaviorType type) {
+        switch (type) {
+        case SPLBehaviorType::Gravity: flags.hasGravityBehavior = true; break;
+        case SPLBehaviorType::Random: flags.hasRandomBehavior = true; break;
+        case SPLBehaviorType::Magnet: flags.hasMagnetBehavior = true; break;
+        case SPLBehaviorType::Spin: flags.hasSpinBehavior = true; break;
+        case SPLBehaviorType::CollisionPlane: flags.hasCollisionPlaneBehavior = true; break;
+        case SPLBehaviorType::Convergence: flags.hasConvergenceBehavior = true; break;
+        }
+    }
+
+    void removeBehavior(SPLBehaviorType type) {
+        switch (type) {
+        case SPLBehaviorType::Gravity: flags.hasGravityBehavior = false; break;
+        case SPLBehaviorType::Random: flags.hasRandomBehavior = false; break;
+        case SPLBehaviorType::Magnet: flags.hasMagnetBehavior = false; break;
+        case SPLBehaviorType::Spin: flags.hasSpinBehavior = false; break;
+        case SPLBehaviorType::CollisionPlane: flags.hasCollisionPlaneBehavior = false; break;
+        case SPLBehaviorType::Convergence: flags.hasConvergenceBehavior = false; break;
+        }
+    }
 };
 
 struct SPLResource;
