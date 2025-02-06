@@ -233,6 +233,12 @@ void Application::handleKeydown(const SDL_Event& event) {
 			m_editor->killEmitters();
 		}
 		break;
+	
+	case SDLK_r:
+		if (event.key.keysym.mod & KMOD_CTRL) {
+			m_editor->resetCamera();
+		}
+		break;
 
 	case SDLK_F4:
 		if (event.key.keysym.mod & KMOD_ALT) {
@@ -337,6 +343,10 @@ void Application::renderMenuBar() {
 
 			if (ImGui::MenuItem("Kill Emitters", "Ctrl+K", false, hasActiveEditor)) {
 				m_editor->killEmitters();
+			}
+
+			if (ImGui::MenuItem("Reset Camera", "Ctrl+R", false, hasActiveEditor)) {
+				m_editor->resetCamera();
 			}
 
 			ImGui::EndMenu();

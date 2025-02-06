@@ -38,6 +38,10 @@ public:
         return m_particleSystem;
     }
 
+    Camera& getCamera() {
+        return m_camera;
+    }
+
 private:
     std::filesystem::path m_path;
     SPLArchive m_archive;

@@ -23,6 +23,7 @@ public:
 
     void playEmitterAction(EmitterSpawnType spawnType);
     void killEmitters();
+    void resetCamera();
 
     void handleEvent(const SDL_Event& event);
 

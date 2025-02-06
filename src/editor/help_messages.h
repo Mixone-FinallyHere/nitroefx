@@ -60,6 +60,7 @@ S(childEmissionDelay) = "The delay, as a fraction of the particles lifetime, unt
 S(childEmissionInterval) = "The time, in seconds, between child particle emissions";
 S(childEmissions) = "The number of emissions the particle will do across its lifespan";
 S(childRotation) = "Specifies the rotation attributes inherited from the parent";
+S(childTexture) = "The texture that the child particles will use";
 S(usesBehaviors) = "Whether the child particle uses behaviors (it will use the behaviors of the parent)";
 S(randomInitVelMag) = "Specifies a range [-n, n) of random values which will be added to the initial velocity";
 S(velocityRatio) = "The ratio of the velocity inherited from the parent";

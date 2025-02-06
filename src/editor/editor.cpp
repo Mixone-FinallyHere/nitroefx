@@ -33,10 +33,10 @@ void Editor::render() {
     windowClass.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoTabBar
         | ImGuiDockNodeFlags_NoDockingOverCentralNode
         | ImGuiDockNodeFlags_NoUndocking;
-    ImGui::SetNextWindowClass(&windowClass);
+        ImGui::SetNextWindowClass(&windowClass);
 
     ImGui::Begin("Work Area##Editor", nullptr,
-        ImGuiWindowFlags_NoMove |
+        // ImGuiWindowFlags_NoMove |
         ImGuiWindowFlags_NoDecoration
     );
 
@@ -140,6 +140,15 @@ void Editor::killEmitters() {
     std::erase_if(m_emitterTasks, [id = editor->getUniqueID()](const auto& task) {
         return task.editorID == id;
     });
+}
+
+void Editor::resetCamera() {
+    const auto& editor = g_projectManager->getActiveEditor();
+    if (!editor) {
+        return;
+    }
+
+    editor->getCamera().reset();
 }
 
 void Editor::handleEvent(const SDL_Event& event) {
@@ -874,6 +883,14 @@ void Editor::renderChildrenEditor(SPLResource& res) {
         }
         HELP(drawType);
 
+        const auto& textures = g_projectManager->getActiveEditor()->getArchive().getTextures();
+        if (ImGui::ImageButton((ImTextureID)textures[misc.texture].glTexture->getHandle(), { 32, 32 })) {
+            ImGui::OpenPopup("##texturePicker");
+        }
+        ImGui::SameLine();
+        ImGui::Text("Texture");
+        HELP(childTexture);
+
         if (ImGui::BeginCombo("Child Rotation", getChildRotType(flags.rotationType))) {
             for (const auto [val, name] : detail::g_childRotTypeNames) {
                 if (NOTIFY(ImGui::Selectable(name, flags.rotationType == val))) {
@@ -884,6 +901,8 @@ void Editor::renderChildrenEditor(SPLResource& res) {
             ImGui::EndCombo();
         }
         HELP(childRotation);
+
+        ImGui::BeginDisabled((u8)flags.drawType < (u8)SPLDrawType::Polygon);
 
         if (ImGui::BeginCombo("Polygon Rotation Axis", getPolygonRotAxis(flags.polygonRotAxis))) {
             for (const auto [val, name] : detail::g_polygonRotAxisNames) {
@@ -902,6 +921,8 @@ void Editor::renderChildrenEditor(SPLResource& res) {
         NOTIFY(ImGui::RadioButton("XY", &flags.polygonReferencePlane, 0));
         NOTIFY(ImGui::RadioButton("XZ", &flags.polygonReferencePlane, 1));
         ImGui::Unindent();
+
+        ImGui::EndDisabled();
 
         NOTIFY(ImGui::Checkbox("Uses Behaviors", &flags.usesBehaviors));
         HELP(usesBehaviors);
@@ -957,6 +978,22 @@ void Editor::renderChildrenEditor(SPLResource& res) {
 
         NOTIFY(ImGui::Checkbox("Fade Out", &flags.hasAlphaAnim));
         HELP(hasAlphaAnim);
+
+        if (ImGui::BeginPopup("##texturePicker")) {
+            for (int i = 0; i < textures.size(); ++i) {
+                const auto& texture = textures[i];
+                if (ImGui::ImageButton((ImTextureID)texture.glTexture->getHandle(), { 32, 32 })) {
+                    child.misc.texture = i;
+                    ImGui::CloseCurrentPopup();
+                }
+
+                if ((i + 1) % 4 != 0) {
+                    ImGui::SameLine();
+                }
+            }
+
+            ImGui::EndPopup();
+        }
 
         ImGui::TreePop();
     }
