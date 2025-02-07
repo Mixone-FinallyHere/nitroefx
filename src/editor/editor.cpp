@@ -64,11 +64,15 @@ void Editor::render() {
 
     ImGui::End();
 
-    if (m_picker_open) {
+    if (m_pickerOpen) {
         renderResourcePicker();
     }
 
-    if (m_editor_open) {
+    if (m_textureManagerOpen) {
+        renderTextureManager();
+    }
+
+    if (m_editorOpen) {
         renderResourceEditor();
     }
 }
@@ -83,11 +87,11 @@ void Editor::renderParticles() {
 }
 
 void Editor::openPicker() {
-    m_picker_open = true;
+    m_pickerOpen = true;
 }
 
 void Editor::openEditor() {
-    m_editor_open = true;
+    m_editorOpen = true;
 }
 
 void Editor::updateParticles(float deltaTime) {
@@ -163,7 +167,7 @@ void Editor::handleEvent(const SDL_Event& event) {
 }
 
 void Editor::renderResourcePicker() {
-    if (ImGui::Begin("Resource Picker##Editor", &m_picker_open)) {
+    if (ImGui::Begin("Resource Picker##Editor", &m_pickerOpen)) {
 
         const auto& editor = g_projectManager->getActiveEditor();
         if (!editor) {
@@ -232,8 +236,65 @@ void Editor::renderResourcePicker() {
     ImGui::End();
 }
 
+void Editor::renderTextureManager() {
+    if (ImGui::Begin("Texture Manager##Editor", &m_textureManagerOpen)) {
+        const auto& editor = g_projectManager->getActiveEditor();
+        if (!editor) {
+            ImGui::Text("No editor open");
+            ImGui::End();
+            return;
+        }
+
+        auto& archive = editor->getArchive();
+        auto& textures = archive.getTextures();
+
+        for (int i = 0; i < textures.size(); ++i) {
+            auto& texture = textures[i];
+            const auto name = fmt::format("[{}] Tex {}x{}", i, texture.width, texture.height);
+
+            ImGui::Image((ImTextureID)texture.glTexture->getHandle(), { 32, 32 });
+            ImGui::SameLine();
+            if (ImGui::TreeNodeEx(name.c_str(), ImGuiTreeNodeFlags_SpanAvailWidth)) {
+                ImGui::InputScalar("S", ImGuiDataType_U8, &texture.param.s);
+                ImGui::InputScalar("T", ImGuiDataType_U8, &texture.param.t);
+                
+                if (ImGui::BeginCombo("Repeat", getTextureRepeat(texture.param.repeat))) {
+                    for (const auto [val, name] : detail::g_textureRepeatNames) {
+                        if (editor->valueChanged(ImGui::Selectable(name, texture.param.repeat == val))) {
+                            texture.param.repeat = val;
+                        }
+                    }
+
+                    ImGui::EndCombo();
+                }
+
+                if (ImGui::BeginCombo("Flip", getTextureFlip(texture.param.flip))) {
+                    for (const auto [val, name] : detail::g_textureFlipNames) {
+                        if (editor->valueChanged(ImGui::Selectable(name, texture.param.flip == val))) {
+                            texture.param.flip = val;
+                        }
+                    }
+
+                    ImGui::EndCombo();
+                }
+
+                editor->valueChanged(ImGui::Checkbox("Palette Color 0 Transparent", &texture.param.palColor0Transparent));
+                editor->valueChanged(ImGui::Checkbox("Use Shared Texture", &texture.param.useSharedTexture));
+
+                if (texture.param.useSharedTexture) {
+                    ImGui::InputScalar("Shared Texture ID", ImGuiDataType_U8, &texture.param.sharedTexID);
+                }
+
+                ImGui::TreePop();
+            }
+        }
+
+        ImGui::End();
+    }
+}
+
 void Editor::renderResourceEditor() {
-    if (ImGui::Begin("Resource Editor##Editor", &m_editor_open)) {
+    if (ImGui::Begin("Resource Editor##Editor", &m_editorOpen)) {
         ImGui::SliderFloat("Global Time Scale", &m_timeScale, 0.0f, 2.0f, "%.2f");
 
         const auto& editor = g_projectManager->getActiveEditor();

@@ -53,6 +53,20 @@ inline const std::map<SPLScaleAnimDir, const char*> g_scaleAnimDirNames = {
     { SPLScaleAnimDir::Y, "Y" }
 };
 
+inline const std::map<TextureRepeat, const char*> g_textureRepeatNames = {
+    { TextureRepeat::None, "None" },
+    { TextureRepeat::S, "S" },
+    { TextureRepeat::T, "T" },
+    { TextureRepeat::ST, "ST" }
+};
+
+inline const std::map<TextureFlip, const char*> g_textureFlipNames = {
+    { TextureFlip::None, "None" },
+    { TextureFlip::S, "S" },
+    { TextureFlip::T, "T" },
+    { TextureFlip::ST, "ST" }
+};
+
 inline constexpr std::array g_spinAxisNames = {
     "X",
     "Y",
@@ -93,4 +107,14 @@ inline const char* getChildRotType(SPLChildRotationType v) {
 inline const char* getScaleAnimDir(SPLScaleAnimDir v) {
     const auto it = detail::g_scaleAnimDirNames.find(v);
     return it != detail::g_scaleAnimDirNames.end() ? it->second : "Unknown";
+}
+
+inline const char* getTextureRepeat(TextureRepeat v) {
+    const auto it = detail::g_textureRepeatNames.find(v);
+    return it != detail::g_textureRepeatNames.end() ? it->second : "Unknown";
+}
+
+inline const char* getTextureFlip(TextureFlip v) {
+    const auto it = detail::g_textureFlipNames.find(v);
+    return it != detail::g_textureFlipNames.end() ? it->second : "Unknown";
 }

@@ -32,6 +32,7 @@ public:
 
 private:
     void renderResourcePicker();
+    void renderTextureManager();
     void renderResourceEditor();
 
     void renderHeaderEditor(SPLResourceHeader& header) const;
@@ -54,8 +55,9 @@ private:
 
 
 private:
-    bool m_picker_open = true;
-    bool m_editor_open = true;
+    bool m_pickerOpen = true;
+    bool m_textureManagerOpen = true;
+    bool m_editorOpen = true;
     float m_timeScale = 1.0f;
 
     EmitterSpawnType m_emitterSpawnType = EmitterSpawnType::SingleShot;
