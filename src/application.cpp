@@ -5,6 +5,7 @@
 #include <gl/glew.h>
 #include <SDL2/SDL_opengl.h>
 #include <imgui.h>
+#include <implot.h>
 #include <imgui_internal.h>
 #include <imgui_impl_sdl2.h>
 #include <imgui_impl_opengl3.h>
@@ -80,6 +81,7 @@ int Application::run(int argc, char** argv) {
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+	ImPlot::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // Enable Docking
@@ -128,6 +130,11 @@ int Application::run(int argc, char** argv) {
         SDL_GL_SwapWindow(m_window);
 		lastFrame = now;
     }
+
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplSDL2_Shutdown();
+	ImPlot::DestroyContext();
+	ImGui::DestroyContext();
 
     return 0;
 }

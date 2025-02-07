@@ -8,10 +8,12 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/integer.hpp>
 #include <imgui.h>
+#include <implot.h>
 #include <imgui_internal.h>
 
-#define LOCK_EDITOR() auto activeEditor_locked = m_activeEditor.lock()
-#define NOTIFY(action) activeEditor_locked->valueChanged(action)
+#define LOCKED_EDITOR() activeEditor_locked
+#define LOCK_EDITOR() auto LOCKED_EDITOR() = m_activeEditor.lock()
+#define NOTIFY(action) LOCKED_EDITOR()->valueChanged(action)
 #define HELP(name) helpPopup(help::name)
 
 
@@ -289,6 +291,13 @@ void Editor::renderResourceEditor() {
                     ImGui::EndTabItem();
                 }
 
+                if (ImGui::BeginTabItem("Animations")) {
+                    ImGui::BeginChild("##animationEditor", {}, ImGuiChildFlags_Border);
+                    renderAnimationEditor(resource);
+                    ImGui::EndChild();
+                    ImGui::EndTabItem();
+                }
+
                 if (ImGui::BeginTabItem("Children")) {
                     ImGui::BeginChild("##childEditor", {}, ImGuiChildFlags_Border);
                     renderChildrenEditor(resource);
@@ -425,6 +434,14 @@ void Editor::renderHeaderEditor(SPLResourceHeader& header) const {
         }
         HELP(drawType);
 
+        const auto& textures = LOCKED_EDITOR()->getArchive().getTextures();
+        if (ImGui::ImageButton((ImTextureID)textures[header.misc.textureIndex].glTexture->getHandle(), { 32, 32 })) {
+            ImGui::OpenPopup(ImGui::GetID("##texturePicker"));
+        }
+        ImGui::SameLine();
+        ImGui::Text("Texture");
+        HELP(texture);
+
         NOTIFY(ImGui::Checkbox("Rotate", &flags.hasRotation));
         HELP(hasRotation);
 
@@ -549,6 +566,22 @@ void Editor::renderHeaderEditor(SPLResourceHeader& header) const {
         NOTIFY(ImGui::SliderFloat("Y", &header.polygonY, -2, 2));
         ImGui::Unindent();
 
+        if (ImGui::BeginPopup("##texturePicker")) {
+            for (int i = 0; i < textures.size(); ++i) {
+                const auto& texture = textures[i];
+                if (NOTIFY(ImGui::ImageButton((ImTextureID)texture.glTexture->getHandle(), { 32, 32 }))) {
+                    header.misc.textureIndex = i;
+                    ImGui::CloseCurrentPopup();
+                }
+
+                if (i % 4 != 3) {
+                    ImGui::SameLine();
+                }
+            }
+
+            ImGui::EndPopup();
+        }
+
         ImGui::TreePop();
     }
 }
@@ -641,7 +674,7 @@ bool Editor::renderGravityBehaviorEditor(const std::shared_ptr<SPLGravityBehavio
     LOCK_EDITOR();
     static bool hovered = false;
     if (hovered) {
-        ImGui::PushStyleColor(ImGuiCol_Border, ImGui::ColorConvertFloat4ToU32({ 0.7f, 0.3f, 0.7f, 1.0f }));
+        ImGui::PushStyleColor(ImGuiCol_Border, m_hoverAccentColor);
     }
     ImGui::BeginChild("##gravityEditor", {}, ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY);
     ImGui::TextUnformatted("Gravity");
@@ -662,7 +695,7 @@ bool Editor::renderRandomBehaviorEditor(const std::shared_ptr<SPLRandomBehavior>
     LOCK_EDITOR();
     static bool hovered = false;
     if (hovered) {
-        ImGui::PushStyleColor(ImGuiCol_Border, ImGui::ColorConvertFloat4ToU32({ 0.7f, 0.3f, 0.7f, 1.0f }));
+        ImGui::PushStyleColor(ImGuiCol_Border, m_hoverAccentColor);
     }
     ImGui::BeginChild("##randomEditor", {}, ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY);
     ImGui::TextUnformatted("Random");
@@ -684,7 +717,7 @@ bool Editor::renderMagnetBehaviorEditor(const std::shared_ptr<SPLMagnetBehavior>
     LOCK_EDITOR();
     static bool hovered = false;
     if (hovered) {
-        ImGui::PushStyleColor(ImGuiCol_Border, ImGui::ColorConvertFloat4ToU32({ 0.7f, 0.3f, 0.7f, 1.0f }));
+        ImGui::PushStyleColor(ImGuiCol_Border, m_hoverAccentColor);
     }
     ImGui::BeginChild("##magnetEditor", {}, ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY);
     ImGui::TextUnformatted("Magnet");
@@ -706,7 +739,7 @@ bool Editor::renderSpinBehaviorEditor(const std::shared_ptr<SPLSpinBehavior>& sp
     LOCK_EDITOR();
     static bool hovered = false;
     if (hovered) {
-        ImGui::PushStyleColor(ImGuiCol_Border, ImGui::ColorConvertFloat4ToU32({ 0.7f, 0.3f, 0.7f, 1.0f }));
+        ImGui::PushStyleColor(ImGuiCol_Border, m_hoverAccentColor);
     }
     ImGui::BeginChild("##spinEditor", {}, ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY);
     ImGui::TextUnformatted("Spin");
@@ -733,7 +766,7 @@ bool Editor::renderCollisionPlaneBehaviorEditor(const std::shared_ptr<SPLCollisi
     LOCK_EDITOR();
     static bool hovered = false;
     if (hovered) {
-        ImGui::PushStyleColor(ImGuiCol_Border, ImGui::ColorConvertFloat4ToU32({ 0.7f, 0.3f, 0.7f, 1.0f }));
+        ImGui::PushStyleColor(ImGuiCol_Border, m_hoverAccentColor);
     }
     ImGui::BeginChild("##collisionPlaneEditor", {}, ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY);
     ImGui::TextUnformatted("Collision Plane");
@@ -760,7 +793,7 @@ bool Editor::renderConvergenceBehaviorEditor(const std::shared_ptr<SPLConvergenc
     LOCK_EDITOR();
     static bool hovered = false;
     if (hovered) {
-        ImGui::PushStyleColor(ImGuiCol_Border, ImGui::ColorConvertFloat4ToU32({ 0.7f, 0.3f, 0.7f, 1.0f }));
+        ImGui::PushStyleColor(ImGuiCol_Border, m_hoverAccentColor);
     }
     ImGui::BeginChild("##convergenceEditor", {}, ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY);
     ImGui::TextUnformatted("Convergence");
@@ -779,6 +812,63 @@ bool Editor::renderConvergenceBehaviorEditor(const std::shared_ptr<SPLConvergenc
 }
 
 void Editor::renderAnimationEditor(SPLResource& res) {
+    if (m_activeEditor.expired()) {
+        return;
+    }
+
+    LOCK_EDITOR();
+
+    if (res.scaleAnim) {
+        renderScaleAnimEditor(*res.scaleAnim);
+    }
+}
+
+void Editor::renderScaleAnimEditor(SPLScaleAnim& res) {
+    LOCK_EDITOR();
+
+    static bool hovered = false;
+    if (hovered) {
+        ImGui::PushStyleColor(ImGuiCol_Border, m_hoverAccentColor);
+    }
+
+    ImGui::BeginChild("##scaleAnimEditor", {}, ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY);
+    ImGui::TextUnformatted("Scale Animation");
+
+    NOTIFY(ImGui::SliderFloat("Start Scale", &res.start, 0.01f, 10.0f, "%.3f", ImGuiSliderFlags_Logarithmic));
+    NOTIFY(ImGui::SliderFloat("Mid Scale", &res.mid, 0.01f, 10.0f, "%.3f", ImGuiSliderFlags_Logarithmic));
+    NOTIFY(ImGui::SliderFloat("End Scale", &res.end, 0.01f, 10.0f, "%.3f", ImGuiSliderFlags_Logarithmic));
+    constexpr u8 min = 0;
+    constexpr u8 max = 255;
+    NOTIFY(ImGui::SliderScalar("In", ImGuiDataType_U8, &res.curve.in, &min, &max, "%u"));
+    NOTIFY(ImGui::SliderScalar("Out", ImGuiDataType_U8, &res.curve.out, &min, &max, "%u"));
+    NOTIFY(ImGui::Checkbox("Loop", &res.flags.loop));
+
+    res.plot(m_xAnimBuffer, m_yAnimBuffer);
+    if (ImPlot::BeginPlot("##scaleAnimPlot", {-1, 0}, ImPlotFlags_CanvasOnly)) {
+        ImPlot::SetupAxes(nullptr, nullptr, ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit);
+        ImPlot::PlotLine("Scale", m_xAnimBuffer.data(), m_yAnimBuffer.data(), m_xAnimBuffer.size());
+        ImPlot::EndPlot();
+    }
+
+    ImGui::EndChild();
+
+    if (hovered) {
+        ImGui::PopStyleColor();
+    }
+
+    hovered = ImGui::IsItemHovered();
+}
+
+void Editor::renderColorAnimEditor(SPLColorAnim& res) {
+
+}
+
+void Editor::renderAlphaAnimEditor(SPLAlphaAnim& res) {
+
+}
+
+void Editor::renderTexAnimEditor(SPLTexAnim& res) {
+
 }
 
 void Editor::renderChildrenEditor(SPLResource& res) {
@@ -883,9 +973,9 @@ void Editor::renderChildrenEditor(SPLResource& res) {
         }
         HELP(drawType);
 
-        const auto& textures = g_projectManager->getActiveEditor()->getArchive().getTextures();
+        const auto& textures = LOCKED_EDITOR()->getArchive().getTextures();
         if (ImGui::ImageButton((ImTextureID)textures[misc.texture].glTexture->getHandle(), { 32, 32 })) {
-            ImGui::OpenPopup("##texturePicker");
+            ImGui::OpenPopup("##childTexturePicker");
         }
         ImGui::SameLine();
         ImGui::Text("Texture");
@@ -979,10 +1069,10 @@ void Editor::renderChildrenEditor(SPLResource& res) {
         NOTIFY(ImGui::Checkbox("Fade Out", &flags.hasAlphaAnim));
         HELP(hasAlphaAnim);
 
-        if (ImGui::BeginPopup("##texturePicker")) {
+        if (ImGui::BeginPopup("##childTexturePicker")) {
             for (int i = 0; i < textures.size(); ++i) {
                 const auto& texture = textures[i];
-                if (ImGui::ImageButton((ImTextureID)texture.glTexture->getHandle(), { 32, 32 })) {
+                if (NOTIFY(ImGui::ImageButton((ImTextureID)texture.glTexture->getHandle(), { 32, 32 }))) {
                     child.misc.texture = i;
                     ImGui::CloseCurrentPopup();
                 }

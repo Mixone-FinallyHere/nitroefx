@@ -12,6 +12,7 @@
     },
     "sdl2",
     "spdlog",
-    "glew"
+    "glew",
+    "implot"
   ]
 }

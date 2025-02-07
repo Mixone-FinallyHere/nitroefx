@@ -3,6 +3,9 @@
 #include "editor_instance.h"
 #include "types.h"
 
+#include <imgui.h>
+
+#include <array>
 #include <chrono>
 #include <unordered_map>
 #include <vector>
@@ -42,6 +45,10 @@ private:
     bool renderConvergenceBehaviorEditor(const std::shared_ptr<SPLConvergenceBehavior>& convergence);
 
     void renderAnimationEditor(SPLResource& res);
+    void renderScaleAnimEditor(SPLScaleAnim& res);
+    void renderColorAnimEditor(SPLColorAnim& res);
+    void renderAlphaAnimEditor(SPLAlphaAnim& res);
+    void renderTexAnimEditor(SPLTexAnim& res);
 
     void renderChildrenEditor(SPLResource& res);
 
@@ -53,6 +60,11 @@ private:
 
     EmitterSpawnType m_emitterSpawnType = EmitterSpawnType::SingleShot;
     float m_emitterInterval = 1.0f; // seconds
+
+    const u32 m_hoverAccentColor = ImGui::ColorConvertFloat4ToU32({ 0.7f, 0.3f, 0.7f, 1.0f });
+
+    std::array<f32, 64> m_xAnimBuffer;
+    std::array<f32, 64> m_yAnimBuffer;
 
     std::unordered_map<u64, int> m_selectedResources;
     std::weak_ptr<EditorInstance> m_activeEditor;

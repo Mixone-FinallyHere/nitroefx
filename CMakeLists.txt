@@ -16,6 +16,7 @@ find_package(OpenGL REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(GLEW REQUIRED)
+find_package(implot CONFIG REQUIRED)
 
 
 file(GLOB_RECURSE SOURCES "src/*.cpp" "src/*.h")
@@ -38,4 +39,5 @@ target_link_libraries(nitroefx PRIVATE
     fmt::fmt
     glm::glm
     OpenGL::GL
-    GLEW::GLEW)
+    GLEW::GLEW
+    implot::implot)

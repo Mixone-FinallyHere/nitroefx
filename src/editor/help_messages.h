@@ -6,6 +6,7 @@ namespace help {
 
 S(emissionType) = "The shape in which particles are emitted";
 S(drawType) = "The way the particle is rendered";
+S(texture) = "The texture that the particle will use";
 S(emissionAxis) = "For oriented emission shapes, this gives the axis of these shapes";
 S(hasRotation) = "Whether particles should rotate";
 S(randomInitAngle) = "Whether particles should have a randomized initial angle";

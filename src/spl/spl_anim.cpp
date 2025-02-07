@@ -19,6 +19,22 @@ void SPLScaleAnim::apply(SPLParticle& ptcl, const SPLResource& resource, f32 lif
     }
 }
 
+void SPLScaleAnim::plot(std::span<f32> xs, std::span<f32> ys) const {
+    const size_t samples = std::min(xs.size(), ys.size());
+    for (size_t i = 0; i < samples; i++) {
+        const f32 lifeRate = (f32)i / (f32)samples;
+        xs[i] = lifeRate;
+
+        if (lifeRate < curve.getIn()) {
+            ys[i] = glm::mix(start, mid, lifeRate / curve.getIn());
+        } else if (lifeRate < curve.getOut()) {
+            ys[i] = mid;
+        } else {
+            ys[i] = glm::mix(mid, end, (lifeRate - curve.getOut()) / (1.0f - curve.getOut()));
+        }
+    }
+}
+
 void SPLColorAnim::apply(SPLParticle& ptcl, const SPLResource& resource, f32 lifeRate) const {
     const float in = curve.getIn();
     const float peak = curve.getPeak();
