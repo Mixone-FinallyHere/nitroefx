@@ -24,7 +24,8 @@ struct PixelA5I3 {
 };
 
 
-GLTexture::GLTexture(const SPLTexture& texture) : m_width(texture.width), m_height(texture.height) {
+GLTexture::GLTexture(const SPLTexture& texture) 
+    : m_width(texture.width), m_height(texture.height), m_format(texture.param.format) {
     createTexture(texture);
 }
 
@@ -192,7 +193,6 @@ void GLTexture::createTexture(const SPLTexture& texture) {
 
     glCall(glBindTexture(GL_TEXTURE_2D, 0));
 }
-
 
 std::vector<u8> GLTexture::convertA3I5(const u8* tex, const GXRgba* pal, size_t width, size_t height, size_t palSize) {
     std::vector<u8> texture(width * height * 4);

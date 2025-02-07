@@ -554,6 +554,11 @@ struct SPLTextureResource {
     u32 resourceSize; // total size of the resource (header + data)
 };
 
+enum class TextureConversionPreference {
+    ColorDepth,
+    AlphaDepth,
+};
+
 struct SPLTexture {
     const SPLTextureResource* resource;
     SPLTextureParam param;
@@ -562,6 +567,17 @@ struct SPLTexture {
     std::span<const u8> textureData;
     std::span<const u8> paletteData;
     std::shared_ptr<GLTexture> glTexture;
+
+    static TextureFormat suggestFormat(
+        s32 width, 
+        s32 height, 
+        s32 channels, 
+        const u8* data,
+        TextureConversionPreference preference,
+        bool& color0Transparent, 
+        bool& requiresColorCompression,
+        bool& requiresAlphaCompression
+    );
 };
 
 //using SPLScaleAnim = SPLScaleAnimTemplate<f32>;

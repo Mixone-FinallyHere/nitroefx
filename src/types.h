@@ -90,13 +90,13 @@ union GXRgba {
 
 enum class TextureFormat : u8 {
     None = 0,
-    A3I5,
-    Palette4,
-    Palette16,
-    Palette256,
-    Comp4x4,
-    A5I3,
-    Direct,
+    A3I5, // 3 bits alpha, 5-bit palette index
+    Palette4, // 2-bit palette index (4 colors)
+    Palette16, // 4-bit palette index (16 colors)
+    Palette256, // 8-bit palette index (256 colors)
+    Comp4x4, // 4x4 compression
+    A5I3, // 5 bits alpha, 3-bit palette index
+    Direct, // 16-bit R5G5B5A1 (RGBA5551), no palette
 };
 
 enum class TextureRepeat {
