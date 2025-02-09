@@ -38,20 +38,17 @@ inline glm::vec3 unitXY() {
 }
 
 
-// Generates a random float in the range [n * (1 - variance), n]
-// n: The base value
-// variance: The variance of the value (0.0f - 1.0f)
+// Generates a random float in the range [n * ((1 + variance) / 2), n]
 inline f32 scaledRange(f32 n, f32 variance) {
-    const f32 min = n * (1.0f - variance);
+    const f32 min = n * ((1.0f + variance) / 2.0f);
     const f32 max = n;
-
     return min + nextF32() * (max - min);
 }
 
-// Generates a random float in the range [n * (1 - variance), n * 2 * (1 - variance)]
+// Generates a random float in the range [n, n * (1 + variance)]
 inline f32 scaledRange2(f32 n, f32 variance) {
-    const f32 min = n * (1.0f - variance);
-    const f32 max = n * 2.0f * (1.0f - variance);
+    const f32 min = n;
+    const f32 max = n * (1.0f + variance);
 
     return min + nextF32() * (max - min);
 }
