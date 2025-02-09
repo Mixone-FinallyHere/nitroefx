@@ -68,7 +68,7 @@ private:
     std::array<f32, 64> m_xAnimBuffer;
     std::array<f32, 64> m_yAnimBuffer;
 
-    std::unordered_map<u64, int> m_selectedResources;
+    std::unordered_map<u64, size_t> m_selectedResources;
     std::weak_ptr<EditorInstance> m_activeEditor;
 
     struct EmitterSpawnTask {

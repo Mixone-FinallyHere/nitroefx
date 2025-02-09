@@ -602,5 +602,5 @@ struct SPLResource {
     std::optional<SPLChildResource> childResource;
     std::vector<std::shared_ptr<SPLBehavior>> behaviors;
 
-    std::shared_ptr<SPLTexture> texture;
+    static SPLResource create();
 };

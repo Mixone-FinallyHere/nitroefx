@@ -189,7 +189,7 @@ void Editor::renderResourcePicker() {
         if (ImGui::BeginListBox("##Resources", contentRegion)) {
             const ImGuiStyle& style = ImGui::GetStyle();
 
-            for (int i = 0; i < resources.size(); ++i) {
+            for (size_t i = 0; i < resources.size(); ++i) {
                 const auto& resource = resources[i];
                 const auto& texture = textures[resource.header.misc.textureIndex];
 
@@ -230,6 +230,19 @@ void Editor::renderResourcePicker() {
             }
 
             ImGui::EndListBox();
+        }
+
+        if (ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows) && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
+            ImGui::OpenPopup("##AddResourcePopup");
+        }
+
+        if (ImGui::BeginPopup("##AddResourcePopup")) {
+            if (ImGui::MenuItem("Add Resource")) {
+                resources.emplace_back(SPLResource::create());
+                m_selectedResources[id] = resources.size() - 1;
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
         }
     }
 
@@ -288,9 +301,9 @@ void Editor::renderTextureManager() {
                 ImGui::TreePop();
             }
         }
-
-        ImGui::End();
     }
+
+    ImGui::End();
 }
 
 void Editor::renderResourceEditor() {

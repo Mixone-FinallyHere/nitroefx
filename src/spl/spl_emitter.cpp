@@ -358,7 +358,7 @@ void SPLEmitter::emit(u32 count) {
         ptcl->emitterPos = m_position;
 
         ptcl->baseScale = random::scaledRange2(header.baseScale, header.variance.baseScale);
-        ptcl->animScale = 0;
+        ptcl->animScale = 1.0f;
 
         if (header.flags.hasColorAnim && m_resource->colorAnim && m_resource->colorAnim->flags.randomStartColor) {
             const glm::vec3 startColors[3] = {
