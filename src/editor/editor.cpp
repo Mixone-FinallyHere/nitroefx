@@ -102,7 +102,7 @@ void Editor::updateParticles(float deltaTime) {
 
     for (auto& task : m_emitterTasks) {
         const auto now = std::chrono::steady_clock::now();
-        if (task.editorID == editor->getUniqueID() && now - task.time >= task.interval) {
+        if (task.editorID == editor->getUniqueID() && m_timeScale * (now - task.time) >= task.interval) {
             editor->getParticleSystem().addEmitter(
                 editor->getArchive().getResources()[task.resourceIndex], 
                 false
