@@ -10,7 +10,7 @@
 #include "spl_behavior.h"
 #include "types.h"
 #include "fx.h"
-#include "gl_texture.h"
+#include "gfx/gl_texture.h"
 
  
 

@@ -5,9 +5,10 @@
 #include <SDL2/SDL_events.h>
 
 #include "camera.h"
-#include "gl_viewport.h"
+#include "gfx/gl_viewport.h"
 #include "particle_renderer.h"
 #include "particle_system.h"
+#include "grid_renderer.h"
 #include "spl/spl_archive.h"
 
 
@@ -16,7 +17,7 @@ public:
     explicit EditorInstance(const std::filesystem::path& path);
 
     std::pair<bool, bool> render();
-    void renderParticles();
+    void renderParticles(GridRenderer* gridRenderer = nullptr);
     void updateParticles(float deltaTime);
     void handleEvent(const SDL_Event& event);
 

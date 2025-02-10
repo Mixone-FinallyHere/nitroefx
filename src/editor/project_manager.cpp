@@ -2,7 +2,6 @@
 
 #include <imgui.h>
 #include <imgui_stdlib.h>
-#include <rapidfuzz/fuzz.hpp>
 #include <SDL_messagebox.h>
 #include <spdlog/spdlog.h>
 

@@ -1,7 +1,7 @@
 #include "editor_instance.h"
 #include "project_manager.h"
 #include "random.h"
-#include "gl_util.h"
+#include "gfx/gl_util.h"
 
 #include <gl/glew.h>
 #include <imgui.h>
@@ -45,7 +45,7 @@ std::pair<bool, bool> EditorInstance::render() {
     return { open, active };
 }
 
-void EditorInstance::renderParticles() {
+void EditorInstance::renderParticles(GridRenderer* gridRenderer) {
     if (m_updateProj || m_size != m_viewport.getSize()) {
         m_viewport.resize(m_size);
         m_camera.setViewport(m_size.x, m_size.y);
@@ -55,6 +55,10 @@ void EditorInstance::renderParticles() {
 
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    if (gridRenderer) {
+        gridRenderer->render(m_camera.getView(), m_camera.getProj());
+    }
 
     m_particleSystem.render(
         m_camera.getView(),

@@ -28,6 +28,10 @@ constexpr std::array s_emitterSpawnTypes = {
 }
 
 
+Editor::Editor() : m_xAnimBuffer(), m_yAnimBuffer() {
+    m_gridRenderer = std::make_shared<GridRenderer>(s_gridDimensions, s_gridSpacing);
+}
+
 void Editor::render() {
     const auto& instances = g_projectManager->getOpenEditors();
 
@@ -83,7 +87,7 @@ void Editor::renderParticles() {
         return;
     }
 
-    editor->renderParticles();
+    editor->renderParticles(m_gridRenderer.get());
 }
 
 void Editor::openPicker() {
@@ -748,7 +752,7 @@ bool Editor::renderGravityBehaviorEditor(const std::shared_ptr<SPLGravityBehavio
     LOCK_EDITOR();
     static bool hovered = false;
     if (hovered) {
-        ImGui::PushStyleColor(ImGuiCol_Border, m_hoverAccentColor);
+        ImGui::PushStyleColor(ImGuiCol_Border, s_hoverAccentColor);
     }
     ImGui::BeginChild("##gravityEditor", {}, ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY);
     ImGui::TextUnformatted("Gravity");
@@ -769,7 +773,7 @@ bool Editor::renderRandomBehaviorEditor(const std::shared_ptr<SPLRandomBehavior>
     LOCK_EDITOR();
     static bool hovered = false;
     if (hovered) {
-        ImGui::PushStyleColor(ImGuiCol_Border, m_hoverAccentColor);
+        ImGui::PushStyleColor(ImGuiCol_Border, s_hoverAccentColor);
     }
     ImGui::BeginChild("##randomEditor", {}, ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY);
     ImGui::TextUnformatted("Random");
@@ -791,7 +795,7 @@ bool Editor::renderMagnetBehaviorEditor(const std::shared_ptr<SPLMagnetBehavior>
     LOCK_EDITOR();
     static bool hovered = false;
     if (hovered) {
-        ImGui::PushStyleColor(ImGuiCol_Border, m_hoverAccentColor);
+        ImGui::PushStyleColor(ImGuiCol_Border, s_hoverAccentColor);
     }
     ImGui::BeginChild("##magnetEditor", {}, ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY);
     ImGui::TextUnformatted("Magnet");
@@ -813,7 +817,7 @@ bool Editor::renderSpinBehaviorEditor(const std::shared_ptr<SPLSpinBehavior>& sp
     LOCK_EDITOR();
     static bool hovered = false;
     if (hovered) {
-        ImGui::PushStyleColor(ImGuiCol_Border, m_hoverAccentColor);
+        ImGui::PushStyleColor(ImGuiCol_Border, s_hoverAccentColor);
     }
     ImGui::BeginChild("##spinEditor", {}, ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY);
     ImGui::TextUnformatted("Spin");
@@ -840,7 +844,7 @@ bool Editor::renderCollisionPlaneBehaviorEditor(const std::shared_ptr<SPLCollisi
     LOCK_EDITOR();
     static bool hovered = false;
     if (hovered) {
-        ImGui::PushStyleColor(ImGuiCol_Border, m_hoverAccentColor);
+        ImGui::PushStyleColor(ImGuiCol_Border, s_hoverAccentColor);
     }
     ImGui::BeginChild("##collisionPlaneEditor", {}, ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY);
     ImGui::TextUnformatted("Collision Plane");
@@ -867,7 +871,7 @@ bool Editor::renderConvergenceBehaviorEditor(const std::shared_ptr<SPLConvergenc
     LOCK_EDITOR();
     static bool hovered = false;
     if (hovered) {
-        ImGui::PushStyleColor(ImGuiCol_Border, m_hoverAccentColor);
+        ImGui::PushStyleColor(ImGuiCol_Border, s_hoverAccentColor);
     }
     ImGui::BeginChild("##convergenceEditor", {}, ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY);
     ImGui::TextUnformatted("Convergence");
@@ -924,7 +928,7 @@ bool Editor::renderScaleAnimEditor(SPLScaleAnim& res) {
 
     static bool hovered = false;
     if (hovered) {
-        ImGui::PushStyleColor(ImGuiCol_Border, m_hoverAccentColor);
+        ImGui::PushStyleColor(ImGuiCol_Border, s_hoverAccentColor);
     }
 
     if (!ImGui::CollapsingHeader("Scale Animation")) {
@@ -973,7 +977,7 @@ bool Editor::renderColorAnimEditor(const SPLResource& mainRes, SPLColorAnim& res
 
     static bool hovered = false;
     if (hovered) {
-        ImGui::PushStyleColor(ImGuiCol_Border, m_hoverAccentColor);
+        ImGui::PushStyleColor(ImGuiCol_Border, s_hoverAccentColor);
     }
 
     if (!ImGui::CollapsingHeader("Color Animation")) {

@@ -1,6 +1,7 @@
 #pragma once
 #include "spl/spl_resource.h"
 #include "editor_instance.h"
+#include "grid_renderer.h"
 #include "types.h"
 
 #include <imgui.h>
@@ -18,6 +19,8 @@ enum class EmitterSpawnType {
 
 class Editor {
 public:
+    Editor();
+
     void render();
     void renderParticles();
     void openPicker();
@@ -63,13 +66,16 @@ private:
     EmitterSpawnType m_emitterSpawnType = EmitterSpawnType::SingleShot;
     float m_emitterInterval = 1.0f; // seconds
 
-    const u32 m_hoverAccentColor = ImGui::ColorConvertFloat4ToU32({ 0.7f, 0.3f, 0.7f, 1.0f });
+    static inline const u32 s_hoverAccentColor = ImGui::ColorConvertFloat4ToU32({ 0.7f, 0.3f, 0.7f, 1.0f });
+    static constexpr glm::ivec2 s_gridDimensions = { 20, 20 };
+    static constexpr glm::vec2 s_gridSpacing = { 1.0f, 1.0f };
 
     std::array<f32, 64> m_xAnimBuffer;
     std::array<f32, 64> m_yAnimBuffer;
 
     std::unordered_map<u64, size_t> m_selectedResources;
     std::weak_ptr<EditorInstance> m_activeEditor;
+    std::shared_ptr<GridRenderer> m_gridRenderer;
 
     struct EmitterSpawnTask {
         u64 resourceIndex;

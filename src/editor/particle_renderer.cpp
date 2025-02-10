@@ -1,5 +1,5 @@
 #include "particle_renderer.h"
-#include "gl_util.h"
+#include "gfx/gl_util.h"
 
 #include <algorithm>
 #include <gl/glew.h>
@@ -35,6 +35,7 @@ out vec2 texCoord;
 
 uniform mat4 view;
 uniform mat4 proj;
+uniform vec4 cameraPos;
 
 void main() {
     gl_Position = proj * view * transform * vec4(position, 1.0);

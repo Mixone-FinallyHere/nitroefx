@@ -1,5 +1,5 @@
 #include "spl_archive.h"
-#include "gl_util.h"
+#include "gfx/gl_util.h"
 
 #include <gl/glew.h>
 #include <glm/gtc/constants.hpp>
