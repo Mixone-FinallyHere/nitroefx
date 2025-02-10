@@ -989,7 +989,10 @@ bool Editor::renderColorAnimEditor(const SPLResource& mainRes, SPLColorAnim& res
     NOTIFY(ImGui::SliderScalar("In", ImGuiDataType_U8, &res.curve.in, &min, &max, "%u"));
     NOTIFY(ImGui::SliderScalar("Peak", ImGuiDataType_U8, &res.curve.peak, &min, &max, "%u"));
     NOTIFY(ImGui::SliderScalar("Out", ImGuiDataType_U8, &res.curve.out, &min, &max, "%u"));
+
     NOTIFY(ImGui::Checkbox("Loop", &res.flags.loop));
+    NOTIFY(ImGui::Checkbox("Interpolate", &res.flags.interpolate));
+    NOTIFY(ImGui::Checkbox("Random Start Color", &res.flags.randomStartColor));
     
     const auto drawList = ImGui::GetWindowDrawList();
     const auto startPos = ImGui::GetCursorScreenPos();

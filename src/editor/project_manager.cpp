@@ -1,10 +1,12 @@
 #include "project_manager.h"
 
 #include <imgui.h>
+#include <imgui_stdlib.h>
+#include <rapidfuzz/fuzz.hpp>
+#include <SDL_messagebox.h>
+#include <spdlog/spdlog.h>
 
-#include "SDL_messagebox.h"
 #include "fonts/IconsFontAwesome6.h"
-#include "spdlog/spdlog.h"
 
 
 void ProjectManager::openProject(const std::filesystem::path& path) {
@@ -86,12 +88,15 @@ void ProjectManager::render() {
             ImGui::Text("No project open");
         } else {
             ImGui::Checkbox("Hide non SPL files", &m_hideOtherFiles);
+            ImGui::InputText("Filter", &m_searchString);
 
             for (const auto& entry : std::filesystem::directory_iterator(m_projectPath)) {
                 if (entry.is_directory()) {
                     renderDirectory(entry.path());
                 } else {
-                    renderFile(entry.path());
+                    if (m_searchString.empty() || entry.path().string().contains(m_searchString)) {
+                        renderFile(entry.path());
+                    }
                 }
             }
         }
@@ -138,7 +143,9 @@ void ProjectManager::renderDirectory(const std::filesystem::path& path) {
             if (entry.is_directory()) {
                 renderDirectory(entry.path());
             } else {
-                renderFile(entry.path());
+                if (m_searchString.empty() || entry.path().string().contains(m_searchString)) {
+                    renderFile(entry.path());
+                }
             }
         }
 

@@ -6,7 +6,7 @@ endif()
 
 project(nitroefx)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(SDL2 CONFIG REQUIRED)
@@ -17,7 +17,6 @@ find_package(fmt CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(GLEW REQUIRED)
 find_package(implot CONFIG REQUIRED)
-
 
 file(GLOB_RECURSE SOURCES "src/*.cpp" "src/*.h")
 
