@@ -301,6 +301,15 @@ struct SPLResourceHeader {
         u8 _[3];
     } userData;
 
+    void addScaleAnim() { flags.hasScaleAnim = true; }
+    void removeScaleAnim() { flags.hasScaleAnim = false; }
+    void addColorAnim() { flags.hasColorAnim = true; }
+    void removeColorAnim() { flags.hasColorAnim = false; }
+    void addAlphaAnim() { flags.hasAlphaAnim = true; }
+    void removeAlphaAnim() { flags.hasAlphaAnim = false; }
+    void addTexAnim() { flags.hasTexAnim = true; }
+    void removeTexAnim() { flags.hasTexAnim = false; }
+
     void addBehavior(SPLBehaviorType type) {
         switch (type) {
         case SPLBehaviorType::Gravity: flags.hasGravityBehavior = true; break;
@@ -360,6 +369,16 @@ struct SPLScaleAnim final : SPLAnim {
 
     void apply(SPLParticle& ptcl, const SPLResource& resource, f32 lifeRate) const override;
     void plot(std::span<f32> xs, std::span<f32> ys) const;
+
+    static SPLScaleAnim createDefault() {
+        return SPLScaleAnim(SPLScaleAnimNative{
+            .start = FX16_CONST(1.0f),
+            .mid = FX16_CONST(1.0f),
+            .end = FX16_CONST(1.0f),
+            .curve = { .in = 0, .out = 255 },
+            .flags = { .loop = false }
+        });
+    }
 };
 
 struct SPLColorAnimNative {
@@ -394,7 +413,20 @@ struct SPLColorAnim final : SPLAnim {
         flags.interpolate = native.flags.interpolate;
     }
 
+    SPLColorAnim(const glm::vec3& start, const glm::vec3& end, const SPLCurveInPeakOut& curve, decltype(flags) flags)
+        : start(start), end(end), curve(curve), flags(flags) {}
+
     void apply(SPLParticle& ptcl, const SPLResource& resource, f32 lifeRate) const override;
+    void plot(const SPLResource& resource, std::span<f32> xs, std::span<glm::vec3> ys) const;
+
+    static SPLColorAnim createDefault() {
+        return SPLColorAnim(
+            { 1.0f, 1.0f, 1.0f },
+            { 1.0f, 1.0f, 1.0f },
+            { .in = 0, .peak = 127, .out = 255 },
+            { .randomStartColor = false, .loop = false, .interpolate = true }
+        );
+    }
 };
 
 struct SPLAlphaAnimNative {
@@ -601,6 +633,16 @@ struct SPLResource {
     std::optional<SPLTexAnim> texAnim;
     std::optional<SPLChildResource> childResource;
     std::vector<std::shared_ptr<SPLBehavior>> behaviors;
+
+    void addScaleAnim(const SPLScaleAnim& anim) { scaleAnim = anim; header.addScaleAnim(); }
+    void addColorAnim(const SPLColorAnim& anim) { colorAnim = anim; header.addColorAnim(); }
+    void addAlphaAnim(const SPLAlphaAnim& anim) { alphaAnim = anim; header.addAlphaAnim(); }
+    void addTexAnim(const SPLTexAnim& anim) { texAnim = anim; header.addTexAnim(); }
+
+    void removeScaleAnim() { scaleAnim.reset(); header.removeScaleAnim(); }
+    void removeColorAnim() { colorAnim.reset(); header.removeColorAnim(); }
+    void removeAlphaAnim() { alphaAnim.reset(); header.removeAlphaAnim(); }
+    void removeTexAnim() { texAnim.reset(); header.removeTexAnim(); }
 
     static SPLResource create();
 };

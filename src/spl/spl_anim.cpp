@@ -59,6 +59,36 @@ void SPLColorAnim::apply(SPLParticle& ptcl, const SPLResource& resource, f32 lif
     }
 }
 
+void SPLColorAnim::plot(const SPLResource& resource, std::span<f32> xs, std::span<glm::vec3> ys) const {
+    const float in = curve.getIn();
+    const float peak = curve.getPeak();
+    const float out = curve.getOut();
+
+    const size_t samples = std::min(xs.size(), ys.size());
+    for (size_t i = 0; i < samples; i++) {
+        const f32 lifeRate = (f32)i / (f32)samples;
+        xs[i] = lifeRate;
+
+        if (lifeRate < in) {
+            ys[i] = start;
+        } else if (lifeRate < peak) {
+            if (flags.interpolate) {
+                ys[i] = glm::mix(start, resource.header.color, (lifeRate - in) / (peak - in));
+            } else {
+                ys[i] = resource.header.color;
+            }
+        } else if (lifeRate < out) {
+            if (flags.interpolate) {
+                ys[i] = glm::mix(resource.header.color, end, (lifeRate - peak) / (out - peak));
+            } else {
+                ys[i] = end;
+            }
+        } else {
+            ys[i] = end;
+        }
+    }
+}
+
 void SPLAlphaAnim::apply(SPLParticle& ptcl, const SPLResource& resource, f32 lifeRate) const {
     const f32 in = curve.getIn();
     const f32 out = curve.getOut();

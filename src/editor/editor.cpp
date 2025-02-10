@@ -892,12 +892,34 @@ void Editor::renderAnimationEditor(SPLResource& res) {
 
     LOCK_EDITOR();
 
+    if (ImGui::Button("Add Animation...")) {
+        ImGui::OpenPopup("##addAnimation");
+    }
+
+    if (ImGui::BeginPopup("##addAnimation")) {
+        if (NOTIFY(ImGui::MenuItem("Scale", nullptr, false, !res.header.flags.hasScaleAnim))) {
+            res.addScaleAnim(SPLScaleAnim::createDefault());
+            ImGui::CloseCurrentPopup();
+        }
+
+        if (NOTIFY(ImGui::MenuItem("Color", nullptr, false, !res.header.flags.hasColorAnim))) {
+            res.addColorAnim(SPLColorAnim::createDefault());
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
+
     if (res.scaleAnim) {
         renderScaleAnimEditor(*res.scaleAnim);
     }
+
+    if (res.colorAnim) {
+        renderColorAnimEditor(res, *res.colorAnim);
+    }
 }
 
-void Editor::renderScaleAnimEditor(SPLScaleAnim& res) {
+bool Editor::renderScaleAnimEditor(SPLScaleAnim& res) {
     LOCK_EDITOR();
 
     static bool hovered = false;
@@ -905,8 +927,11 @@ void Editor::renderScaleAnimEditor(SPLScaleAnim& res) {
         ImGui::PushStyleColor(ImGuiCol_Border, m_hoverAccentColor);
     }
 
+    if (!ImGui::CollapsingHeader("Scale Animation")) {
+        return false;
+    }
+
     ImGui::BeginChild("##scaleAnimEditor", {}, ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY);
-    ImGui::TextUnformatted("Scale Animation");
 
     NOTIFY(ImGui::SliderFloat("Start Scale", &res.start, 0.01f, 10.0f, "%.3f", ImGuiSliderFlags_Logarithmic));
     NOTIFY(ImGui::SliderFloat("Mid Scale", &res.mid, 0.01f, 10.0f, "%.3f", ImGuiSliderFlags_Logarithmic));
@@ -931,18 +956,135 @@ void Editor::renderScaleAnimEditor(SPLScaleAnim& res) {
     }
 
     hovered = ImGui::IsItemHovered();
+    if (ImGui::BeginPopupContextItem("##scaleAnimContext")) {
+        if (ImGui::MenuItem("Delete")) {
+            ImGui::CloseCurrentPopup();
+            return true;
+        }
+
+        ImGui::EndPopup();
+    }
+
+    return false;
 }
 
-void Editor::renderColorAnimEditor(SPLColorAnim& res) {
+bool Editor::renderColorAnimEditor(const SPLResource& mainRes, SPLColorAnim& res) {
+    LOCK_EDITOR();
 
+    static bool hovered = false;
+    if (hovered) {
+        ImGui::PushStyleColor(ImGuiCol_Border, m_hoverAccentColor);
+    }
+
+    if (!ImGui::CollapsingHeader("Color Animation")) {
+        return false;
+    }
+
+    ImGui::BeginChild("##colorAnimEditor", {}, ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY);
+
+    NOTIFY(ImGui::ColorEdit3("Start Color", glm::value_ptr(res.start)));
+    NOTIFY(ImGui::ColorEdit3("End Color", glm::value_ptr(res.end)));
+    constexpr u8 min = 0;
+    constexpr u8 max = 255;
+    NOTIFY(ImGui::SliderScalar("In", ImGuiDataType_U8, &res.curve.in, &min, &max, "%u"));
+    NOTIFY(ImGui::SliderScalar("Peak", ImGuiDataType_U8, &res.curve.peak, &min, &max, "%u"));
+    NOTIFY(ImGui::SliderScalar("Out", ImGuiDataType_U8, &res.curve.out, &min, &max, "%u"));
+    NOTIFY(ImGui::Checkbox("Loop", &res.flags.loop));
+    
+    const auto drawList = ImGui::GetWindowDrawList();
+    const auto startPos = ImGui::GetCursorScreenPos();
+    const auto maxWidth = ImGui::GetContentRegionAvail().x;
+    auto pos = startPos;
+
+    constexpr auto toImColor = [](const glm::vec3& color) {
+        return IM_COL32(
+            (u8)(color.r * 255),
+            (u8)(color.g * 255),
+            (u8)(color.b * 255),
+            255
+        );
+    };
+
+    const auto in = res.curve.getIn();
+    const auto peak = res.curve.getPeak();
+    const auto out = res.curve.getOut();
+
+    const auto startCol = toImColor(res.start);
+    const auto peakCol = toImColor(mainRes.header.color);
+    const auto endCol = toImColor(res.end);
+
+    if (in > 0.0f) {
+        const auto endPos = ImVec2(pos.x + in * maxWidth, pos.y + 20);
+        drawList->AddRectFilled(pos, endPos, startCol);
+        pos.x = endPos.x;
+    }
+
+    if (res.flags.interpolate) {
+        const auto endPos = ImVec2(pos.x + (peak - in) * maxWidth, pos.y + 20);
+        drawList->AddRectFilledMultiColor(
+            pos,
+            endPos,
+            startCol,
+            peakCol,
+            peakCol,
+            startCol
+        );
+        pos.x = endPos.x;
+    } else {
+        const auto endPos = ImVec2(pos.x + (peak - in) * maxWidth, pos.y + 20);
+        drawList->AddRectFilled(pos, endPos, toImColor(mainRes.header.color));
+        pos.x = endPos.x;
+    }
+
+    if (res.flags.interpolate) {
+        const auto endPos = ImVec2(pos.x + (out - peak) * maxWidth, pos.y + 20);
+        drawList->AddRectFilledMultiColor(
+            pos,
+            endPos,
+            peakCol,
+            endCol,
+            endCol,
+            peakCol
+        );
+        pos.x = endPos.x;
+    } else {
+        const auto endPos = ImVec2(pos.x + (out - peak) * maxWidth, pos.y + 20);
+        drawList->AddRectFilled(pos, endPos, endCol);
+        pos.x = endPos.x;
+    }
+
+    if (out < 1.0f) {
+        const auto endPos = ImVec2(pos.x + (1.0f - out) * maxWidth, pos.y + 20);
+        drawList->AddRectFilled(pos, endPos, endCol);
+    }
+
+    ImGui::Dummy({ maxWidth, 20 });
+
+    ImGui::EndChild();
+
+    if (hovered) {
+        ImGui::PopStyleColor();
+    }
+
+    hovered = ImGui::IsItemHovered();
+    if (ImGui::BeginPopupContextItem("##colorAnimContext")) {
+        if (ImGui::MenuItem("Delete")) {
+            ImGui::CloseCurrentPopup();
+            return true;
+        }
+
+        ImGui::EndPopup();
+    }
+
+    return false;
 }
 
-void Editor::renderAlphaAnimEditor(SPLAlphaAnim& res) {
-
+bool Editor::renderAlphaAnimEditor(SPLAlphaAnim& res) {
+    return false;
 }
 
-void Editor::renderTexAnimEditor(SPLTexAnim& res) {
-
+bool Editor::renderTexAnimEditor(SPLTexAnim& res) {
+    return false;
 }
 
 void Editor::renderChildrenEditor(SPLResource& res) {

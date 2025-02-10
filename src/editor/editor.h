@@ -46,10 +46,10 @@ private:
     bool renderConvergenceBehaviorEditor(const std::shared_ptr<SPLConvergenceBehavior>& convergence);
 
     void renderAnimationEditor(SPLResource& res);
-    void renderScaleAnimEditor(SPLScaleAnim& res);
-    void renderColorAnimEditor(SPLColorAnim& res);
-    void renderAlphaAnimEditor(SPLAlphaAnim& res);
-    void renderTexAnimEditor(SPLTexAnim& res);
+    bool renderScaleAnimEditor(SPLScaleAnim& res);
+    bool renderColorAnimEditor(const SPLResource& mainRes, SPLColorAnim& res);
+    bool renderAlphaAnimEditor(SPLAlphaAnim& res);
+    bool renderTexAnimEditor(SPLTexAnim& res);
 
     void renderChildrenEditor(SPLResource& res);
 
