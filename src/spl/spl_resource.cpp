@@ -3,6 +3,7 @@
 
 SPLResource SPLResource::create() {
     SPLResource res{};
+    std::memset(&res.header, 0, sizeof(res.header));
 
     res.header.emissionCount = 1;
     res.header.color = { 1.0f, 1.0f, 1.0f };

@@ -1210,6 +1210,7 @@ void Editor::renderChildrenEditor(SPLResource& res) {
     if (!res.childResource) {
         ImGui::TextUnformatted("This resource does not have an associated child resource.");
         if (ImGui::Button("Add Child Resource")) {
+            res.header.flags.hasChildResource = true;
             res.childResource = SPLChildResource{
                 .flags = {
                     .usesBehaviors = false,
