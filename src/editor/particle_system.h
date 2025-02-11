@@ -4,8 +4,12 @@
 #include "spl/spl_emitter.h"
 #include "particle_renderer.h"
 
+#include <glm/glm.hpp>
+
 #include <queue>
 #include <vector>
+
+struct CameraParams;
 
 class ParticleSystem {
 public:
@@ -13,7 +17,7 @@ public:
     ~ParticleSystem();
 
     void update(float deltaTime);
-    void render(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& cameraPos);
+    void render(const CameraParams& params);
 
     std::weak_ptr<SPLEmitter> addEmitter(const SPLResource& resource, bool looping = false);
     void killEmitter(const std::weak_ptr<SPLEmitter>& emitter) const;

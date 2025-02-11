@@ -5,6 +5,15 @@
 #include <glm/glm.hpp>
 #include <SDL2/SDL_events.h>
 
+struct CameraParams {
+    glm::mat4 view;
+    glm::mat4 proj;
+    glm::vec3 pos;
+    glm::vec3 forward;
+    glm::vec3 right;
+    glm::vec3 up;
+};
+
 // Heavily inspired by https://github.com/StudioCherno/Hazel/blob/2024.1/Hazel/src/Hazel/Editor/EditorCamera.h
 class Camera {
 public:
@@ -37,6 +46,8 @@ public:
 
     f32 getFar() const { return m_far; }
     void setFar(f32 far) { m_far = far; m_projDirty = true; }
+
+    CameraParams getParams() const;
 
 private:
     void updateView();
@@ -71,7 +82,7 @@ private:
     f32 m_far;
 
     f32 m_pitch = 0.0f;
-    f32 m_yaw = 0.0f;
+    f32 m_yaw = 1.0f;
     f32 m_distance = -10.0f;
 
     f32 m_pitchDelta = 0.0f;

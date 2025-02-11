@@ -11,7 +11,8 @@
 Camera::Camera(f32 fov, const glm::vec2& viewport, f32 near, f32 far)
     : m_fov(fov), m_aspect(viewport.x / viewport.y), m_near(near), m_far(far), m_viewport(viewport) {
     m_proj = glm::perspective(fov, m_aspect, near, far);
-
+    
+    reset();
     m_position = computePosition();
     const auto orientation = getOrientation();
     m_direction = glm::eulerAngles(orientation) * (180.0f / glm::pi<f32>());
@@ -21,7 +22,7 @@ Camera::Camera(f32 fov, const glm::vec2& viewport, f32 near, f32 far)
 void Camera::reset() {
     m_distance = -10.0f;
     m_yaw = 0.0f;
-    m_pitch = 0.0f;
+    m_pitch = -0.5f;
     m_yawDelta = 0.0f;
     m_pitchDelta = 0.0f;
 }
@@ -155,4 +156,15 @@ glm::vec2 Camera::panSpeed() const {
 f32 Camera::zoomSpeed() const {
     const f32 dist = glm::max(m_distance * 0.2f, 0.0f);
     return glm::min(dist * dist, 50.0f);
+}
+
+CameraParams Camera::getParams() const {
+    return { 
+        m_view, 
+        m_proj,
+        m_position,
+        getForward(),
+        getRight(),
+        getUp()
+    };
 }

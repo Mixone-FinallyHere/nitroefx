@@ -10,6 +10,8 @@
 #include <imgui.h>
 #include <implot.h>
 #include <imgui_internal.h>
+#include <tinyfiledialogs.h>
+#include <stb_image.h>
 
 #define LOCKED_EDITOR() activeEditor_locked
 #define LOCK_EDITOR() auto LOCKED_EDITOR() = m_activeEditor.lock()
@@ -265,6 +267,21 @@ void Editor::renderTextureManager() {
         auto& archive = editor->getArchive();
         auto& textures = archive.getTextures();
 
+        if (ImGui::Button("Import")) {
+            const auto path = tinyfd_openFileDialog(
+                "Import Texture", 
+                "", 
+                0, 
+                nullptr, 
+                "Image Files", 
+                0
+            );
+            if (path) {
+                openTempTexture(path);
+                ImGui::OpenPopup("##ImportTexturePopup");
+            }
+        }
+
         for (int i = 0; i < textures.size(); ++i) {
             auto& texture = textures[i];
             const auto name = fmt::format("[{}] Tex {}x{}", i, texture.width, texture.height);
@@ -304,6 +321,24 @@ void Editor::renderTextureManager() {
 
                 ImGui::TreePop();
             }
+        }
+
+        if (ImGui::BeginPopup("##ImportTexturePopup")) {
+            ImGui::Text("Suggested Format: %d", m_tempTexture->format);
+
+            if (ImGui::Button("Confirm")) {
+                discardTempTexture();
+                ImGui::CloseCurrentPopup();
+            }
+
+            ImGui::SameLine();
+
+            if (ImGui::Button("Cancel")) {
+                discardTempTexture();
+                ImGui::CloseCurrentPopup();
+            }
+
+            ImGui::EndPopup();
         }
     }
 
@@ -1381,4 +1416,33 @@ void Editor::renderChildrenEditor(SPLResource& res) {
 
         ImGui::TreePop();
     }
+}
+
+void Editor::openTempTexture(std::string_view path) {
+    const auto tempTex = new TempTexture;
+    m_tempTexture = tempTex;
+
+    tempTex->path = path;
+    tempTex->data = stbi_load(path.data(), &tempTex->width, &tempTex->height, &tempTex->channels, 4);
+    if (!tempTex->data) {
+        return;
+    }
+
+    bool _;
+    tempTex->preference = TextureConversionPreference::ColorDepth;
+    tempTex->format = SPLTexture::suggestFormat(
+        tempTex->width,
+        tempTex->height,
+        tempTex->channels,
+        tempTex->data,
+        tempTex->preference,
+        _,
+        tempTex->requiresColorCompression,
+        tempTex->requiresAlphaCompression
+    );
+}
+
+void Editor::discardTempTexture() {
+    stbi_image_free(m_tempTexture->data);
+    delete m_tempTexture;
 }

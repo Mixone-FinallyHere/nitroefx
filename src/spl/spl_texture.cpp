@@ -76,10 +76,12 @@ TextureStats collectStatsRGBA(const u8* data, s32 width, s32 height) {
     TextureStats stats = { 0, TextureAttributes::None, 0 };
     std::unordered_set<u32> colors;
     std::unordered_set<u8> alphas;
+    const auto data32 = (const u32*)data;
     for (s32 y = 0; y < height; ++y) {
         for (s32 x = 0; x < width; x += 4) {
-            colors.insert(*(u32*)(data + y * width + x) & 0xFFFFFF);
-            const u8 alpha = data[y * width + x + 3];
+            const u32 color = data32[y * width + x];
+            const u8 alpha = color >> 24;
+            colors.insert(color & 0xFFFFFF);
             alphas.insert(alpha);
 
             if (alpha != 0xFF) {
@@ -99,13 +101,31 @@ TextureStats collectStatsRGBA(const u8* data, s32 width, s32 height) {
 }
 
 TextureStats collectStats(const u8* data, s32 width, s32 height, s32 channels) {
-    switch (channels) {
-    case 1: return collectStatsGrayscale(data, width, height);
-    case 2: return collectStatsGrayscaleAlpha(data, width, height);
-    case 3: return collectStatsRGB(data, width, height);
-    case 4: return collectStatsRGBA(data, width, height);
-    default: return {};
+    TextureStats stats = { 0, TextureAttributes::None, 0 };
+    std::unordered_set<u32> colors;
+    std::unordered_set<u8> alphas;
+    const auto data32 = (const u32*)data;
+    for (s32 y = 0; y < height; ++y) {
+        for (s32 x = 0; x < width; ++x) {
+            const u32 color = data32[y * width + x];
+            const u8 alpha = color >> 24;
+            colors.insert(color & 0xFFFFFF);
+            alphas.insert(alpha);
+
+            if (alpha != 0xFF) {
+                if (alpha == 0) {
+                    stats.flags |= TextureAttributes::HasTransparentPixels;
+                } else {
+                    stats.flags |= TextureAttributes::HasTranslucentPixels;
+                }
+            }
+        }
     }
+
+    stats.uniqueColors = (s32)colors.size();
+    stats.uniqueAlphas = (s32)alphas.size();
+
+    return stats;
 }
 
 TextureFormat getOpaqueFormatBasedOnUniqueColors(s32 uniqueColors) {

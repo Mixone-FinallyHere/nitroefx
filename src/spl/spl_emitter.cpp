@@ -1,11 +1,12 @@
 #include "spl_emitter.h"
 #include "editor/particle_system.h"
+#include "editor/camera.h"
+#include "random.h"
 
 #include <glm/gtc/random.hpp>
 #include <glm/gtc/constants.hpp>
 #include <ranges>
 
-#include "random.h"
 
 
 SPLEmitter::SPLEmitter(const SPLResource* resource, ParticleSystem* system, bool looping, const glm::vec3& pos) {
@@ -242,14 +243,14 @@ void SPLEmitter::update(float deltaTime) {
     }
 }
 
-void SPLEmitter::render(const glm::vec3& cameraPos) {
+void SPLEmitter::render(const CameraParams& params) {
     ParticleRenderer* renderer = m_system->getRenderer();
     for (const auto ptcl : std::views::reverse(m_particles)) {
-        ptcl->render(renderer, cameraPos, m_texCoords.s, m_texCoords.t);
+        ptcl->render(renderer, params, m_texCoords.s, m_texCoords.t);
     }
 
     for (const auto ptcl : std::views::reverse(m_childParticles)) {
-        ptcl->render(renderer, cameraPos, m_childTexCoords.s, m_childTexCoords.t);
+        ptcl->render(renderer, params, m_childTexCoords.s, m_childTexCoords.t);
     }
 }
 

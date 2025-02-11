@@ -1,4 +1,5 @@
 #include "particle_system.h"
+#include "camera.h"
 
 
 ParticleSystem::ParticleSystem(u32 maxParticles, std::span<const SPLTexture> textures)
@@ -41,12 +42,12 @@ void ParticleSystem::update(float deltaTime) {
     m_cycle = !m_cycle;
 }
 
-void ParticleSystem::render(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& cameraPos) {
-    m_renderer.begin(view, proj);
+void ParticleSystem::render(const CameraParams& params) {
+    m_renderer.begin(params.view, params.proj);
 
     for (auto& emitter : m_emitters) {
         if (!emitter->m_state.renderingDisabled) {
-            emitter->render(cameraPos);
+            emitter->render(params);
         }
     }
 

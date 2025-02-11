@@ -4,18 +4,18 @@
 
 #include <glm/glm.hpp>
 
-
 class ParticleRenderer;
 class SPLEmitter;
+struct CameraParams;
 
 class SPLParticle {
 public:
-    void render(ParticleRenderer* renderer, const glm::vec3& cameraPos, f32 s, f32 t) const;
+    void render(ParticleRenderer* renderer, const CameraParams& params, f32 s, f32 t) const;
     glm::vec3 getWorldPosition() const;
 
 private:
-    void renderBillboard(ParticleRenderer* renderer, const glm::vec3& cameraPos, f32 s, f32 t) const;
-    void renderDirectionalBillboard(ParticleRenderer* renderer, const glm::vec3& cameraPos, f32 s, f32 t) const;
+    void renderBillboard(ParticleRenderer* renderer, const CameraParams& params, f32 s, f32 t) const;
+    void renderDirectionalBillboard(ParticleRenderer* renderer, const CameraParams& params, f32 s, f32 t) const;
 
 public:
     SPLEmitter* emitter; // The emitter that spawned this particle

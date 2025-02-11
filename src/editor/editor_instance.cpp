@@ -60,11 +60,7 @@ void EditorInstance::renderParticles(GridRenderer* gridRenderer) {
         gridRenderer->render(m_camera.getView(), m_camera.getProj());
     }
 
-    m_particleSystem.render(
-        m_camera.getView(),
-        m_camera.getProj() ,
-        m_camera.getPosition()
-    );
+    m_particleSystem.render(m_camera.getParams());
 
     m_viewport.unbind();
 }

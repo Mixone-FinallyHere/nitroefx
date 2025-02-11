@@ -56,8 +56,22 @@ private:
 
     void renderChildrenEditor(SPLResource& res);
 
+    void openTempTexture(std::string_view path);
+    void discardTempTexture();
 
 private:
+    struct TempTexture {
+        std::string path;
+        u8* data;
+        s32 width;
+        s32 height;
+        s32 channels;
+        TextureFormat format;
+        bool requiresColorCompression;
+        bool requiresAlphaCompression;
+        TextureConversionPreference preference;
+    };
+
     bool m_pickerOpen = true;
     bool m_textureManagerOpen = true;
     bool m_editorOpen = true;
@@ -72,6 +86,8 @@ private:
 
     std::array<f32, 64> m_xAnimBuffer;
     std::array<f32, 64> m_yAnimBuffer;
+
+    TempTexture* m_tempTexture = nullptr;
 
     std::unordered_map<u64, size_t> m_selectedResources;
     std::weak_ptr<EditorInstance> m_activeEditor;

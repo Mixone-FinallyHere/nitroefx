@@ -7,6 +7,7 @@
 #include <vector>
 
 class ParticleSystem;
+struct CameraParams;
 
 struct SPLEmitterState {
     bool terminate;
@@ -23,7 +24,7 @@ public:
     ~SPLEmitter();
 
     void update(float deltaTime);
-    void render(const glm::vec3& cameraPos);
+    void render(const CameraParams& params);
     void emit(u32 count);
     void emitChildren(const SPLParticle& parent, u32 count);
 
