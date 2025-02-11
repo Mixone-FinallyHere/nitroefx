@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "gfx/gl_shader.h"
 #include "spl/spl_resource.h"
 
 
@@ -32,8 +33,8 @@ private:
     u32 m_vao;
     u32 m_vbo;
     u32 m_ibo;
-    u32 m_shader;
     u32 m_transformVbo;
+    GLShader m_shader;
 
     std::span<const SPLTexture> m_textures;
     glm::mat4 m_view;

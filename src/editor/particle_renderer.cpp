@@ -10,6 +10,8 @@
 
 namespace {
 
+using namespace std::string_view_literals;
+
 constexpr f32 s_quadVertices[12] = {
     -1.0f, -1.0f, 0.0f, // bottom left
      1.0f, -1.0f, 0.0f, // bottom right
@@ -41,7 +43,7 @@ void main() {
     fragColor = color;
     texCoord = texCoords[gl_VertexID];
 }
-)";
+)"sv;
 
 constexpr auto s_fragmentShader = R"(
 #version 450 core
@@ -61,12 +63,13 @@ void main() {
 
     color = outColor;
 }
-)";
+)"sv;
 
 }
 
 ParticleRenderer::ParticleRenderer(u32 maxInstances, std::span<const SPLTexture> textures)
-    : m_maxInstances(maxInstances), m_textures(textures), m_view(1.0f), m_proj(1.0f) {
+    : m_maxInstances(maxInstances), m_shader(s_vertexShader, s_fragmentShader)
+    , m_textures(textures), m_view(1.0f), m_proj(1.0f) {
 
     for (u32 i = 0; i < textures.size(); i++) {
         m_particles.emplace_back();
@@ -115,57 +118,12 @@ ParticleRenderer::ParticleRenderer(u32 maxInstances, std::span<const SPLTexture>
 
     glCall(glBindVertexArray(0));
 
-    // Create Shaders
-    const u32 vs = glCreateShader(GL_VERTEX_SHADER);
-    glCall(glShaderSource(vs, 1, &s_vertexShader, nullptr));
-    glCall(glCompileShader(vs));
-
-    const u32 fs = glCreateShader(GL_FRAGMENT_SHADER);
-    glCall(glShaderSource(fs, 1, &s_fragmentShader, nullptr));
-    glCall(glCompileShader(fs));
-
-    s32 success;
-    char info[512];
-    glGetShaderiv(vs, GL_COMPILE_STATUS, &success);
-    if (!success) {
-        glGetShaderInfoLog(vs, sizeof(info), nullptr, info);
-        spdlog::error("Failed to compile vertex shader: {}", info);
-        return;
-    }
-
-    glCall(glGetShaderiv(fs, GL_COMPILE_STATUS, &success));
-    if (!success) {
-        glCall(glGetShaderInfoLog(fs, sizeof(info), nullptr, info));
-        spdlog::error("Failed to compile fragment shader: {}", info);
-        return;
-    }
-
-    m_shader = glCreateProgram();
-    if (m_shader == 0) {
-        spdlog::error("Failed to create shader program: {}", glGetError());
-        return;
-    }
-
-    glCall(glAttachShader(m_shader, vs));
-    glCall(glAttachShader(m_shader, fs));
-    glCall(glLinkProgram(m_shader));
-
-    glCall(glGetProgramiv(m_shader, GL_LINK_STATUS, &success));
-    if (!success) {
-        glCall(glGetProgramInfoLog(m_shader, sizeof(info), nullptr, info));
-        spdlog::error("Failed to link shader program: {}", info);
-        return;
-    }
-
-    glCall(glDeleteShader(vs));
-    glCall(glDeleteShader(fs));
-
     // Get uniform locations
-    glCall(glUseProgram(m_shader));
-    m_viewLocation = glGetUniformLocation(m_shader, "view");
-    m_projLocation = glGetUniformLocation(m_shader, "proj");
-    m_textureLocation = glGetUniformLocation(m_shader, "tex");
-    glCall(glUseProgram(0));
+    m_shader.bind();
+    m_viewLocation = m_shader.getUniform("view");
+    m_projLocation = m_shader.getUniform("proj");
+    m_textureLocation = m_shader.getUniform("tex");
+    m_shader.unbind();
 }
 
 void ParticleRenderer::begin(const glm::mat4& view, const glm::mat4& proj) {
@@ -180,7 +138,7 @@ void ParticleRenderer::begin(const glm::mat4& view, const glm::mat4& proj) {
 
 void ParticleRenderer::end() {
 
-    glCall(glUseProgram(m_shader));
+    m_shader.bind();
     glCall(glActiveTexture(GL_TEXTURE0));
     glCall(glUniformMatrix4fv(m_viewLocation, 1, GL_FALSE, glm::value_ptr(m_view)));
     glCall(glUniformMatrix4fv(m_projLocation, 1, GL_FALSE, glm::value_ptr(m_proj)));
@@ -199,7 +157,7 @@ void ParticleRenderer::end() {
     }
 
     glCall(glBindVertexArray(0));
-    glCall(glUseProgram(0));
+    m_shader.unbind();
 }
 
 void ParticleRenderer::submit(u32 texture, const ParticleInstance& instance) {
