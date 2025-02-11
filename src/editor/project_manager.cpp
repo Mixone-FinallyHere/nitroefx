@@ -89,6 +89,8 @@ void ProjectManager::render() {
             ImGui::Checkbox("Hide non SPL files", &m_hideOtherFiles);
             ImGui::InputText("Filter", &m_searchString);
 
+            ImGui::BeginChild("##ProjectManagerFiles");
+
             for (const auto& entry : std::filesystem::directory_iterator(m_projectPath)) {
                 if (entry.is_directory()) {
                     renderDirectory(entry.path());
@@ -98,6 +100,8 @@ void ProjectManager::render() {
                     }
                 }
             }
+
+            ImGui::EndChild();
         }
     }
 
