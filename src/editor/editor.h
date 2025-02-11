@@ -66,9 +66,7 @@ private:
         s32 width;
         s32 height;
         s32 channels;
-        TextureFormat format;
-        bool requiresColorCompression;
-        bool requiresAlphaCompression;
+        TextureImportSpecification spec;
         TextureConversionPreference preference;
     };
 

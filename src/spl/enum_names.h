@@ -77,6 +77,18 @@ inline constexpr std::array g_collisionType = {
     "Kill",
     "Bounce"
 };
+
+inline const std::map<TextureFormat, const char*> g_textureFormatNames = {
+    { TextureFormat::None, "None" },
+    { TextureFormat::A3I5, "A3I5" },
+    { TextureFormat::Palette4, "Palette 4" },
+    { TextureFormat::Palette16, "Palette 16" },
+    { TextureFormat::Palette256, "Palette 256" },
+    { TextureFormat::Comp4x4, "Comp4x4" },
+    { TextureFormat::A5I3, "A5I3" },
+    { TextureFormat::Direct, "Direct" }
+};
+
 } // namespace detail
 
 inline const char* getEmissionType(SPLEmissionType v) {
@@ -117,4 +129,9 @@ inline const char* getTextureRepeat(TextureRepeat v) {
 inline const char* getTextureFlip(TextureFlip v) {
     const auto it = detail::g_textureFlipNames.find(v);
     return it != detail::g_textureFlipNames.end() ? it->second : "Unknown";
+}
+
+inline const char* getTextureFormat(TextureFormat v) {
+    const auto it = detail::g_textureFormatNames.find(v);
+    return it != detail::g_textureFormatNames.end() ? it->second : "Unknown";
 }

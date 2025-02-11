@@ -3,6 +3,7 @@
 #include <memory>
 #include <optional>
 #include <span>
+#include <unordered_set>
 #include <vector>
 
 #include <glm/glm.hpp>
@@ -603,6 +604,22 @@ enum class TextureConversionPreference {
     AlphaDepth,
 };
 
+enum class TextureAttributes {
+    None = 0,
+    HasTransparentPixels = 1 << 0,
+    HasTranslucentPixels = 1 << 1,
+};
+
+struct TextureImportSpecification {
+    bool color0Transparent;
+    bool requiresColorCompression;
+    bool requiresAlphaCompression;
+    TextureFormat format;
+    std::unordered_set<u32> uniqueColors;
+    std::unordered_set<u8> uniqueAlphas;
+    TextureAttributes flags;
+};
+
 struct SPLTexture {
     const SPLTextureResource* resource;
     SPLTextureParam param;
@@ -612,17 +629,15 @@ struct SPLTexture {
     std::span<const u8> paletteData;
     std::shared_ptr<GLTexture> glTexture;
 
-    static TextureFormat suggestFormat(
+    static TextureImportSpecification suggestSpecification(
         s32 width, 
         s32 height, 
         s32 channels, 
         const u8* data,
-        TextureConversionPreference preference,
-        bool& color0Transparent, 
-        bool& requiresColorCompression,
-        bool& requiresAlphaCompression
+        TextureConversionPreference preference
     );
 };
+
 
 //using SPLScaleAnim = SPLScaleAnimTemplate<f32>;
 //using SPLScaleAnimNative = SPLScaleAnimTemplate<fx16>;

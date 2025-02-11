@@ -324,7 +324,14 @@ void Editor::renderTextureManager() {
         }
 
         if (ImGui::BeginPopup("##ImportTexturePopup")) {
-            ImGui::Text("Suggested Format: %d", m_tempTexture->format);
+            ImGui::Text("Texture Info:");
+            ImGui::Text("Size: %dx%d", m_tempTexture->width, m_tempTexture->height);
+            ImGui::Text("Channels: %d", m_tempTexture->channels);
+            ImGui::Text("Suggested Format: %s", getTextureFormat(m_tempTexture->spec.format));
+            ImGui::Text("Color Compression: %s", m_tempTexture->spec.requiresColorCompression ? "Yes" : "No");
+            ImGui::Text("Alpha Compression: %s", m_tempTexture->spec.requiresAlphaCompression ? "Yes" : "No");
+            ImGui::Text("Number of unique Colors: %llu", m_tempTexture->spec.uniqueColors.size());
+            ImGui::Text("Number of unique Alphas: %llu", m_tempTexture->spec.uniqueAlphas.size());
 
             if (ImGui::Button("Confirm")) {
                 discardTempTexture();
@@ -1429,18 +1436,8 @@ void Editor::openTempTexture(std::string_view path) {
         return;
     }
 
-    bool _;
     tempTex->preference = TextureConversionPreference::ColorDepth;
-    tempTex->format = SPLTexture::suggestFormat(
-        tempTex->width,
-        tempTex->height,
-        tempTex->channels,
-        tempTex->data,
-        tempTex->preference,
-        _,
-        tempTex->requiresColorCompression,
-        tempTex->requiresAlphaCompression
-    );
+    tempTex->spec = SPLTexture::suggestSpecification(tempTex->width, tempTex->height, tempTex->channels, tempTex->data, tempTex->preference);
 }
 
 void Editor::discardTempTexture() {
