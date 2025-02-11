@@ -107,6 +107,24 @@ void SPLAlphaAnim::apply(SPLParticle& ptcl, const SPLResource& resource, f32 lif
     );
 }
 
+void SPLAlphaAnim::plot(std::span<f32> xs, std::span<f32> ys) const {
+    const size_t samples = std::min(xs.size(), ys.size());
+    for (size_t i = 0; i < samples; i++) {
+        const f32 lifeRate = (f32)i / (f32)samples;
+        xs[i] = lifeRate;
+
+        if (lifeRate < curve.getIn()) {
+            ys[i] = glm::mix(alpha.start, alpha.mid, lifeRate / curve.getIn());
+        } else if (lifeRate < curve.getOut()) {
+            ys[i] = alpha.mid;
+        } else {
+            ys[i] = glm::mix(alpha.mid, alpha.end, (lifeRate - curve.getOut()) / (1.0f - curve.getOut()));
+        }
+
+        ys[i] = random::scaledRange(ys[i], flags.randomRange);
+    }
+}
+
 void SPLTexAnim::apply(SPLParticle& ptcl, const SPLResource& resource, f32 lifeRate) const {
     
     for (int i = 0; i < param.textureCount; i++) {

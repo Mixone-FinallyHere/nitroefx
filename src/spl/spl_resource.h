@@ -469,7 +469,19 @@ struct SPLAlphaAnim final : SPLAnim {
         curve = native.curve;
     }
 
+    SPLAlphaAnim(const glm::vec3& alpha, const SPLCurveInOut& curve, decltype(flags) flags)
+        : alpha({ alpha.r, alpha.g, alpha.b }), curve(curve), flags(flags) {}
+
     void apply(SPLParticle& ptcl, const SPLResource& resource, f32 lifeRate) const override;
+    void plot(std::span<f32> xs, std::span<f32> ys) const;
+
+    static SPLAlphaAnim createDefault() {
+        return SPLAlphaAnim(
+            { 1.0f, 15.0f / 31.0f, 0.0f },
+            { .in = 128, .out = 128 },
+            { .randomRange = 1.0f, .loop = false }
+        );
+    }
 };
 
 struct SPLTexAnimNative {

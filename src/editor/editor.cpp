@@ -911,15 +911,30 @@ void Editor::renderAnimationEditor(SPLResource& res) {
             ImGui::CloseCurrentPopup();
         }
 
+        if (NOTIFY(ImGui::MenuItem("Alpha", nullptr, false, !res.header.flags.hasAlphaAnim))) {
+            res.addAlphaAnim(SPLAlphaAnim::createDefault());
+            ImGui::CloseCurrentPopup();
+        }
+
         ImGui::EndPopup();
     }
 
     if (res.scaleAnim) {
-        renderScaleAnimEditor(*res.scaleAnim);
+        if (renderScaleAnimEditor(*res.scaleAnim)) {
+            res.removeScaleAnim();
+        }
     }
 
     if (res.colorAnim) {
-        renderColorAnimEditor(res, *res.colorAnim);
+        if (renderColorAnimEditor(res, *res.colorAnim)) {
+            res.removeColorAnim();
+        }
+    }
+
+    if (res.alphaAnim) {
+        if (renderAlphaAnimEditor(*res.alphaAnim)) {
+            res.removeAlphaAnim();
+        }
     }
 }
 
@@ -1087,6 +1102,62 @@ bool Editor::renderColorAnimEditor(const SPLResource& mainRes, SPLColorAnim& res
 }
 
 bool Editor::renderAlphaAnimEditor(SPLAlphaAnim& res) {
+    LOCK_EDITOR();
+
+    static bool hovered = false;
+    if (hovered) {
+        ImGui::PushStyleColor(ImGuiCol_Border, s_hoverAccentColor);
+    }
+
+    if (!ImGui::CollapsingHeader("Alpha Animation")) {
+        return false;
+    }
+
+    ImGui::BeginChild("##alphaAnimEditor", {}, ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY);
+
+    NOTIFY(ImGui::SliderFloat("Start Alpha", &res.alpha.start, 0, 1));
+    NOTIFY(ImGui::SliderFloat("Mid Alpha", &res.alpha.mid, 0, 1));
+    NOTIFY(ImGui::SliderFloat("End Alpha", &res.alpha.end, 0, 1));
+
+    res.alpha.start = (f32)((u8)(res.alpha.start * 31.0f)) / 31.0f;
+    res.alpha.mid = (f32)((u8)(res.alpha.mid * 31.0f)) / 31.0f;
+    res.alpha.end = (f32)((u8)(res.alpha.end * 31.0f)) / 31.0f;
+
+    const auto minAlpha = std::min({ res.alpha.start, res.alpha.mid, res.alpha.end });
+    const auto maxAlpha = std::max({ res.alpha.start, res.alpha.mid, res.alpha.end });
+
+    constexpr u8 min = 0;
+    constexpr u8 max = 255;
+    NOTIFY(ImGui::SliderScalar("In", ImGuiDataType_U8, &res.curve.in, &min, &max, "%u"));
+    NOTIFY(ImGui::SliderScalar("Out", ImGuiDataType_U8, &res.curve.out, &min, &max, "%u"));
+    NOTIFY(ImGui::SliderFloat("Random Range", &res.flags.randomRange, 0, 1));
+    NOTIFY(ImGui::Checkbox("Loop", &res.flags.loop));
+
+    res.plot(m_xAnimBuffer, m_yAnimBuffer);
+
+    if (ImPlot::BeginPlot("##alphaAnimPlot", {-1, 0}, ImPlotFlags_CanvasOnly | ImPlotFlags_NoInputs)) {
+        ImPlot::SetupAxisLimits(ImAxis_X1, 0, 1);
+        ImPlot::SetupAxisLimits(ImAxis_Y1, minAlpha, maxAlpha);
+        ImPlot::PlotLine("Alpha", m_xAnimBuffer.data(), m_yAnimBuffer.data(), m_xAnimBuffer.size());
+        ImPlot::EndPlot();
+    }
+
+    ImGui::EndChild();
+
+    if (hovered) {
+        ImGui::PopStyleColor();
+    }
+
+    hovered = ImGui::IsItemHovered();
+    if (ImGui::BeginPopupContextItem("##alphaAnimContext")) {
+        if (ImGui::MenuItem("Delete")) {
+            ImGui::CloseCurrentPopup();
+            return true;
+        }
+
+        ImGui::EndPopup();
+    }
+
     return false;
 }
 
