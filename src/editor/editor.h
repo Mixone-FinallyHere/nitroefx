@@ -1,6 +1,7 @@
 #pragma once
 #include "spl/spl_resource.h"
 #include "editor_instance.h"
+#include "debug_renderer.h"
 #include "grid_renderer.h"
 #include "types.h"
 
@@ -90,6 +91,8 @@ private:
     std::unordered_map<u64, size_t> m_selectedResources;
     std::weak_ptr<EditorInstance> m_activeEditor;
     std::shared_ptr<GridRenderer> m_gridRenderer;
+    std::unique_ptr<DebugRenderer> m_debugRenderer;
+    std::shared_ptr<GridRenderer> m_collisionGridRenderer;
 
     struct EmitterSpawnTask {
         u64 resourceIndex;

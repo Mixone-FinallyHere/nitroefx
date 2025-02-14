@@ -24,7 +24,7 @@ constexpr u32 s_quadIndices[6] = {
     2, 3, 0
 };
 
-constexpr auto s_vertexShader = R"(
+constexpr auto s_lineVertexShader = R"(
 #version 450 core
 
 layout(location = 0) in vec3 position;
@@ -68,7 +68,7 @@ void main() {
 }
 
 ParticleRenderer::ParticleRenderer(u32 maxInstances, std::span<const SPLTexture> textures)
-    : m_maxInstances(maxInstances), m_shader(s_vertexShader, s_fragmentShader)
+    : m_maxInstances(maxInstances), m_shader(s_lineVertexShader, s_fragmentShader)
     , m_textures(textures), m_view(1.0f), m_proj(1.0f) {
 
     for (u32 i = 0; i < textures.size(); i++) {

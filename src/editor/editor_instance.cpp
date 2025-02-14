@@ -45,7 +45,7 @@ std::pair<bool, bool> EditorInstance::render() {
     return { open, active };
 }
 
-void EditorInstance::renderParticles(GridRenderer* gridRenderer) {
+void EditorInstance::renderParticles(const std::vector<Renderer*>& renderers) {
     if (m_updateProj || m_size != m_viewport.getSize()) {
         m_viewport.resize(m_size);
         m_camera.setViewport(m_size.x, m_size.y);
@@ -56,8 +56,8 @@ void EditorInstance::renderParticles(GridRenderer* gridRenderer) {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    if (gridRenderer) {
-        gridRenderer->render(m_camera.getView(), m_camera.getProj());
+    for (const auto renderer : renderers) {
+        renderer->render(m_camera.getView(), m_camera.getProj());
     }
 
     m_particleSystem.render(m_camera.getParams());

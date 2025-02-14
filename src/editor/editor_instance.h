@@ -8,6 +8,8 @@
 #include "gfx/gl_viewport.h"
 #include "particle_renderer.h"
 #include "particle_system.h"
+#include "renderer.h"
+#include "debug_renderer.h"
 #include "grid_renderer.h"
 #include "spl/spl_archive.h"
 
@@ -17,7 +19,7 @@ public:
     explicit EditorInstance(const std::filesystem::path& path);
 
     std::pair<bool, bool> render();
-    void renderParticles(GridRenderer* gridRenderer = nullptr);
+    void renderParticles(const std::vector<Renderer*>& renderers);
     void updateParticles(float deltaTime);
     void handleEvent(const SDL_Event& event);
 

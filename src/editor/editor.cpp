@@ -32,6 +32,8 @@ constexpr std::array s_emitterSpawnTypes = {
 
 Editor::Editor() : m_xAnimBuffer(), m_yAnimBuffer() {
     m_gridRenderer = std::make_shared<GridRenderer>(s_gridDimensions, s_gridSpacing);
+    m_debugRenderer = std::make_unique<DebugRenderer>(1000);
+    m_collisionGridRenderer = std::make_shared<GridRenderer>(s_gridDimensions / 2, s_gridSpacing);
 }
 
 void Editor::render() {
@@ -89,7 +91,24 @@ void Editor::renderParticles() {
         return;
     }
 
-    editor->renderParticles(m_gridRenderer.get());
+    std::vector<Renderer*> renderers = { m_gridRenderer.get(), m_debugRenderer.get() };
+
+    const auto& archive = editor->getArchive();
+    const auto& resources = archive.getResources();
+    if (m_selectedResources[editor->getUniqueID()] != -1) {
+        const auto& resource = resources[m_selectedResources[editor->getUniqueID()]];
+        for (const auto& bhv : resource.behaviors) {
+            if (bhv->type == SPLBehaviorType::CollisionPlane) {
+                const auto colPlane = std::dynamic_pointer_cast<SPLCollisionPlaneBehavior>(bhv);
+                const glm::vec4 color = colPlane->collisionType == SPLCollisionType::Kill ? glm::vec4(1, 0, 0, 0.5f) : glm::vec4(0, 1, 0, 0.5f);
+                m_collisionGridRenderer->setColor(color);
+                m_collisionGridRenderer->setHeight(colPlane->y);
+                renderers.push_back(m_collisionGridRenderer.get());
+            }
+        }
+    }
+
+    editor->renderParticles(renderers);
 }
 
 void Editor::openPicker() {

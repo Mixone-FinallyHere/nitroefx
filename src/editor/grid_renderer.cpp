@@ -6,33 +6,41 @@ namespace {
 
 using namespace std::string_view_literals;
 
-constexpr auto s_vertexShader = R"(
+constexpr auto s_lineVertexShader = R"(
 #version 450 core
 
 layout(location = 0) in vec3 position;
 
 uniform mat4 view;
 uniform mat4 proj;
+uniform float height;
+uniform vec4 color;
+
+out vec4 fragColor;
 
 void main() {
-    gl_Position = proj * view * vec4(position, 1.0);
+    gl_Position = proj * view * vec4(position.x, height, position.z, 1.0);
+    fragColor = color;
 }
 )"sv;
 
 constexpr auto s_fragmentShader = R"(
 #version 450 core
 
+in vec4 fragColor;
+
 out vec4 color;
 
 void main() {
-    color = vec4(1.0, 1.0, 1.0, 0.2);
+    color = fragColor;
+    //color = vec4(1.0, 1.0, 1.0, 0.2);
 }
 )"sv;
 
 }
 
 GridRenderer::GridRenderer(const glm::ivec2& dimensions, const glm::vec2& spacing)
-    : m_dimensions(dimensions), m_spacing(spacing), m_shader(s_vertexShader, s_fragmentShader) {
+    : m_dimensions(dimensions), m_spacing(spacing), m_shader(s_lineVertexShader, s_fragmentShader) {
     createGrid();
 }
 
@@ -40,6 +48,8 @@ void GridRenderer::render(const glm::mat4& view, const glm::mat4& proj) {
     m_shader.bind();
     glCall(glUniformMatrix4fv(m_viewLocation, 1, GL_FALSE, glm::value_ptr(view)));
     glCall(glUniformMatrix4fv(m_projLocation, 1, GL_FALSE, glm::value_ptr(proj)));
+    glCall(glUniform1f(m_heightLocation, m_height));
+    glCall(glUniform4fv(m_colorLocation, 1, glm::value_ptr(m_color)));
     glCall(glBindVertexArray(m_vao));
     glCall(glDrawArrays(GL_LINES, 0, (u32)m_vertices.size()));
     glCall(glBindVertexArray(0));
@@ -76,5 +86,7 @@ void GridRenderer::createGrid() {
     m_shader.bind();
     m_viewLocation = m_shader.getUniform("view");
     m_projLocation = m_shader.getUniform("proj");
+    m_heightLocation = m_shader.getUniform("height");
+    m_colorLocation = m_shader.getUniform("color");
     m_shader.unbind();
 }
