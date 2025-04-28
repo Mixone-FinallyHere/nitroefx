@@ -4,6 +4,7 @@
 #include "help_messages.h"
 
 #include <array>
+#include <ranges>
 #include <fmt/format.h>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/integer.hpp>
@@ -12,6 +13,7 @@
 #include <imgui_internal.h>
 #include <tinyfiledialogs.h>
 #include <stb_image.h>
+#include <libimagequant.h>
 
 #define LOCKED_EDITOR() activeEditor_locked
 #define LOCK_EDITOR() auto LOCKED_EDITOR() = m_activeEditor.lock()
@@ -346,11 +348,33 @@ void Editor::renderTextureManager() {
             ImGui::Text("Texture Info:");
             ImGui::Text("Size: %dx%d", m_tempTexture->width, m_tempTexture->height);
             ImGui::Text("Channels: %d", m_tempTexture->channels);
-            ImGui::Text("Suggested Format: %s", getTextureFormat(m_tempTexture->spec.format));
-            ImGui::Text("Color Compression: %s", m_tempTexture->spec.requiresColorCompression ? "Yes" : "No");
-            ImGui::Text("Alpha Compression: %s", m_tempTexture->spec.requiresAlphaCompression ? "Yes" : "No");
-            ImGui::Text("Number of unique Colors: %llu", m_tempTexture->spec.uniqueColors.size());
-            ImGui::Text("Number of unique Alphas: %llu", m_tempTexture->spec.uniqueAlphas.size());
+            ImGui::Text("Number of unique Colors: %llu", m_tempTexture->suggestedSpec.uniqueColors.size());
+            ImGui::Text("Number of unique Alphas: %llu", m_tempTexture->suggestedSpec.uniqueAlphas.size());
+
+            //ImGui::Text("Suggested Format: %s", getTextureFormat(m_tempTexture->suggestedSpec.format));
+            if (ImGui::BeginCombo("Format", getTextureFormat(m_tempTexture->suggestedSpec.format))) {
+                for (auto i = (int)TextureFormat::A3I5; i < (int)TextureFormat::Count; i++) {
+                    if (ImGui::Selectable(getTextureFormat((TextureFormat)i), (int)m_tempTexture->suggestedSpec.format == i)) {
+                        m_tempTexture->suggestedSpec.setFormat((TextureFormat)i);
+                        quantizeTexture(
+                            m_tempTexture->data,
+                            m_tempTexture->width,
+                            m_tempTexture->height,
+                            m_tempTexture->suggestedSpec,
+                            m_tempTexture->quantized
+                        );
+
+                        m_tempTexture->texture->update(m_tempTexture->quantized);
+                    }
+                }
+
+                ImGui::EndCombo();
+            }
+
+            ImGui::Text("Color Compression: %s", m_tempTexture->suggestedSpec.requiresColorCompression ? "Yes" : "No");
+            ImGui::Text("Alpha Compression: %s", m_tempTexture->suggestedSpec.requiresAlphaCompression ? "Yes" : "No");
+
+            ImGui::Image((ImTextureID)m_tempTexture->texture->getHandle(), { 256, 256 });
 
             if (ImGui::Button("Confirm")) {
                 discardTempTexture();
@@ -1455,11 +1479,56 @@ void Editor::openTempTexture(std::string_view path) {
         return;
     }
 
+    tempTex->texture = std::make_unique<GLTexture>(tempTex->width, tempTex->height);
+    tempTex->quantized = new u8[tempTex->width * tempTex->height * 4];
+
     tempTex->preference = TextureConversionPreference::ColorDepth;
-    tempTex->spec = SPLTexture::suggestSpecification(tempTex->width, tempTex->height, tempTex->channels, tempTex->data, tempTex->preference);
+    tempTex->suggestedSpec = SPLTexture::suggestSpecification(tempTex->width, tempTex->height, tempTex->channels, tempTex->data, tempTex->preference);
+
+    if (tempTex->suggestedSpec.requiresColorCompression) {
+        quantizeTexture(tempTex->data, tempTex->width, tempTex->height, tempTex->suggestedSpec, tempTex->quantized);
+        tempTex->texture->update(tempTex->quantized);
+    } else {
+        tempTex->texture->update(tempTex->data);
+    }
 }
 
 void Editor::discardTempTexture() {
     stbi_image_free(m_tempTexture->data);
+    delete m_tempTexture->quantized;
     delete m_tempTexture;
+}
+
+void Editor::quantizeTexture(const u8* data, s32 width, s32 height, const TextureImportSpecification& spec, u8* out) {
+    liq_attr* attr = liq_attr_create();
+    liq_set_max_colors(attr, spec.getMaxColors());
+    
+    liq_image* image = liq_image_create_rgba(attr, data, width, height, 0);
+    
+    liq_error err;
+    liq_result* result = nullptr;
+    if ((err = liq_image_quantize(image, attr, &result)) != LIQ_OK) {
+        spdlog::error("Failed to quantize image: {}", (int)err);
+        return;
+    }
+
+    std::vector<u8> quantized(width * height);
+    if ((err = liq_write_remapped_image(result, image, quantized.data(), quantized.size())) != LIQ_OK) {
+        spdlog::error("Failed to write quantized image: {}", (int)err);
+        return;
+    }
+
+    const auto palette = liq_get_palette(result);
+    
+    if (palette->count > spec.getMaxColors()) {
+        spdlog::error("Too many colors in resulting palette");
+        return;
+    }
+
+    const auto colors = (u32*)palette->entries;
+    
+    std::span<u32> remapped((u32*)out, width * height);
+    for (auto [index, pixel] : std::views::zip(quantized, remapped)) {
+        pixel = colors[index];
+    }
 }

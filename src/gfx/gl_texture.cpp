@@ -29,6 +29,35 @@ GLTexture::GLTexture(const SPLTexture& texture)
     createTexture(texture);
 }
 
+GLTexture::GLTexture(size_t width, size_t height) 
+    : m_width(width), m_height(height), m_format(TextureFormat::Direct) {
+    glCall(glGenTextures(1, &m_texture));
+    glCall(glBindTexture(GL_TEXTURE_2D, m_texture));
+
+    glCall(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST));
+    glCall(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST));
+    glCall(glTexParameteri(
+        GL_TEXTURE_2D,
+        GL_TEXTURE_WRAP_S,
+        GL_MIRRORED_REPEAT
+    ));
+    glCall(glTexParameteri(
+        GL_TEXTURE_2D,
+        GL_TEXTURE_WRAP_T,
+        GL_MIRRORED_REPEAT
+    ));
+
+    glCall(glTexStorage2D(
+        GL_TEXTURE_2D,
+        1,
+        GL_RGBA8,
+        (s32)m_width,
+        (s32)m_height
+    ));
+
+    glCall(glBindTexture(GL_TEXTURE_2D, 0));
+}
+
 GLTexture::GLTexture(GLTexture&& other) noexcept {
     if (this != &other) {
         m_texture = other.m_texture;
@@ -73,6 +102,21 @@ void GLTexture::bind() const {
 
 void GLTexture::unbind() {
     glCall(glBindTexture(GL_TEXTURE_2D, 0));
+}
+
+void GLTexture::update(const void* rgba) {
+    bind();
+    glCall(glTexSubImage2D(
+        GL_TEXTURE_2D,
+        0,
+        0,
+        0,
+        m_width,
+        m_height,
+        GL_RGBA,
+        GL_UNSIGNED_BYTE,
+        rgba
+    ));
 }
 
 void GLTexture::createTexture(const SPLTexture& texture) {

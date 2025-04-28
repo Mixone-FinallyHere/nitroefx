@@ -618,6 +618,9 @@ struct TextureImportSpecification {
     std::unordered_set<u32> uniqueColors;
     std::unordered_set<u8> uniqueAlphas;
     TextureAttributes flags;
+
+    void setFormat(TextureFormat format);
+    int getMaxColors() const;
 };
 
 struct SPLTexture {

@@ -105,42 +105,42 @@ DebugRenderer::DebugRenderer(u32 maxLines)
     glCall(glBindVertexArray(0));
 
     // Objects
-    // m_objectShader.bind();
-    // m_viewLocation = m_objectShader.getUniform("view");
-    // m_projLocation = m_objectShader.getUniform("proj");
-    // m_objectShader.unbind();
+    m_objectShader.bind();
+    m_viewLocation = m_objectShader.getUniform("view");
+    m_projLocation = m_objectShader.getUniform("proj");
+    m_objectShader.unbind();
 
-    // glCall(glGenVertexArrays(1, &m_boxVao));
-    // glCall(glGenBuffers(1, &m_boxVbo));
-    // glCall(glGenBuffers(1, &m_boxIbo));
+    glCall(glGenVertexArrays(1, &m_boxVao));
+    glCall(glGenBuffers(1, &m_boxVbo));
+    glCall(glGenBuffers(1, &m_boxIbo));
 
-    // glCall(glBindVertexArray(m_boxVao));
-    // glCall(glBindBuffer(GL_ARRAY_BUFFER, m_boxVbo));
-    // glCall(glBufferData(GL_ARRAY_BUFFER, s_boxVertices.size() * sizeof(f32), s_boxVertices.data(), GL_STATIC_DRAW));
+    glCall(glBindVertexArray(m_boxVao));
+    glCall(glBindBuffer(GL_ARRAY_BUFFER, m_boxVbo));
+    glCall(glBufferData(GL_ARRAY_BUFFER, s_boxVertices.size() * sizeof(f32), s_boxVertices.data(), GL_STATIC_DRAW));
 
-    // glCall(glEnableVertexAttribArray(0));
-    // glCall(glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(f32), (const void*)0));
+    glCall(glEnableVertexAttribArray(0));
+    glCall(glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(f32), (const void*)0));
 
-    // glCall(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_boxIbo));
-    // glCall(glBufferData(GL_ELEMENT_ARRAY_BUFFER, s_boxIndices.size() * sizeof(u32), s_boxIndices.data(), GL_STATIC_DRAW));
+    glCall(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_boxIbo));
+    glCall(glBufferData(GL_ELEMENT_ARRAY_BUFFER, s_boxIndices.size() * sizeof(u32), s_boxIndices.data(), GL_STATIC_DRAW));
 
-    // glCall(glBindVertexArray(0));
+    glCall(glBindVertexArray(0));
 
-    // glCall(glGenBuffers(1, &m_boxInstanceVbo));
-    // glCall(glBindBuffer(GL_ARRAY_BUFFER, m_boxInstanceVbo));
-    // glCall(glBufferData(GL_ARRAY_BUFFER, 0, nullptr, GL_DYNAMIC_DRAW));
+    glCall(glGenBuffers(1, &m_boxInstanceVbo));
+    glCall(glBindBuffer(GL_ARRAY_BUFFER, m_boxInstanceVbo));
+    glCall(glBufferData(GL_ARRAY_BUFFER, 0, nullptr, GL_DYNAMIC_DRAW));
     
-    // glCall(glBindVertexArray(m_boxVao));
-    // glCall(glEnableVertexAttribArray(1));
-    // glCall(glEnableVertexAttribArray(2));
-    // glCall(glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(BoxInstance), (const void*)offsetof(BoxInstance, color)));
-    // glCall(glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(BoxInstance), (const void*)offsetof(BoxInstance, transform)));
-    // glCall(glVertexAttribDivisor(1, 1));
-    // glCall(glVertexAttribDivisor(2, 1));
-    // glCall(glBindVertexArray(0));
+    glCall(glBindVertexArray(m_boxVao));
+    glCall(glEnableVertexAttribArray(1));
+    glCall(glEnableVertexAttribArray(2));
+    glCall(glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(BoxInstance), (const void*)offsetof(BoxInstance, color)));
+    glCall(glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(BoxInstance), (const void*)offsetof(BoxInstance, transform)));
+    glCall(glVertexAttribDivisor(1, 1));
+    glCall(glVertexAttribDivisor(2, 1));
+    glCall(glBindVertexArray(0));
 
-    // glCall(glBindBuffer(GL_ARRAY_BUFFER, 0));
-    // glCall(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
+    glCall(glBindBuffer(GL_ARRAY_BUFFER, 0));
+    glCall(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
 }
 
 void DebugRenderer::render(const glm::mat4& view, const glm::mat4& proj) {
@@ -156,7 +156,20 @@ void DebugRenderer::render(const glm::mat4& view, const glm::mat4& proj) {
 
     m_lineShader.unbind();
 
+    m_objectShader.bind();
+    glCall(glUniformMatrix4fv(m_viewLocation, 1, GL_FALSE, glm::value_ptr(view)));
+    glCall(glUniformMatrix4fv(m_projLocation, 1, GL_FALSE, glm::value_ptr(proj)));
+
+    glCall(glBindVertexArray(m_boxVao));
+    glCall(glBindBuffer(GL_ARRAY_BUFFER, m_boxInstanceVbo));
+    glCall(glBufferSubData(GL_ARRAY_BUFFER, 0, m_boxes.size() * sizeof(BoxInstance), m_boxes.data()));
+    glCall(glDrawElementsInstanced(GL_TRIANGLES, s_boxIndices.size(), GL_UNSIGNED_INT, nullptr, m_boxes.size()));
+    glCall(glBindVertexArray(0));
+
+    m_objectShader.unbind();
+    
     m_vertices.clear();
+    m_boxes.clear();
 }
 
 void DebugRenderer::addLine(const glm::vec3& start, const glm::vec3& end, const glm::vec3& color) {
@@ -171,6 +184,11 @@ void DebugRenderer::addPlane(const glm::vec3& p, const glm::vec3& a, const glm::
     addLine(p + b, p + a + b, color);
 }
 
-void DebugRenderer::addBox(const glm::vec3& min, const glm::vec3& max, const glm::vec3& color) {
-    
+void DebugRenderer::addBox(const glm::vec3& pos, const glm::vec3& scale, const glm::vec3& color) {
+    BoxInstance instance = {
+        .transform = glm::translate(glm::mat4(1.0f), pos) * glm::scale(glm::mat4(1.0f), scale),
+        .color = color
+    };
+
+    m_boxes.push_back(instance);
 }

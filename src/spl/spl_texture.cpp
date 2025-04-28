@@ -104,6 +104,58 @@ TextureFormat getAlphaEnabledFormat(const TextureStats& stats, TextureConversion
 
 }
 
+void TextureImportSpecification::setFormat(TextureFormat format) {
+    if (this->format == format || format == TextureFormat::None) {
+        return;
+    }
+
+    const bool transparency = flags & TextureAttributes::HasTransparentPixels;
+    const bool translucency = flags & TextureAttributes::HasTranslucentPixels;
+
+    this->format = format;
+    switch (format) {
+    case TextureFormat::None: return; // Shouldn't happen
+    case TextureFormat::A3I5: {
+        requiresColorCompression = uniqueColors.size() > 32;
+        requiresAlphaCompression = uniqueAlphas.size() > 8;
+    } break;
+    case TextureFormat::Palette4: {
+        requiresColorCompression = (uniqueColors.size() + transparency) > 4;
+        requiresAlphaCompression = transparency;
+    } break;
+    case TextureFormat::Palette16: {
+        requiresColorCompression = (uniqueColors.size() + transparency) > 16;
+        requiresAlphaCompression = transparency;
+    } break;
+    case TextureFormat::Palette256: {
+        requiresColorCompression = (uniqueColors.size() + transparency) > 256;
+        requiresAlphaCompression = transparency;
+    } break;
+    case TextureFormat::A5I3: {
+        requiresColorCompression = uniqueColors.size() > 8;
+        requiresAlphaCompression = uniqueAlphas.size() > 32;
+    } break;
+    case TextureFormat::Direct: {
+        requiresColorCompression = uniqueColors.size() > 0x7FFF;
+        requiresAlphaCompression = translucency;
+    } break;
+    }
+}
+
+int TextureImportSpecification::getMaxColors() const {
+    switch (format) {
+    case TextureFormat::None: return 0;
+    case TextureFormat::A3I5: return 32;
+    case TextureFormat::Palette4: return 4 - color0Transparent;
+    case TextureFormat::Palette16: return 16 - color0Transparent;
+    case TextureFormat::Palette256: return 256 - color0Transparent;
+    case TextureFormat::A5I3: return 8;
+    case TextureFormat::Direct: return 0x7FFF;
+    }
+
+    return 0;
+}
+
 TextureImportSpecification SPLTexture::suggestSpecification(
     s32 width, 
     s32 height, 
@@ -111,12 +163,13 @@ TextureImportSpecification SPLTexture::suggestSpecification(
     const u8* data,
     TextureConversionPreference preference) {
 
+    const auto stats = collectStats(data, width, height, channels);
+
     TextureFormat format;
     bool color0Transparent = false;
-    bool requiresColorCompression = false;
+    bool requiresColorCompression = stats.uniqueColors.size() > 0x7FFF; // Requires color comp anyway if it doesn't fit in a Direct format
     bool requiresAlphaCompression = false;
 
-    const auto stats = collectStats(data, width, height, channels);
     switch (channels) {
     case 1: // Grayscale without alpha
         format = getOpaqueFormatBasedOnUniqueColors((s32)stats.uniqueColors.size());

@@ -60,15 +60,19 @@ private:
     void openTempTexture(std::string_view path);
     void discardTempTexture();
 
+    static void quantizeTexture(const u8* data, s32 width, s32 height, const TextureImportSpecification& spec, u8* out);
+
 private:
     struct TempTexture {
         std::string path;
         u8* data;
+        u8* quantized;
         s32 width;
         s32 height;
         s32 channels;
-        TextureImportSpecification spec;
+        TextureImportSpecification suggestedSpec;
         TextureConversionPreference preference;
+        std::unique_ptr<GLTexture> texture;
     };
 
     bool m_pickerOpen = true;

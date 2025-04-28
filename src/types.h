@@ -97,6 +97,8 @@ enum class TextureFormat : u8 {
     Comp4x4, // 4x4 compression
     A5I3, // 5 bits alpha, 3-bit palette index
     Direct, // 16-bit R5G5B5A1 (RGBA5551), no palette
+
+    Count,
 };
 
 enum class TextureRepeat {

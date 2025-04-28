@@ -9,6 +9,7 @@ struct SPLTexture;
 class GLTexture {
 public:
     explicit GLTexture(const SPLTexture& texture);
+    GLTexture(size_t width, size_t height);
     GLTexture(const GLTexture& other) = delete;
     GLTexture(GLTexture&& other) noexcept;
 
@@ -24,6 +25,8 @@ public:
     size_t getWidth() const { return m_width; }
     size_t getHeight() const { return m_height; }
     TextureFormat getFormat() const { return m_format; }
+
+    void update(const void* rgba);
 
 private:
     void createTexture(const SPLTexture& texture);
