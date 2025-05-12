@@ -131,6 +131,7 @@ void ParticleRenderer::begin(const glm::mat4& view, const glm::mat4& proj) {
         particles.clear();
     }
 
+    m_isRendering = true;
     m_particleCount = 0;
     m_view = view;
     m_proj = proj;
@@ -158,6 +159,8 @@ void ParticleRenderer::end() {
 
     glCall(glBindVertexArray(0));
     m_shader.unbind();
+
+    m_isRendering = false;
 }
 
 void ParticleRenderer::submit(u32 texture, const ParticleInstance& instance) {
@@ -172,4 +175,17 @@ void ParticleRenderer::submit(u32 texture, const ParticleInstance& instance) {
 
     m_particles[texture].push_back(instance);
     ++m_particleCount;
+}
+
+void ParticleRenderer::setTextures(std::span<const SPLTexture> textures) {
+    if (m_isRendering) {
+        throw std::runtime_error("Cannot set textures while rendering");
+    }
+
+    m_textures = textures;
+    m_particles.clear();
+
+    for (u32 i = 0; i < textures.size(); i++) {
+        m_particles.emplace_back().reserve(m_maxInstances / textures.size()); // Rough distribution for fewer reallocations
+    }
 }

@@ -26,7 +26,7 @@ public:
     SPLParticle* allocateParticle();
     void freeParticle(SPLParticle* particle);
 
-    ParticleRenderer* getRenderer() { return &m_renderer; }
+    ParticleRenderer& getRenderer() { return m_renderer; }
 
 private:
     ParticleRenderer m_renderer;

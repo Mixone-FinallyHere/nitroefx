@@ -51,7 +51,9 @@ void ProjectManager::closeProject(bool force) {
 
 void ProjectManager::openEditor(const std::filesystem::path& path) {
     const auto editor = std::make_shared<EditorInstance>(path);
-    m_activeEditor = editor;
+    if (m_openEditors.empty()) {
+        m_activeEditor = editor;
+    }
     m_openEditors.push_back(editor);
 }
 

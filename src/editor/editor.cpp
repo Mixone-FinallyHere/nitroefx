@@ -384,7 +384,7 @@ void Editor::renderTextureManager() {
             ImGui::Image((ImTextureID)m_tempTexture->texture->getHandle(), { 256, 256 });
 
             if (ImGui::Button("Confirm")) {
-                discardTempTexture();
+                importTempTexture();
                 ImGui::CloseCurrentPopup();
             }
 
@@ -1504,6 +1504,34 @@ void Editor::discardTempTexture() {
     stbi_image_free(m_tempTexture->data);
     delete m_tempTexture->quantized;
     delete m_tempTexture;
+}
+
+void Editor::importTempTexture() {
+    if (!m_tempTexture) {
+        return;
+    }
+
+    auto& activeEditor = g_projectManager->getActiveEditor();
+    auto& archive = activeEditor->getArchive();
+    auto& textures = archive.getTextures();
+    auto& texture = textures.emplace_back();
+    texture.glTexture = std::move(m_tempTexture->texture);
+    texture.width = m_tempTexture->width;
+    texture.height = m_tempTexture->height;
+    texture.param = {
+        .format = m_tempTexture->suggestedSpec.format,
+        .s = 1,
+        .t = 1,
+        .repeat = TextureRepeat::None,
+        .flip = TextureFlip::None,
+        .palColor0Transparent = false,
+        .useSharedTexture = false,
+        .sharedTexID = 0xFF
+    };
+
+    discardTempTexture();
+
+    activeEditor->getParticleSystem().getRenderer().setTextures(textures);
 }
 
 void Editor::quantizeTexture(const u8* data, s32 width, s32 height, const TextureImportSpecification& spec, u8* out) {

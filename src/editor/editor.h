@@ -59,6 +59,7 @@ private:
 
     void openTempTexture(std::string_view path);
     void discardTempTexture();
+    void importTempTexture();
 
     static void quantizeTexture(const u8* data, s32 width, s32 height, const TextureImportSpecification& spec, u8* out);
 

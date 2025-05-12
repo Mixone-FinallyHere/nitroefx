@@ -244,13 +244,13 @@ void SPLEmitter::update(float deltaTime) {
 }
 
 void SPLEmitter::render(const CameraParams& params) {
-    ParticleRenderer* renderer = m_system->getRenderer();
+    auto& renderer = m_system->getRenderer();
     for (const auto ptcl : std::views::reverse(m_particles)) {
-        ptcl->render(renderer, params, m_texCoords.s, m_texCoords.t);
+        ptcl->render(&renderer, params, m_texCoords.s, m_texCoords.t);
     }
 
     for (const auto ptcl : std::views::reverse(m_childParticles)) {
-        ptcl->render(renderer, params, m_childTexCoords.s, m_childTexCoords.t);
+        ptcl->render(&renderer, params, m_childTexCoords.s, m_childTexCoords.t);
     }
 }
 
