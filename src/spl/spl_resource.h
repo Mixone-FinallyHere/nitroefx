@@ -621,6 +621,11 @@ struct TextureImportSpecification {
 
     void setFormat(TextureFormat format);
     int getMaxColors() const;
+    int getMaxAlphas() const;
+    std::pair<int, int> getAlphaRange() const;
+    bool needsAlpha() const;
+
+    size_t getSizeEstimate(size_t width, size_t height) const;
 };
 
 struct SPLTexture {

@@ -121,15 +121,15 @@ void TextureImportSpecification::setFormat(TextureFormat format) {
     } break;
     case TextureFormat::Palette4: {
         requiresColorCompression = (uniqueColors.size() + transparency) > 4;
-        requiresAlphaCompression = transparency;
+        requiresAlphaCompression = translucency;
     } break;
     case TextureFormat::Palette16: {
         requiresColorCompression = (uniqueColors.size() + transparency) > 16;
-        requiresAlphaCompression = transparency;
+        requiresAlphaCompression = translucency;
     } break;
     case TextureFormat::Palette256: {
         requiresColorCompression = (uniqueColors.size() + transparency) > 256;
-        requiresAlphaCompression = transparency;
+        requiresAlphaCompression = translucency;
     } break;
     case TextureFormat::A5I3: {
         requiresColorCompression = uniqueColors.size() > 8;
@@ -154,6 +154,52 @@ int TextureImportSpecification::getMaxColors() const {
     }
 
     return 0;
+}
+
+int TextureImportSpecification::getMaxAlphas() const {
+    switch (format) {
+    case TextureFormat::None: return 0;
+    case TextureFormat::A3I5: return 8;
+    case TextureFormat::Palette4: return 1 + color0Transparent;
+    case TextureFormat::Palette16: return 1 + color0Transparent;
+    case TextureFormat::Palette256: return 1 + color0Transparent;
+    case TextureFormat::A5I3: return 32;
+    case TextureFormat::Direct: return 2; // 1 or 0
+    }
+
+    return 0;
+}
+
+std::pair<int, int> TextureImportSpecification::getAlphaRange() const {
+    switch (format) {
+    case TextureFormat::None: return { 1,1 };
+    case TextureFormat::A3I5: return { 0, 7 };
+    case TextureFormat::Palette4: return { !color0Transparent, 1 };
+    case TextureFormat::Palette16: return { !color0Transparent, 1 };
+    case TextureFormat::Palette256: return { !color0Transparent, 1 };
+    case TextureFormat::A5I3: return { 0, 31 };
+    case TextureFormat::Direct: return { 0, 1 }; // 1 or 0
+    }
+
+    return { 1, 1 };
+}
+
+bool TextureImportSpecification::needsAlpha() const {
+    return (flags & TextureAttributes::HasTranslucentPixels) || (flags & TextureAttributes::HasTransparentPixels);
+}
+
+size_t TextureImportSpecification::getSizeEstimate(size_t width, size_t height) const {
+    // Shifting 2 because palette data is RGB555
+    switch (format) {
+    case TextureFormat::None: return 0;
+    case TextureFormat::A3I5: return (width * height) + (2ull << 5); // 1 byte per pixel + 64 bytes for palette
+    case TextureFormat::A5I3: return (width * height) + (2ull << 3); // 1 byte per pixel + 16 bytes for palette
+    case TextureFormat::Palette4: return (width * height / 4) + (2ull << 2); // 2 bits per pixel + 8 bytes for palette
+    case TextureFormat::Palette16: return (width * height / 2) + (2ull << 4); // 4 bits per pixel + 32 bytes for palette
+    case TextureFormat::Palette256: return (width * height) + (2ull << 8); // 8 bits per pixel + 512 bytes for palette
+    case TextureFormat::Direct: return width * height * 2; // 2 bytes per pixel
+    default: return 0;
+    }
 }
 
 TextureImportSpecification SPLTexture::suggestSpecification(

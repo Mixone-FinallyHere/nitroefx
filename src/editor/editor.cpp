@@ -351,6 +351,13 @@ void Editor::renderTextureManager() {
             ImGui::Text("Number of unique Colors: %llu", m_tempTexture->suggestedSpec.uniqueColors.size());
             ImGui::Text("Number of unique Alphas: %llu", m_tempTexture->suggestedSpec.uniqueAlphas.size());
 
+            const auto estimatedSize = m_tempTexture->suggestedSpec.getSizeEstimate(m_tempTexture->width, m_tempTexture->height);
+            if (estimatedSize >= 1024) {
+                ImGui::Text("Estimated Size: %zu kB", estimatedSize / 1024);
+            } else {
+                ImGui::Text("Estimated Size: %zu B", estimatedSize);
+            }
+
             //ImGui::Text("Suggested Format: %s", getTextureFormat(m_tempTexture->suggestedSpec.format));
             if (ImGui::BeginCombo("Format", getTextureFormat(m_tempTexture->suggestedSpec.format))) {
                 for (auto i = (int)TextureFormat::A3I5; i < (int)TextureFormat::Count; i++) {
@@ -1519,16 +1526,56 @@ void Editor::quantizeTexture(const u8* data, s32 width, s32 height, const Textur
     }
 
     const auto palette = liq_get_palette(result);
-    
     if (palette->count > spec.getMaxColors()) {
         spdlog::error("Too many colors in resulting palette");
         return;
     }
 
-    const auto colors = (u32*)palette->entries;
-    
+    auto palcopy = *palette;
+    std::span<liq_color> colorspan(palcopy.entries, palcopy.count);
+
+    // Further quantize alpha values if necessary
+    if (spec.requiresAlphaCompression) {
+        const auto maxAlphas = spec.getMaxAlphas();
+        const auto [min, max] = spec.getAlphaRange();
+
+        const auto transparent = std::ranges::find_if(colorspan, [](liq_color color) { return color.a == 0; });
+
+        switch (spec.format) {
+        case TextureFormat::None: break;
+        case TextureFormat::A3I5:
+        case TextureFormat::A5I3:
+            std::ranges::for_each(colorspan, [min, max](auto& color) {
+                const auto mapped = (u8)(((float)color.a / 255.0f) * (max - min)) + min;
+                color.a = (u8)(((float)(mapped - min) / (max - min)) * 255.0f);
+            });
+            break;
+
+        case TextureFormat::Palette4:
+        case TextureFormat::Palette16:
+        case TextureFormat::Palette256:
+        case TextureFormat::Direct:
+            if (spec.needsAlpha() || spec.format == TextureFormat::Direct) {
+                std::ranges::for_each(colorspan, [](auto& color) {
+                    if (color.a < 128) {
+                        color.a = 0;
+                    } else {
+                        color.a = 255;
+                    }
+                });
+            }
+            break;
+        default: break;
+        }
+    }
+
+    const auto colors = (u32*)palcopy.entries;
     std::span<u32> remapped((u32*)out, width * height);
     for (auto [index, pixel] : std::views::zip(quantized, remapped)) {
         pixel = colors[index];
     }
+
+    liq_result_destroy(result);
+    liq_image_destroy(image);
+    liq_attr_destroy(attr);
 }
