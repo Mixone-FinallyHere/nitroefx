@@ -10,6 +10,7 @@
 #include <imgui_impl_sdl2.h>
 #include <imgui_impl_opengl3.h>
 #include <spdlog/spdlog.h>
+#include <nlohmann/json.hpp>
 #include <chrono>
 
 #ifdef _WIN32
@@ -54,7 +55,7 @@ int Application::run(int argc, char** argv) {
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
 
     constexpr auto windowFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI;
-    m_window = SDL_CreateWindow("NitroEFX", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, windowFlags);
+    m_window = SDL_CreateWindow("NitroEFX", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1920, 1080, windowFlags);
     if (m_window == nullptr) {
         spdlog::error("SDL_CreateWindow Error: {}", SDL_GetError());
         return 1;
@@ -87,6 +88,7 @@ int Application::run(int argc, char** argv) {
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // Enable Docking
     io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;       // Enable Multi-Viewport / Platform Windows
 
+    loadConfig();
     loadFonts();
     setColors();
 
@@ -135,6 +137,8 @@ int Application::run(int argc, char** argv) {
     ImGui_ImplSDL2_Shutdown();
     ImPlot::DestroyContext();
     ImGui::DestroyContext();
+
+    saveConfig();
 
     return 0;
 }
@@ -286,6 +290,7 @@ void Application::renderMenuBar() {
                 if (ImGui::MenuItem(ICON_FA_FOLDER " Project", "Ctrl+Shift+O")) {
                     const auto path = openProject();
                     if (!path.empty()) {
+                        addRecentProject(path);
                         g_projectManager->openProject(path);
                     }
                 }
@@ -293,6 +298,33 @@ void Application::renderMenuBar() {
                 if (ImGui::MenuItem(ICON_FA_FILE " SPL File", "Ctrl+O")) {
                     const auto path = openFile();
                     if (!path.empty()) {
+                        addRecentFile(path);
+                        g_projectManager->openEditor(path);
+                    }
+                }
+
+                ImGui::EndMenu();
+            }
+
+            if (ImGui::BeginMenu("Open Recent")) {
+                ImGui::SeparatorText("Projects");
+                if (m_recentProjects.empty()) {
+                    ImGui::MenuItem("No Recent Projects", nullptr, false, false);
+                }
+
+                for (const auto& path : m_recentProjects) {
+                    if (ImGui::MenuItem(path.c_str())) {
+                        g_projectManager->openProject(path);
+                    }
+                }
+
+                ImGui::SeparatorText("Files");
+                if (m_recentFiles.empty()) {
+                    ImGui::MenuItem("No Recent Files", nullptr, false, false);
+                }
+
+                for (const auto& path : m_recentFiles) {
+                    if (ImGui::MenuItem(path.c_str())) {
                         g_projectManager->openEditor(path);
                     }
                 }
@@ -501,7 +533,129 @@ void Application::loadFonts() {
     io.Fonts->Build();
 }
 
-std::string_view Application::openFile() {
+void Application::loadConfig() {
+    const auto configPath = getConfigPath();
+    if (!std::filesystem::exists(configPath)) {
+        spdlog::info("Config path does not exist, creating: {}", configPath.string());
+        std::filesystem::create_directories(configPath);
+    }
+
+    const auto configFile = configPath / "config.json";
+    if (!std::filesystem::exists(configFile)) {
+        spdlog::info("Config file does not exist, creating: {}", configFile.string());
+        nlohmann::json config;
+        config["recentFiles"] = nlohmann::json::array();
+        config["recentProjects"] = nlohmann::json::array();
+        std::ofstream outFile(configFile);
+
+        outFile << config.dump(4);
+    }
+
+    std::ifstream inFile(configFile);
+    if (!inFile) {
+        spdlog::error("Failed to open config file: {}", configFile.string());
+        return;
+    }
+
+    nlohmann::json config = nlohmann::json::object();
+    try {
+        inFile >> config;
+    } catch (const nlohmann::json::parse_error& e) {
+        spdlog::error("Failed to parse config file: {}", e.what());
+        return;
+    }
+
+    for (const auto& file : config["recentFiles"]) {
+        m_recentFiles.push_back(file.get<std::string>());
+    }
+
+    for (const auto& project : config["recentProjects"]) {
+        m_recentProjects.push_back(project.get<std::string>());
+    }
+}
+
+void Application::saveConfig() {
+    const auto configPath = getConfigPath();
+    if (!std::filesystem::exists(configPath)) {
+        spdlog::info("Config path does not exist, creating: {}", configPath.string());
+        std::filesystem::create_directories(configPath);
+    }
+
+    const auto configFile = configPath / "config.json";
+    nlohmann::json config;
+
+    for (const auto& file : m_recentFiles) {
+        config["recentFiles"].push_back(file);
+    }
+
+    for (const auto& project : m_recentProjects) {
+        config["recentProjects"].push_back(project);
+    }
+
+    std::ofstream outFile(configFile);
+    if (!outFile) {
+        spdlog::error("Failed to open config file for writing: {}", configFile.string());
+        return;
+    }
+    
+    try {
+        outFile << config.dump(4);
+    } catch (const nlohmann::json::exception& e) {
+        spdlog::error("Failed to write config file: {}", e.what());
+        return;
+    }
+}
+
+void Application::addRecentFile(const std::string& path) {
+    if (m_recentFiles.size() >= 10) {
+        m_recentFiles.pop_back();
+    }
+
+    m_recentFiles.push_front(path);
+
+    saveConfig();
+}
+
+void Application::addRecentProject(const std::string& path) {
+    if (m_recentProjects.size() >= 10) {
+        m_recentProjects.pop_back();
+    }
+
+    m_recentProjects.push_front(path);
+
+    saveConfig();
+}
+
+std::filesystem::path Application::getConfigPath() {
+#ifdef _WIN32
+    char* buffer;
+    size_t size;
+    if (_dupenv_s(&buffer, &size, "APPDATA") != 0 || !buffer) {
+        spdlog::error("Failed to get APPDATA environment variable");
+        return {};
+    }
+
+    std::filesystem::path configPath = std::filesystem::path(buffer) / "nitroefx";
+    free(buffer);
+
+    return configPath;
+#else
+    const char* xdgConfig = std::getenv("XDG_CONFIG_HOME");
+    if (xdgConfig) {
+        return std::filesystem::path(xdgConfig) / "nitroefx";
+    } else {
+        const char* home = std::getenv("HOME");
+        if (home) {
+            return std::filesystem::path(home) / ".config" / "nitroefx";
+        } else {
+            spdlog::error("Failed to get XDG_CONFIG_HOME or HOME environment variable");
+            return {};
+        }
+    }
+#endif
+}
+
+std::string Application::openFile() {
     const char* filters[] = { "*.spa" };
     const char* result = tinyfd_openFileDialog(
         "Open File", 
@@ -515,7 +669,7 @@ std::string_view Application::openFile() {
     return result ? result : "";
 }
 
-std::string_view Application::saveFile() {
+std::string Application::saveFile() {
     return {};
 }
 

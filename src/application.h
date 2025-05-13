@@ -18,9 +18,16 @@ private:
     void renderMenuBar();
     void setColors();
     void loadFonts();
+    void loadConfig();
+    void saveConfig();
 
-    static std::string_view openFile();
-    static std::string_view saveFile();
+    void addRecentFile(const std::string& path);
+    void addRecentProject(const std::string& path);
+
+    static std::filesystem::path getConfigPath();
+
+    static std::string openFile();
+    static std::string saveFile();
     static std::string openProject();
 
 private:
@@ -28,4 +35,7 @@ private:
     SDL_Window* m_window = nullptr;
     SDL_GLContext m_context = nullptr;
     std::unique_ptr<Editor> m_editor;
+
+    std::deque<std::string> m_recentFiles;
+    std::deque<std::string> m_recentProjects;
 };

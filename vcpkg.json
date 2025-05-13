@@ -13,6 +13,7 @@
     "sdl2",
     "spdlog",
     "glew",
-    "implot"
+    "implot",
+    "nlohmann-json"
   ]
 }
