@@ -36,12 +36,14 @@ inline glm::vec3 unitVector() {
 inline glm::vec3 unitXY() {
     return glm::normalize(glm::vec3(nextF32N(), nextF32N(), 0.0f));
 }
-
-
-// Generates a random float in the range [n * ((1 + variance) / 2), n]
+ 
+// variance must be in the range [0, 1]
+// Generates a random float in the range (n * (variance / 2)) around n
+// So the value range is [n * (1 - variance / 2), n * (1 + variance / 2)]
 inline f32 scaledRange(f32 n, f32 variance) {
-    const f32 min = n * ((1.0f + variance) / 2.0f);
-    const f32 max = n;
+    variance = glm::clamp(variance, 0.0f, 1.0f);
+    const f32 min = n * (1.0f - variance / 2.0f);
+    const f32 max = n * (1.0f + variance / 2.0f);
     return min + nextF32() * (max - min);
 }
 
