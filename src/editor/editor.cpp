@@ -141,6 +141,24 @@ void Editor::updateParticles(float deltaTime) {
     editor->updateParticles(deltaTime * m_timeScale);
 }
 
+void Editor::save() {
+    const auto& editor = g_projectManager->getActiveEditor();
+    if (!editor) {
+        return;
+    }
+
+    editor->save();
+}
+
+void Editor::saveAs(const std::filesystem::path& path) {
+    const auto& editor = g_projectManager->getActiveEditor();
+    if (!editor) {
+        return;
+    }
+
+    editor->saveAs(path);
+}
+
 void Editor::playEmitterAction(EmitterSpawnType spawnType) {
     const auto& editor = g_projectManager->getActiveEditor();
     if (!editor) {
@@ -498,7 +516,7 @@ void Editor::renderHeaderEditor(SPLResourceHeader& header) const {
         if (ImGui::BeginItemTooltip())
         {
             ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-            ImGui::TextUnformatted(text.data());
+            ImGui::TextUnformatted(text.data(), text.data() + text.size());
             ImGui::PopTextWrapPos();
             ImGui::EndTooltip();
         }
@@ -1529,9 +1547,28 @@ void Editor::importTempTexture() {
         .sharedTexID = 0xFF
     };
 
+    auto& textureData = archive.getTextureData().emplace_back();
+    auto& paletteData = archive.getPaletteData().emplace_back();
+
+    palettizeTexture(
+        m_tempTexture->quantized,
+        m_tempTexture->width,
+        m_tempTexture->height,
+        m_tempTexture->suggestedSpec,
+        textureData,
+        paletteData
+    );
+
+    texture.textureData = textureData;
+    texture.paletteData = paletteData;
+
     discardTempTexture();
 
     activeEditor->getParticleSystem().getRenderer().setTextures(textures);
+}
+
+bool Editor::palettizeTexture(const u8* data, s32 width, s32 height, const TextureImportSpecification& spec, std::vector<u8>& outData, std::vector<u8>& outPalette) {
+    return SPLTexture::convertFromRGBA8888(data, width, height, spec.format, outData, outPalette);
 }
 
 void Editor::quantizeTexture(const u8* data, s32 width, s32 height, const TextureImportSpecification& spec, u8* out) {

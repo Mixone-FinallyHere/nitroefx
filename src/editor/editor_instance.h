@@ -29,6 +29,9 @@ public:
         return m_modified;
     }
 
+    void save();
+    void saveAs(const std::filesystem::path& path);
+
     SPLArchive& getArchive() {
         return m_archive;
     }

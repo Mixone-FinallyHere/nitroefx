@@ -5,25 +5,6 @@
 #include <gl/glew.h>
 
 
-struct PixelA3I5 {
-    u8 color : 5;
-    u8 alpha : 3;
-
-    u8 getAlpha() const {
-        return (alpha << 5) | (alpha << 2) | (alpha >> 1);
-    }
-};
-
-struct PixelA5I3 {
-    u8 color : 3;
-    u8 alpha : 5;
-
-    u8 getAlpha() const {
-        return (alpha << 3) | (alpha >> 2);
-    }
-};
-
-
 GLTexture::GLTexture(const SPLTexture& texture) 
     : m_width(texture.width), m_height(texture.height), m_format(texture.param.format) {
     createTexture(texture);

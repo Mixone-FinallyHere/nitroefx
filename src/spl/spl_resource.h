@@ -589,7 +589,7 @@ struct SPLTextureParam {
 };
 
 struct SPLTextureResource {
-    u32 id;
+    u32 magic;
     SPLTextureParamNative param;
     u32 textureSize; // size of the texture data
     u32 paletteOffset; // offset to the palette data from the start of the header
@@ -644,6 +644,15 @@ struct SPLTexture {
         const u8* data,
         TextureConversionPreference preference
     );
+
+    static bool convertFromRGBA8888(
+        const u8* data,
+        s32 width,
+        s32 height,
+        TextureFormat format,
+        std::vector<u8>& outData,
+        std::vector<u8>& outPalette
+    );
 };
 
 
@@ -678,6 +687,21 @@ struct SPLResource {
     void removeColorAnim() { colorAnim.reset(); header.removeColorAnim(); }
     void removeAlphaAnim() { alphaAnim.reset(); header.removeAlphaAnim(); }
     void removeTexAnim() { texAnim.reset(); header.removeTexAnim(); }
+
+    template<typename T = SPLBehavior> requires std::derived_from<T, SPLBehavior>
+    std::shared_ptr<T> getBehavior(SPLBehaviorType type) const {
+        for (const auto& behavior : behaviors) {
+            if (behavior->type == type) {
+                return std::dynamic_pointer_cast<T>(behavior);
+            }
+        }
+
+        return nullptr;
+    }
+
+    bool hasBehavior(SPLBehaviorType type) const {
+        return getBehavior(type) != nullptr;
+    }
 
     static SPLResource create();
 };

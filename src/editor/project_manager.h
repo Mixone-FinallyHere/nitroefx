@@ -17,6 +17,7 @@ public:
     void openEditor(const std::filesystem::path& path);
     void closeEditor(const std::shared_ptr<EditorInstance>& editor);
     void closeAllEditors();
+    void saveAllEditors();
 
     void open();
     void render();

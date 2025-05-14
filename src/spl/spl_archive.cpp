@@ -13,6 +13,11 @@ std::istream& operator>>(std::istream& stream, T& v) {
     return stream.read(reinterpret_cast<char*>(&v), sizeof(T));
 }
 
+template<class T> requires std::is_trivially_copyable_v<T>
+std::ostream& operator<<(std::ostream& stream, const T& v) {
+    return stream.write(reinterpret_cast<const char*>(&v), sizeof(T));
+}
+
 
 SPLArchive::SPLArchive(const std::filesystem::path& filename) : m_header() {
     load(filename);
@@ -27,6 +32,11 @@ void SPLArchive::load(const std::filesystem::path& filename) {
     }
 
     file >> m_header;
+
+    if (m_header.magic != SPA_MAGIC) {
+        spdlog::error("Invalid SPL archive magic: {}", m_header.magic);
+        return;
+    }
 
     m_resources.resize(m_header.resCount);
     
@@ -117,6 +127,11 @@ void SPLArchive::load(const std::filesystem::path& filename) {
         s64 offset = file.tellg();
         file >> texRes;
 
+        if (texRes.magic != SPT_MAGIC) {
+            spdlog::error("Invalid texture resource magic: {}", texRes.magic);
+            return;
+        }
+
         tex.resource = nullptr;
         tex.param = fromNative(texRes.param);
         tex.width = 1 << (texRes.param.s + 3);
@@ -154,6 +169,111 @@ void SPLArchive::load(const std::filesystem::path& filename) {
             tex.glTexture = m_textures[tex.param.sharedTexID].glTexture;
         }
     }
+}
+
+void SPLArchive::save(const std::filesystem::path& filename) {
+    std::ofstream file(filename, std::ios::binary | std::ios::out);
+    if (!file) {
+        spdlog::error("Failed to open file for writing: {}", filename.string());
+        return;
+    }
+
+    m_header.resCount = (u16)m_resources.size();
+    m_header.texCount = (u16)m_textures.size();
+    // resSize and texSize are set after writing them
+
+    file << m_header;
+
+    const auto resPos = file.tellp();
+
+    for (auto& res : m_resources) {
+        res.header.flags.hasScaleAnim = res.scaleAnim.has_value();
+        res.header.flags.hasColorAnim = res.colorAnim.has_value();
+        res.header.flags.hasAlphaAnim = res.alphaAnim.has_value();
+        res.header.flags.hasTexAnim = res.texAnim.has_value();
+        res.header.flags.hasChildResource = res.childResource.has_value();
+        res.header.flags.hasGravityBehavior = res.hasBehavior(SPLBehaviorType::Gravity);
+        res.header.flags.hasRandomBehavior = res.hasBehavior(SPLBehaviorType::Random);
+        res.header.flags.hasMagnetBehavior = res.hasBehavior(SPLBehaviorType::Magnet);
+        res.header.flags.hasSpinBehavior = res.hasBehavior(SPLBehaviorType::Spin);
+        res.header.flags.hasCollisionPlaneBehavior = res.hasBehavior(SPLBehaviorType::CollisionPlane);
+        res.header.flags.hasConvergenceBehavior = res.hasBehavior(SPLBehaviorType::Convergence);
+
+        file << toNative(res.header);
+
+        const auto& flags = res.header.flags;
+        if (flags.hasScaleAnim) {
+            file << toNative(*res.scaleAnim);
+        }
+
+        if (flags.hasColorAnim) {
+            file << toNative(*res.colorAnim);
+        }
+
+        if (flags.hasAlphaAnim) {
+            file << toNative(*res.alphaAnim);
+        }
+
+        if (flags.hasTexAnim) {
+            file << toNative(*res.texAnim);
+        }
+
+        if (flags.hasChildResource) {
+            file << toNative(*res.childResource);
+        }
+
+
+        if (flags.hasGravityBehavior) {
+            file << toNative(*res.getBehavior<SPLGravityBehavior>(SPLBehaviorType::Gravity));
+        }
+
+        if (flags.hasRandomBehavior) {
+            file << toNative(*res.getBehavior<SPLRandomBehavior>(SPLBehaviorType::Random));
+        }
+
+        if (flags.hasMagnetBehavior) {
+            file << toNative(*res.getBehavior<SPLMagnetBehavior>(SPLBehaviorType::Magnet));
+        }
+
+        if (flags.hasSpinBehavior) {
+            file << toNative(*res.getBehavior<SPLSpinBehavior>(SPLBehaviorType::Spin));
+        }
+
+        if (flags.hasCollisionPlaneBehavior) {
+            file << toNative(*res.getBehavior<SPLCollisionPlaneBehavior>(SPLBehaviorType::CollisionPlane));
+        }
+
+        if (flags.hasConvergenceBehavior) {
+            file << toNative(*res.getBehavior<SPLConvergenceBehavior>(SPLBehaviorType::Convergence));
+        }
+    }
+
+    const auto texPos = file.tellp();
+    const auto resSize = texPos - resPos;
+
+    for (auto& tex : m_textures) {
+        SPLTextureResource texRes;
+        texRes.magic = SPT_MAGIC;
+        texRes.param = toNative(tex.param);
+        texRes.textureSize = (u32)tex.textureData.size();
+        texRes.paletteOffset = sizeof(SPLTextureResource) + texRes.textureSize;
+        texRes.paletteSize = (u32)tex.paletteData.size();
+        texRes.unused0 = texRes.unused1 = 0;
+        texRes.resourceSize = sizeof(SPLTextureResource) + texRes.textureSize + texRes.paletteSize;
+
+        file << texRes;
+        file.write((char*)tex.textureData.data(), texRes.textureSize);
+        file.write((char*)tex.paletteData.data(), texRes.paletteSize);
+    }
+
+    const auto texSize = file.tellp() - texPos;
+
+    m_header.resSize = (u32)resSize;
+    m_header.texSize = (u32)texSize;
+    m_header.texOffset = (u32)texPos;
+
+    file.seekp(0, std::ios::beg);
+    file << m_header;
 }
 
 SPLResourceHeader SPLArchive::fromNative(const SPLResourceHeaderNative &native) {
@@ -259,8 +379,9 @@ SPLChildResource SPLArchive::fromNative(const SPLChildResourceNative &native) {
         .randomInitVelMag = FX_FX16_TO_F32(native.randomInitVelMag),
         .endScale = FX_FX16_TO_F32(native.endScale),
         .lifeTime = toSeconds(native.lifeTime),
-        .velocityRatio = toSeconds(native.velocityRatio),
-        .scaleRatio = toSeconds(native.scaleRatio),
+        .velocityRatio = native.velocityRatio / 255.0f,
+        .scaleRatio = native.scaleRatio / 255.0f,
+        .color = native.color,
         .misc = {
             .emissionCount = (u8)native.misc.emissionCount,
             .emissionDelay = (f32)native.misc.emissionDelay / 255.0f,
@@ -309,6 +430,237 @@ SPLTextureParam SPLArchive::fromNative(const SPLTextureParamNative& native) {
         .palColor0Transparent = !!native.palColor0,
         .useSharedTexture = !!native.useSharedTexture,
         .sharedTexID = (u8)native.sharedTexID
+    };
+}
+
+SPLResourceHeaderNative SPLArchive::toNative(const SPLResourceHeader& header) {
+    return SPLResourceHeaderNative{
+        .flags = {
+            .emissionType = (u8)header.flags.emissionType,
+            .drawType = (u8)header.flags.drawType,
+            .circleAxis = (u8)header.flags.emissionAxis,
+            .hasScaleAnim = (u8)header.flags.hasScaleAnim,
+            .hasColorAnim = (u8)header.flags.hasColorAnim,
+            .hasAlphaAnim = (u8)header.flags.hasAlphaAnim,
+            .hasTexAnim = (u8)header.flags.hasTexAnim,
+            .hasRotation = (u8)header.flags.hasRotation,
+            .randomInitAngle = (u8)header.flags.randomInitAngle,
+            .selfMaintaining = (u8)header.flags.selfMaintaining,
+            .followEmitter = (u8)header.flags.followEmitter,
+            .hasChildResource = (u8)header.flags.hasChildResource,
+            .polygonRotAxis = (u8)header.flags.polygonRotAxis,
+            .polygonReferencePlane = (u8)header.flags.polygonReferencePlane,
+            .randomizeLoopedAnim = (u8)header.flags.randomizeLoopedAnim,
+            .drawChildrenFirst = (u8)header.flags.drawChildrenFirst,
+            .hideParent = (u8)header.flags.hideParent,
+            .useViewSpace = (u8)header.flags.useViewSpace,
+            .hasGravityBehavior = (u8)header.flags.hasGravityBehavior,
+            .hasRandomBehavior = (u8)header.flags.hasRandomBehavior,
+            .hasMagnetBehavior = (u8)header.flags.hasMagnetBehavior,
+            .hasSpinBehavior = (u8)header.flags.hasSpinBehavior,
+            .hasCollisionPlaneBehavior = (u8)header.flags.hasCollisionPlaneBehavior,
+            .hasConvergenceBehavior = (u8)header.flags.hasConvergenceBehavior,
+            .hasFixedPolygonID = (u8)header.flags.hasFixedPolygonID,
+            .childHasFixedPolygonID = (u8)header.flags.childHasFixedPolygonID
+        },
+        .emitterBasePos = header.emitterBasePos,
+        .emissionCount = FX_F32_TO_FX32((f32)header.emissionCount),
+        .radius = FX_F32_TO_FX32(header.radius),
+        .length = FX_F32_TO_FX32(header.length),
+        .axis = header.axis,
+        .color = header.color,
+        .initVelPosAmplifier = FX_F32_TO_FX32(header.initVelPosAmplifier),
+        .initVelAxisAmplifier = FX_F32_TO_FX32(header.initVelAxisAmplifier),
+        .baseScale = FX_F32_TO_FX32(header.baseScale),
+        .aspectRatio = FX_F32_TO_FX16(header.aspectRatio),
+        .startDelay = toFrames<u16>(header.startDelay),
+        .minRotation = toIndex<s16>(header.minRotation),
+        .maxRotation = toIndex<s16>(header.maxRotation),
+        .initAngle = toIndex<u16>(header.initAngle),
+        .reserved = 0,
+        .emitterLifeTime = toFrames<u16>(header.emitterLifeTime),
+        .particleLifeTime = toFrames<u16>(header.particleLifeTime),
+        .variance = {
+            .baseScale = (u8)(header.variance.baseScale * 255.0f),
+            .lifeTime = (u8)(header.variance.lifeTime * 255.0f),
+            .initVel = (u8)(header.variance.initVel * 255.0f)
+        },
+        .misc = {
+            .emissionInterval = toFrames<u8>(header.misc.emissionInterval),
+            .baseAlpha = (u8)(header.misc.baseAlpha * 31.0f),
+            .airResistance = (u8)((header.misc.airResistance - 0.75f) / 0.5f * 256.0f),
+            .textureIndex = (u8)header.misc.textureIndex,
+            .loopFrames = toFrames<u8>(header.misc.loopTime),
+            .dbbScale = (u16)FX_F32_TO_FX16(header.misc.dbbScale),
+            .textureTileCountS = (u8)header.misc.textureTileCountS,
+            .textureTileCountT = (u8)header.misc.textureTileCountT,
+            .scaleAnimDir = (u8)header.misc.scaleAnimDir,
+            .dpolFaceEmitter = (u8)header.misc.dpolFaceEmitter,
+            .flipTextureS = (u8)header.misc.flipTextureS,
+            .flipTextureT = (u8)header.misc.flipTextureT
+        },
+        .polygonX = FX_F32_TO_FX16(header.polygonX),
+        .polygonY = FX_F32_TO_FX16(header.polygonY),
+        .userData = {
+            .flags = 0
+        }
+    };
+}
+
+SPLScaleAnimNative SPLArchive::toNative(const SPLScaleAnim& anim) {
+    return SPLScaleAnimNative{
+        .start = FX_F32_TO_FX16(anim.start),
+        .mid = FX_F32_TO_FX16(anim.mid),
+        .end = FX_F32_TO_FX16(anim.end),
+        .curve = anim.curve,
+        .flags = {
+            .loop = (u16)anim.flags.loop
+        },
+        .padding = 0
+    };
+}
+
+SPLColorAnimNative SPLArchive::toNative(const SPLColorAnim& anim) {
+    return SPLColorAnimNative{
+        .start = anim.start,
+        .end = anim.end,
+        .curve = anim.curve,
+        .flags = {
+            .randomStartColor = (u16)anim.flags.randomStartColor,
+            .loop = (u16)anim.flags.loop,
+            .interpolate = (u16)anim.flags.interpolate
+        },
+        .padding = 0
+    };
+}
+
+SPLAlphaAnimNative SPLArchive::toNative(const SPLAlphaAnim& anim) {
+    return SPLAlphaAnimNative{
+        .alpha = {
+            .start = (u16)(anim.alpha.start * 31.0f),
+            .mid = (u16)(anim.alpha.mid * 31.0f),
+            .end = (u16)(anim.alpha.end * 31.0f)
+        },
+        .flags = {
+            .randomRange = (u16)(anim.flags.randomRange * 255.0f),
+            .loop = (u16)anim.flags.loop
+        },
+        .curve = anim.curve,
+        .padding = 0
+    };
+}
+
+SPLTexAnimNative SPLArchive::toNative(const SPLTexAnim& anim) {
+    return SPLTexAnimNative{
+        .textures = {
+            anim.textures[0],
+            anim.textures[1],
+            anim.textures[2],
+            anim.textures[3],
+            anim.textures[4],
+            anim.textures[5],
+            anim.textures[6],
+            anim.textures[7]
+        },
+        .param = {
+            .frameCount = (u8)anim.param.textureCount,
+            .step = (u8)(anim.param.step * 255.0f),
+            .randomizeInit = (u8)anim.param.randomizeInit,
+            .loop = (u8)anim.param.loop
+        }
+    };
+}
+
+SPLChildResourceNative SPLArchive::toNative(const SPLChildResource& anim) {
+    return SPLChildResourceNative{
+        .flags = {
+            .usesBehaviors = (u16)anim.flags.usesBehaviors,
+            .hasScaleAnim = (u16)anim.flags.hasScaleAnim,
+            .hasAlphaAnim = (u16)anim.flags.hasAlphaAnim,
+            .rotationType = (u16)anim.flags.rotationType,
+            .followEmitter = (u16)anim.flags.followEmitter,
+            .useChildColor = (u16)anim.flags.useChildColor,
+            .drawType = (u16)anim.flags.drawType,
+            .polygonRotAxis = (u16)anim.flags.polygonRotAxis,
+            .polygonReferencePlane = (u8)anim.flags.polygonReferencePlane
+        },
+        .randomInitVelMag = FX_F32_TO_FX16(anim.randomInitVelMag),
+        .endScale = FX_F32_TO_FX16(anim.endScale),
+        .lifeTime = toFrames<u16>(anim.lifeTime),
+        .velocityRatio = (u8)(anim.velocityRatio * 255.0f),
+        .scaleRatio = (u8)(anim.scaleRatio * 255.0f),
+        .color = anim.color,
+        .misc = {
+            .emissionCount = (u8)anim.misc.emissionCount,
+            .emissionDelay = (u8)(anim.misc.emissionDelay * 255.0f),
+            .emissionInterval = toFrames<u8>(anim.misc.emissionInterval),
+            .texture = (u8)anim.misc.texture,
+            .textureTileCountS = (u8)anim.misc.textureTileCountS,
+            .textureTileCountT = (u8)anim.misc.textureTileCountT,
+            .flipTextureS = (u8)anim.misc.flipTextureS,
+            .flipTextureT = (u8)anim.misc.flipTextureT,
+            .dpolFaceEmitter = (u8)anim.misc.dpolFaceEmitter
+        }
+    };
+}
+
+SPLGravityBehaviorNative SPLArchive::toNative(const SPLGravityBehavior& behavior) {
+    return SPLGravityBehaviorNative{
+        .magnitude = behavior.magnitude,
+        .padding = 0
+    };
+}
+
+SPLRandomBehaviorNative SPLArchive::toNative(const SPLRandomBehavior& behavior) {
+    return SPLRandomBehaviorNative{
+        .magnitude = behavior.magnitude,
+        .applyInterval = toFrames<u16>(behavior.applyInterval),
+    };
+}
+
+SPLMagnetBehaviorNative SPLArchive::toNative(const SPLMagnetBehavior& behavior) {
+    return SPLMagnetBehaviorNative{
+        .target = behavior.target,
+        .force = FX_F32_TO_FX16(behavior.force),
+        .padding = 0
+    };
+}
+
+SPLSpinBehaviorNative SPLArchive::toNative(const SPLSpinBehavior& behavior) {
+    return SPLSpinBehaviorNative{
+        .angle = toIndex<u16>(behavior.angle),
+        .axis = (u16)behavior.axis,
+    };
+}
+
+SPLCollisionPlaneBehaviorNative SPLArchive::toNative(const SPLCollisionPlaneBehavior& behavior) {
+    return SPLCollisionPlaneBehaviorNative{
+        .y = FX_F32_TO_FX32(behavior.y),
+        .elasticity = FX_F32_TO_FX16(behavior.elasticity),
+        .flags = {
+            .collisionType = (u16)behavior.collisionType
+        }
+    };
+}
+
+SPLConvergenceBehaviorNative SPLArchive::toNative(const SPLConvergenceBehavior& behavior) {
+    return SPLConvergenceBehaviorNative{
+        .target = behavior.target,
+        .force = FX_F32_TO_FX16(behavior.force),
+        .padding = 0
+    };
+}
+
+SPLTextureParamNative SPLArchive::toNative(const SPLTextureParam& param) {
+    return SPLTextureParamNative{
+        .format = (u8)param.format,
+        .s = (u8)param.s,
+        .t = (u8)param.t,
+        .repeat = (u8)param.repeat,
+        .flip = (u8)param.flip,
+        .palColor0 = (u8)param.palColor0Transparent,
+        .useSharedTexture = (u8)param.useSharedTexture,
+        .sharedTexID = (u8)param.sharedTexID,
     };
 }
 

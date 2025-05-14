@@ -27,7 +27,7 @@ private:
     static std::filesystem::path getConfigPath();
 
     static std::string openFile();
-    static std::string saveFile();
+    static std::string saveFile(const std::string& default_path = {});
     static std::string openProject();
 
 private:

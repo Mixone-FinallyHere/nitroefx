@@ -88,3 +88,17 @@ bool EditorInstance::valueChanged(bool changed) {
     m_modified |= changed;
     return changed;
 }
+
+void EditorInstance::save() {
+    if (m_path.empty()) {
+        return;
+    }
+
+    m_archive.save(m_path);
+    m_modified = false;
+}
+
+void EditorInstance::saveAs(const std::filesystem::path& path) {
+    m_path = path;
+    return save();
+}

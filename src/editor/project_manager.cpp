@@ -75,6 +75,12 @@ void ProjectManager::closeAllEditors() {
     m_activeEditor.reset();
 }
 
+void ProjectManager::saveAllEditors() {
+    for (const auto& editor : m_openEditors) {
+        editor->save();
+    }
+}
+
 void ProjectManager::open() {
     m_open = true;
 }

@@ -34,6 +34,9 @@ public:
 
     void handleEvent(const SDL_Event& event);
 
+    void save();
+    void saveAs(const std::filesystem::path& path);
+
 private:
     void renderResourcePicker();
     void renderTextureManager();
@@ -61,6 +64,14 @@ private:
     void discardTempTexture();
     void importTempTexture();
 
+    static bool palettizeTexture(
+        const u8* data, 
+        s32 width, 
+        s32 height, 
+        const TextureImportSpecification& spec, 
+        std::vector<u8>& outData,
+        std::vector<u8>& outPalette
+    );
     static void quantizeTexture(const u8* data, s32 width, s32 height, const TextureImportSpecification& spec, u8* out);
 
 private:

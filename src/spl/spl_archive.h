@@ -9,6 +9,11 @@
 #include "spl_resource.h"
 #include "glm/gtc/constants.hpp"
 
+enum {
+    SPA_MAGIC = 0x53504120, // " ASP"
+    SPT_MAGIC = 0x53505420, // " TPS"
+};
+
 
 class SPLArchive {
 public:
@@ -26,10 +31,18 @@ public:
     const std::vector<SPLTexture>& getTextures() const { return m_textures; }
     std::vector<SPLTexture>& getTextures() { return m_textures; }
 
+    const std::vector<std::vector<u8>>& getTextureData() const { return m_textureData; }
+    std::vector<std::vector<u8>>& getTextureData() { return m_textureData; }
+
+    const std::vector<std::vector<u8>>& getPaletteData() const { return m_paletteData; }
+    std::vector<std::vector<u8>>& getPaletteData() { return m_paletteData; }
+
     u32 getTextureArray() const { return m_textureArray; }
 
     size_t getResourceCount() const { return m_resources.size(); }
     size_t getTextureCount() const { return m_header.texCount; }
+
+    void save(const std::filesystem::path& filename);
 
     static constexpr u32 SPL_FRAMES_PER_SECOND = 30;
 
@@ -53,6 +66,23 @@ private:
 
     SPLTextureParam fromNative(const SPLTextureParamNative& native);
 
+    static SPLResourceHeaderNative toNative(const SPLResourceHeader& header);
+
+    SPLScaleAnimNative toNative(const SPLScaleAnim& anim);
+    SPLColorAnimNative toNative(const SPLColorAnim& anim);
+    SPLAlphaAnimNative toNative(const SPLAlphaAnim& anim);
+    SPLTexAnimNative toNative(const SPLTexAnim& anim);
+    SPLChildResourceNative toNative(const SPLChildResource& anim);
+
+    SPLGravityBehaviorNative toNative(const SPLGravityBehavior& behavior);
+    SPLRandomBehaviorNative toNative(const SPLRandomBehavior& behavior);
+    SPLMagnetBehaviorNative toNative(const SPLMagnetBehavior& behavior);
+    SPLSpinBehaviorNative toNative(const SPLSpinBehavior& behavior);
+    SPLCollisionPlaneBehaviorNative toNative(const SPLCollisionPlaneBehavior& behavior);
+    SPLConvergenceBehaviorNative toNative(const SPLConvergenceBehavior& behavior);
+
+    SPLTextureParamNative toNative(const SPLTextureParam& param);
+
     template<std::integral T = u32>
     static f32 toSeconds(T frames) {
         return static_cast<f32>(frames) / SPL_FRAMES_PER_SECOND;
@@ -70,7 +100,7 @@ private:
 
     template<std::integral T = u16>
     static T toIndex(f32 angle) {
-        return static_cast<T>(angle / glm::two_pi<f32>()) * (T)0xFFFF;
+        return static_cast<T>(angle * 0xFFFF / glm::two_pi<f32>());
     }
 
 private:

@@ -23,16 +23,17 @@ union GXRgb {
         u16 r : 5;
         u16 g : 5;
         u16 b : 5;
-        u16 : 1;
+        u16 _ : 1;
     };
 
     GXRgb() = default;
     GXRgb(u16 color) : color(color) {}
-    GXRgb(u8 r, u8 g, u8 b) : r(r), g(g), b(b) {}
+    GXRgb(u8 r, u8 g, u8 b) : r(r), g(g), b(b), _(0) {}
     GXRgb(const glm::vec3& vec) {
-        r = vec.r * 31.0f;
-        g = vec.g * 31.0f;
-        b = vec.b * 31.0f;
+        r = (u16)(vec.r * 31.0f);
+        g = (u16)(vec.g * 31.0f);
+        b = (u16)(vec.b * 31.0f);
+        _ = 0;
     }
 
     glm::vec3 toVec3() const {
@@ -41,6 +42,18 @@ union GXRgb {
 
     operator glm::vec3() const {
         return toVec3();
+    }
+
+    bool operator==(const GXRgb& other) const {
+        return color == other.color;
+    }
+
+    bool operator!=(const GXRgb& other) const {
+        return color != other.color;
+    }
+
+    static auto fromRGB(u8 r, u8 g, u8 b) {
+        return GXRgb(r >> 3, g >> 3, b >> 3);
     }
 };
 
@@ -71,6 +84,14 @@ union GXRgba {
         return toVec4();
     }
 
+    bool operator==(const GXRgba& other) const {
+        return color == other.color;
+    }
+
+    bool operator!=(const GXRgba& other) const {
+        return color != other.color;
+    }
+
     u8 r8() const {
         return (r << 3) | (r >> 2);
     }
@@ -85,6 +106,10 @@ union GXRgba {
 
     u8 a8() const {
         return a ? 0xFF : 0;
+    }
+
+    static auto fromRGBA(u8 r, u8 g, u8 b, u8 a) {
+        return GXRgba(r >> 3, g >> 3, b >> 3, a > 0x80);
     }
 };
 

@@ -333,15 +333,19 @@ void Application::renderMenuBar() {
             }
 
             if (ImGui::MenuItem(ICON_FA_FLOPPY_DISK " Save", "Ctrl+S", false, hasActiveEditor)) {
-                spdlog::warn("Save not implemented");
+                m_editor->save();
             }
 
             if (ImGui::MenuItem(ICON_FA_FLOPPY_DISK " Save As...", nullptr, false, hasActiveEditor)) {
-                spdlog::warn("Save As not implemented");
+                const auto path = saveFile();
+                if (!path.empty()) {
+                    m_editor->saveAs(path);
+                    addRecentFile(path);
+                }
             }
 
             if (ImGui::MenuItem(ICON_FA_FLOPPY_DISK " Save All", "Ctrl+Shift+S", false, hasOpenEditors)) {
-                spdlog::warn("Save All not implemented");
+                g_projectManager->saveAllEditors();
             }
 
             if (ImGui::MenuItem(ICON_FA_XMARK " Close", "Ctrl+W", false, hasActiveEditor)) {
@@ -669,8 +673,17 @@ std::string Application::openFile() {
     return result ? result : "";
 }
 
-std::string Application::saveFile() {
-    return {};
+std::string Application::saveFile(const std::string& default_path) {
+    const char* filters[] = { "*.spa" };
+    const char* result = tinyfd_saveFileDialog(
+        "Save File",
+        default_path.c_str(),
+        1,
+        filters,
+        "SPL Files"
+    );
+
+    return result ? result : "";
 }
 
 std::string Application::openProject() {
