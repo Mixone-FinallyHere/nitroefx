@@ -401,9 +401,22 @@ void Editor::renderTextureManager() {
 
             ImGui::Image((ImTextureID)m_tempTexture->texture->getHandle(), { 256, 256 });
 
-            if (ImGui::Button("Confirm")) {
+            if (!m_tempTexture->isValidSize) {
+                ImGui::TextColored({ 0.93f, 0, 0, 1 }, "Invalid Texture Size (?)");
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Both the width and the height of the texture must be a power of 2\n"
+                                      "and they must be in the range [8, 1024]");
+                }
+                ImGui::BeginDisabled();
+            }
+            
+            if (ImGui::Button("Confirm") && m_tempTexture->isValidSize) {
                 importTempTexture();
                 ImGui::CloseCurrentPopup();
+            }
+
+            if (!m_tempTexture->isValidSize) {
+                ImGui::EndDisabled();
             }
 
             ImGui::SameLine();
@@ -1495,6 +1508,10 @@ void Editor::renderChildrenEditor(SPLResource& res) {
 }
 
 void Editor::openTempTexture(std::string_view path) {
+    constexpr auto isPowerOf2 = [](s32 value) {
+        return (value & (value - 1)) == 0;
+    };
+
     const auto tempTex = new TempTexture;
     m_tempTexture = tempTex;
 
@@ -1515,6 +1532,16 @@ void Editor::openTempTexture(std::string_view path) {
         tempTex->texture->update(tempTex->quantized);
     } else {
         tempTex->texture->update(tempTex->data);
+    }
+
+    tempTex->isValidSize = true;
+
+    if (tempTex->width > 1024 || tempTex->height > 1024) {
+        tempTex->isValidSize = false;
+    }
+
+    if (!isPowerOf2(tempTex->width) || !isPowerOf2(tempTex->height)) {
+        tempTex->isValidSize = false;
     }
 }
 
@@ -1546,6 +1573,10 @@ void Editor::importTempTexture() {
         .useSharedTexture = false,
         .sharedTexID = 0xFF
     };
+
+    // -3 because s/t are enums starting at GX_TEXSIZE_8 = 0
+    texture.param.s = (u8)glm::log2(texture.width) - 3;
+    texture.param.t = (u8)glm::log2(texture.height) - 3;
 
     auto& textureData = archive.getTextureData().emplace_back();
     auto& paletteData = archive.getPaletteData().emplace_back();

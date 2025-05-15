@@ -85,6 +85,7 @@ private:
         TextureImportSpecification suggestedSpec;
         TextureConversionPreference preference;
         std::unique_ptr<GLTexture> texture;
+        bool isValidSize;
     };
 
     bool m_pickerOpen = true;
