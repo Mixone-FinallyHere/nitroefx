@@ -208,9 +208,9 @@ void Application::handleKeydown(const SDL_Event& event) {
     case SDLK_s:
         if (event.key.keysym.mod & KMOD_CTRL) {
             if (event.key.keysym.mod & KMOD_SHIFT) {
-                spdlog::warn("Save All not implemented");
+                g_projectManager->saveAllEditors();
             } else {
-                spdlog::warn("Save not implemented");
+                m_editor->save();
             }
         }
         break;
