@@ -1,4 +1,5 @@
 #include "debug_renderer.h"
+#include "debug_renderer.h"
 
 #include <array>
 
@@ -78,11 +79,13 @@ static std::array s_boxIndices = {
 
 }
 
-DebugRenderer::DebugRenderer(u32 maxLines) 
+DebugRenderer::DebugRenderer(u32 maxLines, u32 maxBoxes)
     : m_lineShader(s_lineVertexShader, s_fragmentShader)
-    , m_objectShader(s_objectVertexShader, s_fragmentShader) {
+    , m_objectShader(s_objectVertexShader, s_fragmentShader)
+    , m_maxLines(maxLines), m_maxBoxes(maxBoxes) {
     // Lines
-    m_vertices.reserve(maxLines * 2);
+    m_vertices.reserve(m_maxLines * 2ull);
+    m_boxes.reserve(m_maxBoxes);
     m_lineShader.bind();
     m_viewLocation = m_lineShader.getUniform("view");
     m_projLocation = m_lineShader.getUniform("proj");
@@ -119,7 +122,7 @@ DebugRenderer::DebugRenderer(u32 maxLines)
     glCall(glBufferData(GL_ARRAY_BUFFER, s_boxVertices.size() * sizeof(f32), s_boxVertices.data(), GL_STATIC_DRAW));
 
     glCall(glEnableVertexAttribArray(0));
-    glCall(glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(f32), (const void*)0));
+    glCall(glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(f32), nullptr));
 
     glCall(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_boxIbo));
     glCall(glBufferData(GL_ELEMENT_ARRAY_BUFFER, s_boxIndices.size() * sizeof(u32), s_boxIndices.data(), GL_STATIC_DRAW));
@@ -128,15 +131,27 @@ DebugRenderer::DebugRenderer(u32 maxLines)
 
     glCall(glGenBuffers(1, &m_boxInstanceVbo));
     glCall(glBindBuffer(GL_ARRAY_BUFFER, m_boxInstanceVbo));
-    glCall(glBufferData(GL_ARRAY_BUFFER, 0, nullptr, GL_DYNAMIC_DRAW));
+    glCall(glBufferData(GL_ARRAY_BUFFER, m_maxBoxes * sizeof(BoxInstance), nullptr, GL_DYNAMIC_DRAW));
     
     glCall(glBindVertexArray(m_boxVao));
     glCall(glEnableVertexAttribArray(1));
     glCall(glEnableVertexAttribArray(2));
     glCall(glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(BoxInstance), (const void*)offsetof(BoxInstance, color)));
-    glCall(glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(BoxInstance), (const void*)offsetof(BoxInstance, transform)));
     glCall(glVertexAttribDivisor(1, 1));
-    glCall(glVertexAttribDivisor(2, 1));
+
+    for (int i = 0; i < 4; ++i) {
+        glEnableVertexAttribArray(2 + i);
+        glVertexAttribPointer(
+            2 + i, 
+            4, 
+            GL_FLOAT, 
+            GL_FALSE, 
+            sizeof(BoxInstance), 
+            (void*)(offsetof(BoxInstance, transform) + sizeof(glm::vec4) * i)
+        );
+        glVertexAttribDivisor(2 + i, 1);
+    }
+
     glCall(glBindVertexArray(0));
 
     glCall(glBindBuffer(GL_ARRAY_BUFFER, 0));
@@ -160,11 +175,13 @@ void DebugRenderer::render(const glm::mat4& view, const glm::mat4& proj) {
     glCall(glUniformMatrix4fv(m_viewLocation, 1, GL_FALSE, glm::value_ptr(view)));
     glCall(glUniformMatrix4fv(m_projLocation, 1, GL_FALSE, glm::value_ptr(proj)));
 
+    glCall(glPolygonMode(GL_FRONT_AND_BACK, GL_LINE));
     glCall(glBindVertexArray(m_boxVao));
     glCall(glBindBuffer(GL_ARRAY_BUFFER, m_boxInstanceVbo));
     glCall(glBufferSubData(GL_ARRAY_BUFFER, 0, m_boxes.size() * sizeof(BoxInstance), m_boxes.data()));
-    glCall(glDrawElementsInstanced(GL_TRIANGLES, s_boxIndices.size(), GL_UNSIGNED_INT, nullptr, m_boxes.size()));
+    glCall(glDrawElementsInstanced(GL_TRIANGLES, s_boxIndices.size(), GL_UNSIGNED_INT, nullptr, (s32)m_boxes.size()));
     glCall(glBindVertexArray(0));
+    glCall(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
 
     m_objectShader.unbind();
     
@@ -173,11 +190,19 @@ void DebugRenderer::render(const glm::mat4& view, const glm::mat4& proj) {
 }
 
 void DebugRenderer::addLine(const glm::vec3& start, const glm::vec3& end, const glm::vec3& color) {
+    if (m_vertices.size() >= m_maxLines * 2ull) {
+        return;
+    }
+
     m_vertices.push_back({ start, color });
     m_vertices.push_back({ end, color });
 }
 
 void DebugRenderer::addPlane(const glm::vec3& p, const glm::vec3& a, const glm::vec3& b, const glm::vec3& color) {
+    if (m_vertices.size() >= m_maxLines * 2ull) {
+        return;
+    }
+
     addLine(p, p + a, color);
     addLine(p, p + b, color);
     addLine(p + a, p + a + b, color);
@@ -185,6 +210,10 @@ void DebugRenderer::addPlane(const glm::vec3& p, const glm::vec3& a, const glm::
 }
 
 void DebugRenderer::addBox(const glm::vec3& pos, const glm::vec3& scale, const glm::vec3& color) {
+    if (m_boxes.size() >= m_maxBoxes) {
+        return;
+    }
+
     BoxInstance instance = {
         .transform = glm::translate(glm::mat4(1.0f), pos) * glm::scale(glm::mat4(1.0f), scale),
         .color = color

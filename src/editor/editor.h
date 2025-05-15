@@ -60,6 +60,8 @@ private:
 
     void renderChildrenEditor(SPLResource& res);
 
+    void renderDebugShapes(const std::shared_ptr<EditorInstance>& editor, std::vector<Renderer*>& renderers);
+
     void openTempTexture(std::string_view path);
     void discardTempTexture();
     void importTempTexture();

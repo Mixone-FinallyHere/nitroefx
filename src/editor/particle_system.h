@@ -27,6 +27,7 @@ public:
     void freeParticle(SPLParticle* particle);
 
     ParticleRenderer& getRenderer() { return m_renderer; }
+    std::span<const std::shared_ptr<SPLEmitter>> getEmitters() const { return m_emitters; }
 
 private:
     ParticleRenderer m_renderer;

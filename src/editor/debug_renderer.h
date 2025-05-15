@@ -11,7 +11,7 @@
 
 class DebugRenderer : public Renderer {
 public:
-    DebugRenderer(u32 maxLines);
+    DebugRenderer(u32 maxLines, u32 maxBoxes = 64);
 
     void render(const glm::mat4& view, const glm::mat4& proj) override;
 
@@ -31,6 +31,7 @@ private:
     struct BoxInstance {
         glm::mat4 transform;
         glm::vec3 color;
+        f32 padding;
     };
 
     GLShader m_lineShader;
@@ -48,6 +49,9 @@ private:
 
     u32 m_viewLocation = 0;
     u32 m_projLocation = 0;
+
+    u32 m_maxLines = 0;
+    u32 m_maxBoxes = 0;
 
     // struct Sphere {
     //     glm::vec3 center;

@@ -32,6 +32,12 @@ public:
 
     const SPLResource* getResource() const { return m_resource; }
 
+    glm::vec3 getPosition() const { return m_position; }
+    glm::vec3 getVelocity() const { return m_velocity; }
+    glm::vec3 getAxis() const { return m_axis; }
+    f32 getRadius() const { return m_radius; }
+    f32 getLength() const { return m_length; }
+
 private:
     void computeOrthogonalAxes();
     glm::vec3 tiltCoordinates(const glm::vec3& vec) const;

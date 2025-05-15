@@ -93,23 +93,9 @@ void Editor::renderParticles() {
         return;
     }
 
-    std::vector<Renderer*> renderers = { m_gridRenderer.get(), m_debugRenderer.get() };
+    std::vector<Renderer*> renderers = { m_gridRenderer.get() };
 
-    const auto& archive = editor->getArchive();
-    const auto& resources = archive.getResources();
-    if (m_selectedResources[editor->getUniqueID()] != -1) {
-        const auto& resource = resources[m_selectedResources[editor->getUniqueID()]];
-        for (const auto& bhv : resource.behaviors) {
-            if (bhv->type == SPLBehaviorType::CollisionPlane) {
-                const auto colPlane = std::dynamic_pointer_cast<SPLCollisionPlaneBehavior>(bhv);
-                const glm::vec4 color = colPlane->collisionType == SPLCollisionType::Kill ? glm::vec4(1, 0, 0, 0.5f) : glm::vec4(0, 1, 0, 0.5f);
-                m_collisionGridRenderer->setColor(color);
-                m_collisionGridRenderer->setHeight(colPlane->y);
-                renderers.push_back(m_collisionGridRenderer.get());
-            }
-        }
-    }
-
+    renderDebugShapes(editor, renderers);
     editor->renderParticles(renderers);
 }
 
@@ -1504,6 +1490,60 @@ void Editor::renderChildrenEditor(SPLResource& res) {
         }
 
         ImGui::TreePop();
+    }
+}
+
+void Editor::renderDebugShapes(const std::shared_ptr<EditorInstance>& editor, std::vector<Renderer*>& renderers) {
+    const auto& archive = editor->getArchive();
+    const auto& resources = archive.getResources();
+
+    // Render collision plane if applicable
+    if (m_selectedResources[editor->getUniqueID()] != -1) {
+        const auto& resource = resources[m_selectedResources[editor->getUniqueID()]];
+        for (const auto& bhv : resource.behaviors) {
+            if (bhv->type == SPLBehaviorType::CollisionPlane) {
+                const auto colPlane = std::dynamic_pointer_cast<SPLCollisionPlaneBehavior>(bhv);
+                const glm::vec4 color = colPlane->collisionType == SPLCollisionType::Kill ? glm::vec4(1, 0, 0, 0.5f) : glm::vec4(0, 1, 0, 0.5f);
+                m_collisionGridRenderer->setColor(color);
+                m_collisionGridRenderer->setHeight(colPlane->y);
+                renderers.push_back(m_collisionGridRenderer.get());
+            }
+        }
+    }
+
+    const auto emitters = editor->getParticleSystem().getEmitters();
+    if (emitters.empty()) {
+        return;
+    }
+
+    renderers.push_back(m_debugRenderer.get());
+
+    // Render emitters
+    for (const auto& emitter : editor->getParticleSystem().getEmitters()) {
+        const auto resource = emitter->getResource();
+        switch (resource->header.flags.emissionType) {
+        case SPLEmissionType::Point:
+            m_debugRenderer->addBox(emitter->getPosition(), { 0.2f, 0.2f, 0.2f }, glm::vec4(1, 1, 0, 0.2f));
+            break;
+        case SPLEmissionType::SphereSurface:
+            break;
+        case SPLEmissionType::CircleBorder:
+            break;
+        case SPLEmissionType::CircleBorderUniform:
+            break;
+        case SPLEmissionType::Sphere:
+            break;
+        case SPLEmissionType::Circle:
+            break;
+        case SPLEmissionType::CylinderSurface:
+            break;
+        case SPLEmissionType::Cylinder:
+            break;
+        case SPLEmissionType::HemisphereSurface:
+            break;
+        case SPLEmissionType::Hemisphere:
+            break;
+        }
     }
 }
 
