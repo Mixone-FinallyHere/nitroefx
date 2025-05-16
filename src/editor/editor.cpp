@@ -2,6 +2,7 @@
 #include "project_manager.h"
 #include "spl/enum_names.h"
 #include "help_messages.h"
+#include "fonts/IconsFontAwesome6.h"
 
 #include <array>
 #include <ranges>
@@ -99,6 +100,13 @@ void Editor::renderParticles() {
     editor->renderParticles(renderers);
 }
 
+void Editor::renderMenu(std::string_view name) {
+    if (name == "View") {
+        ImGui::MenuItem(ICON_FA_BRUSH " Display Active Emitters", nullptr, & m_settings.displayActiveEmitters);
+        ImGui::MenuItem(ICON_FA_BRUSH " Display Edited Emitter", nullptr, &m_settings.displayEditedEmitter);
+    }
+}
+
 void Editor::openPicker() {
     m_pickerOpen = true;
 }
@@ -143,6 +151,23 @@ void Editor::saveAs(const std::filesystem::path& path) {
     }
 
     editor->saveAs(path);
+}
+
+void Editor::loadConfig(const nlohmann::json& config) {
+    if (!config.contains("settings")) {
+        return;
+    }
+
+    const auto& settings = config["settings"];
+    m_settings.displayActiveEmitters = config.value<bool>("displayActiveEmitters", true);
+    m_settings.displayEditedEmitter = config.value<bool>("displayEditedEmitter", true);
+}
+
+void Editor::saveConfig(nlohmann::json& config) const {
+    config["settings"] = nlohmann::json::object({
+        { "displayActiveEmitters", m_settings.displayActiveEmitters },
+        { "displayEditedEmitter", m_settings.displayEditedEmitter }
+    });
 }
 
 void Editor::playEmitterAction(EmitterSpawnType spawnType) {
@@ -599,7 +624,7 @@ void Editor::renderHeaderEditor(SPLResourceHeader& header) const {
         NOTIFY(ImGui::SliderFloat("Length", &header.length, 0.01f, 20.0f, "%.3f", ImGuiSliderFlags_Logarithmic));
         HELP(length);
 
-        NOTIFY(ImGui::DragFloat3("Axis", glm::value_ptr(header.axis)));
+        NOTIFY(ImGui::DragFloat3("Axis", glm::value_ptr(header.axis), 0.02f));
         HELP(axis);
 
         ImGui::TreePop();
@@ -1497,9 +1522,59 @@ void Editor::renderDebugShapes(const std::shared_ptr<EditorInstance>& editor, st
     const auto& archive = editor->getArchive();
     const auto& resources = archive.getResources();
 
-    // Render collision plane if applicable
+    renderers.push_back(m_debugRenderer.get());
+
+    // Render edited emitter and collision plane if any
     if (m_selectedResources[editor->getUniqueID()] != -1) {
         const auto& resource = resources[m_selectedResources[editor->getUniqueID()]];
+
+        if (m_settings.displayEditedEmitter) {
+            glm::vec3 axis;
+            switch (resource.header.flags.emissionAxis) {
+            case SPLEmissionAxis::X:
+                axis = { 1, 0, 0 };
+                break;
+            case SPLEmissionAxis::Y:
+                axis = { 0, 1, 0 };
+                break;
+            case SPLEmissionAxis::Z:
+                axis = { 0, 0, 1 };
+                break;
+            case SPLEmissionAxis::Emitter:
+                axis = glm::normalize(resource.header.axis);
+                break;
+            }
+
+            switch (resource.header.flags.emissionType) {
+            case SPLEmissionType::Point:
+                m_debugRenderer->addBox(resource.header.emitterBasePos, { 0.2f, 0.2f, 0.2f }, glm::vec4(1, 0, 1, 0.5f));
+                break;
+            case SPLEmissionType::SphereSurface: [[fallthrough]];
+            case SPLEmissionType::Sphere:
+                m_debugRenderer->addSphere(resource.header.emitterBasePos, resource.header.radius, glm::vec4(1, 0, 1, 0.5f));
+                break;
+            case SPLEmissionType::CircleBorder: [[fallthrough]];
+            case SPLEmissionType::CircleBorderUniform: [[fallthrough]];
+            case SPLEmissionType::Circle:
+                m_debugRenderer->addCircle(resource.header.emitterBasePos, axis, resource.header.radius, glm::vec4(1, 0, 1, 0.5f));
+                break;
+            case SPLEmissionType::CylinderSurface: [[fallthrough]];
+            case SPLEmissionType::Cylinder:
+                m_debugRenderer->addCylinder(
+                    resource.header.emitterBasePos,
+                    axis,
+                    resource.header.length,
+                    resource.header.radius, 
+                    glm::vec4(1, 0, 1, 0.5f)
+                );
+                break;
+            case SPLEmissionType::HemisphereSurface:
+            case SPLEmissionType::Hemisphere:
+                m_debugRenderer->addHemisphere(resource.header.emitterBasePos, axis, resource.header.radius, glm::vec4(1, 0, 1, 0.5f));
+                break;
+            }
+        }
+
         for (const auto& bhv : resource.behaviors) {
             if (bhv->type == SPLBehaviorType::CollisionPlane) {
                 const auto colPlane = std::dynamic_pointer_cast<SPLCollisionPlaneBehavior>(bhv);
@@ -1512,38 +1587,56 @@ void Editor::renderDebugShapes(const std::shared_ptr<EditorInstance>& editor, st
     }
 
     const auto emitters = editor->getParticleSystem().getEmitters();
-    if (emitters.empty()) {
+    if (emitters.empty() || !m_settings.displayActiveEmitters) {
         return;
     }
-
-    renderers.push_back(m_debugRenderer.get());
 
     // Render emitters
     for (const auto& emitter : editor->getParticleSystem().getEmitters()) {
         const auto resource = emitter->getResource();
+        glm::vec3 axis;
+
+        switch (resource->header.flags.emissionAxis) {
+        case SPLEmissionAxis::X:
+            axis = { 1, 0, 0 };
+            break;
+        case SPLEmissionAxis::Y:
+            axis = { 0, 1, 0 };
+            break;
+        case SPLEmissionAxis::Z:
+            axis = { 0, 0, 1 };
+            break;
+        case SPLEmissionAxis::Emitter:
+            axis = emitter->getAxis();
+            break;
+        }
+
         switch (resource->header.flags.emissionType) {
         case SPLEmissionType::Point:
-            m_debugRenderer->addBox(emitter->getPosition(), { 0.2f, 0.2f, 0.2f }, glm::vec4(1, 1, 0, 0.2f));
+            m_debugRenderer->addBox(emitter->getPosition(), { 0.2f, 0.2f, 0.2f }, glm::vec4(1, 1, 0, 0.5f));
             break;
-        case SPLEmissionType::SphereSurface:
-            m_debugRenderer->addSphere(emitter->getPosition(), emitter->getRadius(), glm::vec4(1, 1, 0, 0.2f));
-            break;
-        case SPLEmissionType::CircleBorder:
-            break;
-        case SPLEmissionType::CircleBorderUniform:
-            break;
+        case SPLEmissionType::SphereSurface: [[fallthrough]];
         case SPLEmissionType::Sphere:
-            m_debugRenderer->addSphere(emitter->getPosition(), emitter->getRadius(), glm::vec4(1, 1, 0, 0.2f));
+            m_debugRenderer->addSphere(emitter->getPosition(), resource->header.radius, glm::vec4(1, 1, 0, 0.5f));
             break;
+        case SPLEmissionType::CircleBorder: [[fallthrough]];
+        case SPLEmissionType::CircleBorderUniform: [[fallthrough]];
         case SPLEmissionType::Circle:
+            m_debugRenderer->addCircle(emitter->getPosition(), axis, resource->header.radius, glm::vec4(1, 1, 0, 0.5f));
             break;
-        case SPLEmissionType::CylinderSurface:
-            break;
+        case SPLEmissionType::CylinderSurface: [[fallthrough]];
         case SPLEmissionType::Cylinder:
+            m_debugRenderer->addCylinder(
+                emitter->getPosition(),
+                axis,
+                resource->header.length,
+                resource->header.radius,
+                glm::vec4(1, 1, 0, 0.5f)
+            );
             break;
-        case SPLEmissionType::HemisphereSurface:
-            break;
+        case SPLEmissionType::HemisphereSurface: [[fallthrough]];
         case SPLEmissionType::Hemisphere:
+            m_debugRenderer->addHemisphere(emitter->getPosition(), axis, resource->header.radius, glm::vec4(1, 1, 0, 0.5f));
             break;
         }
     }

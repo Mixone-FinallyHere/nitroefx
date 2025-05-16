@@ -4,6 +4,7 @@
 #include <array>
 
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/quaternion.hpp>
 
 
 namespace {
@@ -14,7 +15,7 @@ constexpr auto s_lineVertexShader = R"(
 #version 450 core
 
 layout(location = 0) in vec3 position;
-layout(location = 1) in vec3 color;
+layout(location = 1) in vec4 color;
 
 uniform mat4 view;
 uniform mat4 proj;
@@ -23,7 +24,7 @@ out vec4 fragColor;
 
 void main() {
     gl_Position = proj * view * vec4(position, 1.0);
-    fragColor = vec4(color, 1.0);
+    fragColor = color;
 }
 )"sv;
 
@@ -59,7 +60,7 @@ void main() {
 
 }
 
-DebugRenderer::DebugRenderer(u32 maxLines, u32 maxBoxes, u32 maxSpheres)
+DebugRenderer::DebugRenderer(u32 maxLines, u32 maxBoxes, u32 maxSpheres, u32 maxCylinders, u32 maxHemispheres)
     : m_lineShader(s_lineVertexShader, s_fragmentShader)
     , m_objectShader(s_objectVertexShader, s_fragmentShader)
     , m_maxLines(maxLines) {
@@ -81,7 +82,7 @@ DebugRenderer::DebugRenderer(u32 maxLines, u32 maxBoxes, u32 maxSpheres)
     glCall(glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const void*)offsetof(Vertex, pos)));
 
     glCall(glEnableVertexAttribArray(1));
-    glCall(glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const void*)offsetof(Vertex, color)));
+    glCall(glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const void*)offsetof(Vertex, color)));
 
     glCall(glBindBuffer(GL_ARRAY_BUFFER, 0));
     glCall(glBindVertexArray(0));
@@ -97,6 +98,12 @@ DebugRenderer::DebugRenderer(u32 maxLines, u32 maxBoxes, u32 maxSpheres)
 
     const GeneratedMesh sphereMesh = MeshGenerator::generateSphere(1.0f, 16, 16);
     m_sphereRenderData.init(sphereMesh, maxSpheres);
+
+    const GeneratedMesh cylinderMesh = MeshGenerator::generateCylinder(1.0f, 1.0f, 16);
+    m_cylinderRenderData.init(cylinderMesh, maxCylinders);
+
+    const GeneratedMesh hemisphereMesh = MeshGenerator::generateHemisphere(1.0f, 16, 16);
+    m_hemisphereRenderData.init(hemisphereMesh, maxHemispheres);
 }
 
 void DebugRenderer::render(const glm::mat4& view, const glm::mat4& proj) {
@@ -107,7 +114,7 @@ void DebugRenderer::render(const glm::mat4& view, const glm::mat4& proj) {
     glCall(glBindVertexArray(m_lineVao));
     glCall(glBindBuffer(GL_ARRAY_BUFFER, m_lineVbo));
     glCall(glBufferSubData(GL_ARRAY_BUFFER, 0, m_vertices.size() * sizeof(Vertex), m_vertices.data()));
-    glCall(glDrawArrays(GL_LINES, 0, (u32)m_vertices.size() * 2));
+    glCall(glDrawArrays(GL_LINES, 0, (u32)m_vertices.size()));
     glCall(glBindVertexArray(0));
 
     m_lineShader.unbind();
@@ -120,6 +127,8 @@ void DebugRenderer::render(const glm::mat4& view, const glm::mat4& proj) {
     
     m_boxRenderData.render();
     m_sphereRenderData.render();
+    m_cylinderRenderData.render();
+    m_hemisphereRenderData.render();
 
     glCall(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
 
@@ -128,6 +137,8 @@ void DebugRenderer::render(const glm::mat4& view, const glm::mat4& proj) {
     m_vertices.clear();
     m_boxRenderData.instances.clear();
     m_sphereRenderData.instances.clear();
+    m_cylinderRenderData.instances.clear();
+    m_hemisphereRenderData.instances.clear();
 }
 
 void DebugRenderer::addLine(const glm::vec3& start, const glm::vec3& end, const glm::vec4& color) {
@@ -135,8 +146,8 @@ void DebugRenderer::addLine(const glm::vec3& start, const glm::vec3& end, const 
         return;
     }
 
-    m_vertices.push_back({ start, color });
-    m_vertices.push_back({ end, color });
+    m_vertices.emplace_back(start, 0.0f, color);
+    m_vertices.emplace_back(end, 0.0f, color);
 }
 
 void DebugRenderer::addPlane(const glm::vec3& p, const glm::vec3& a, const glm::vec3& b, const glm::vec4& color) {
@@ -176,6 +187,67 @@ void DebugRenderer::addSphere(const glm::vec3& center, f32 radius, const glm::ve
     m_sphereRenderData.instances.push_back(instance);
 }
 
+void DebugRenderer::addCircle(const glm::vec3& center, const glm::vec3& normal, f32 radius, const glm::vec4& color) {
+    if (m_vertices.size() >= m_maxLines * 2ull) {
+        return;
+    }
+
+    const glm::vec3 a = glm::normalize(normal);
+    const auto similarity = glm::abs(glm::dot(a, { 0.0f, 1.0f, 0.0f }));
+
+    const glm::vec3 b = similarity < 0.9f 
+        ? glm::normalize(glm::cross(a, { 0.0f, 1.0f, 0.0f })) 
+        : glm::normalize(glm::cross(a, { 1.0f, 0.0f, 0.0f }));
+    const glm::vec3 c = glm::normalize(glm::cross(a, b));
+
+    glm::vec3 prev = center + radius * b;
+    for (int i = 1; i <= 32; ++i) {
+        const f32 angle = glm::two_pi<f32>() * i / 32;
+        const glm::vec3 next = center + radius * (b * cos(angle) + c * sin(angle));
+
+        addLine(prev, next, color);
+        prev = next;
+    }
+}
+
+void DebugRenderer::addCylinder(const glm::vec3& center, const glm::vec3& axis, f32 length, f32 radius, const glm::vec4& color) {
+    if (m_cylinderRenderData.instances.size() >= m_cylinderRenderData.maxInstances) {
+        return;
+    }
+
+    const glm::vec3 a = glm::normalize(axis);
+    const auto similarity = glm::abs(glm::dot(a, { 0.0f, 1.0f, 0.0f }));
+
+    const glm::vec3 b = similarity < 0.9f
+        ? glm::normalize(glm::cross(a, { 0.0f, 1.0f, 0.0f }))
+        : glm::normalize(glm::cross(a, { 1.0f, 0.0f, 0.0f }));
+    const glm::vec3 c = glm::normalize(glm::cross(a, b));
+
+    ObjectInstace instance = {
+        .color = color,
+        .transform = glm::translate(glm::mat4(1.0f), center) * 
+            glm::toMat4(glm::rotation(glm::vec3(0, 1, 0), a)) *
+            glm::scale(glm::mat4(1.0f), { radius, length * 2, radius })
+    };
+
+    m_cylinderRenderData.instances.push_back(instance);
+}
+
+void DebugRenderer::addHemisphere(const glm::vec3& center, const glm::vec3& axis, f32 radius, const glm::vec4& color) {
+    if (m_hemisphereRenderData.instances.size() >= m_hemisphereRenderData.maxInstances) {
+        return;
+    }
+
+    ObjectInstace instance = {
+        .color = color,
+        .transform = glm::translate(glm::mat4(1.0f), center) * 
+            glm::toMat4(glm::rotation(glm::vec3(0, 1, 0), glm::normalize(axis))) *
+            glm::scale(glm::mat4(1.0f), { radius, radius, radius }),
+    };
+
+    m_hemisphereRenderData.instances.push_back(instance);
+}
+
 void DebugRenderer::ObjectRenderData::init(const GeneratedMesh& mesh, u32 maxInstances) {
     this->maxInstances = maxInstances;
     indexCount = (u32)mesh.indices.size();
@@ -206,7 +278,7 @@ void DebugRenderer::ObjectRenderData::init(const GeneratedMesh& mesh, u32 maxIns
     glCall(glEnableVertexAttribArray(1));
     glCall(glEnableVertexAttribArray(2));
 
-    glCall(glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(ObjectInstace), (const void*)offsetof(ObjectInstace, color)));
+    glCall(glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(ObjectInstace), (const void*)offsetof(ObjectInstace, color)));
     glCall(glVertexAttribDivisor(1, 1));
 
     for (int i = 0; i < 4; ++i) {

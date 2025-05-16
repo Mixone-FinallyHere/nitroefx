@@ -12,7 +12,7 @@
 
 class DebugRenderer : public Renderer {
 public:
-    DebugRenderer(u32 maxLines, u32 maxBoxes = 64, u32 maxSpheres = 64);
+    DebugRenderer(u32 maxLines, u32 maxBoxes = 64, u32 maxSpheres = 64, u32 maxCylinders = 64, u32 maxHemispheres = 64);
 
     void render(const glm::mat4& view, const glm::mat4& proj) override;
 
@@ -20,13 +20,15 @@ public:
     void addPlane(const glm::vec3& p, const glm::vec3& a, const glm::vec3& b, const glm::vec4& color = glm::vec4(1.0f));
     void addBox(const glm::vec3& pos, const glm::vec3& scale, const glm::vec4& color);
     void addSphere(const glm::vec3& center, f32 radius, const glm::vec4& color);
-    // void addCircle(const glm::vec3& center, const glm::vec3& normal, f32 radius, const glm::vec3& color);
-    // void addCylinder(const glm::vec3& start, const glm::vec3& end, f32 radius, const glm::vec3& color);
+    void addCircle(const glm::vec3& center, const glm::vec3& normal, f32 radius, const glm::vec4& color);
+    void addCylinder(const glm::vec3& center, const glm::vec3& axis, f32 length, f32 radius, const glm::vec4& color);
+    void addHemisphere(const glm::vec3& center, const glm::vec3& axis, f32 radius, const glm::vec4& color);
 
 private:
     struct Vertex {
         glm::vec3 pos;
-        glm::vec3 color;
+        f32 pad;
+        glm::vec4 color;
     };
 
     struct ObjectInstace {
@@ -55,6 +57,8 @@ private:
 
     ObjectRenderData m_boxRenderData;
     ObjectRenderData m_sphereRenderData;
+    ObjectRenderData m_cylinderRenderData;
+    ObjectRenderData m_hemisphereRenderData;
 
     u32 m_lineVao = 0;
     u32 m_lineVbo = 0;

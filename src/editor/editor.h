@@ -1,11 +1,13 @@
 #pragma once
 #include "spl/spl_resource.h"
 #include "editor_instance.h"
+#include "editor_settings.h"
 #include "debug_renderer.h"
 #include "grid_renderer.h"
 #include "types.h"
 
 #include <imgui.h>
+#include <nlohmann/json.hpp>
 
 #include <array>
 #include <chrono>
@@ -24,6 +26,7 @@ public:
 
     void render();
     void renderParticles();
+    void renderMenu(std::string_view name);
     void openPicker();
     void openEditor();
     void updateParticles(float deltaTime);
@@ -36,6 +39,9 @@ public:
 
     void save();
     void saveAs(const std::filesystem::path& path);
+
+    void loadConfig(const nlohmann::json& config);
+    void saveConfig(nlohmann::json& config) const;
 
 private:
     void renderResourcePicker();
@@ -94,6 +100,8 @@ private:
     bool m_textureManagerOpen = true;
     bool m_editorOpen = true;
     float m_timeScale = 1.0f;
+
+    EditorSettings m_settings;
 
     EmitterSpawnType m_emitterSpawnType = EmitterSpawnType::SingleShot;
     float m_emitterInterval = 1.0f; // seconds

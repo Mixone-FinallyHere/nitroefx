@@ -88,6 +88,8 @@ int Application::run(int argc, char** argv) {
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // Enable Docking
     io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;       // Enable Multi-Viewport / Platform Windows
 
+    m_editor = std::make_unique<Editor>();
+
     loadConfig();
     loadFonts();
     setColors();
@@ -95,7 +97,6 @@ int Application::run(int argc, char** argv) {
     ImGui_ImplSDL2_InitForOpenGL(m_window, m_context);
     ImGui_ImplOpenGL3_Init("#version 450");
 
-    m_editor = std::make_unique<Editor>();
     std::chrono::time_point<std::chrono::high_resolution_clock> lastFrame = std::chrono::high_resolution_clock::now();
 
     while (m_running) {
@@ -392,6 +393,8 @@ void Application::renderMenuBar() {
                 m_editor->resetCamera();
             }
 
+            m_editor->renderMenu("Edit");
+
             ImGui::EndMenu();
         }
 
@@ -407,6 +410,8 @@ void Application::renderMenuBar() {
             if (ImGui::MenuItem("Resource Editor")) {
                 m_editor->openEditor();
             }
+
+            m_editor->renderMenu("View");
 
             ImGui::EndMenu();
         }
@@ -576,6 +581,8 @@ void Application::loadConfig() {
     for (const auto& project : config["recentProjects"]) {
         m_recentProjects.push_back(project.get<std::string>());
     }
+
+    m_editor->loadConfig(config);
 }
 
 void Application::saveConfig() {
