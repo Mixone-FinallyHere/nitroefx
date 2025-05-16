@@ -83,7 +83,7 @@ private:
 
     f32 m_pitch = 0.0f;
     f32 m_yaw = 1.0f;
-    f32 m_distance = -10.0f;
+    f32 m_distance = 10.0f;
 
     f32 m_pitchDelta = 0.0f;
     f32 m_yawDelta = 0.0f;

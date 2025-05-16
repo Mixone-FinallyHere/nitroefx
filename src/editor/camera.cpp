@@ -20,16 +20,16 @@ Camera::Camera(f32 fov, const glm::vec2& viewport, f32 near, f32 far)
 }
 
 void Camera::reset() {
-    m_distance = -10.0f;
+    m_distance = 10.0f;
     m_yaw = 0.0f;
-    m_pitch = -0.5f;
+    m_pitch = 0.5f;
     m_yawDelta = 0.0f;
     m_pitchDelta = 0.0f;
 }
 
 void Camera::update() {
     const ImVec2 pos = ImGui::GetMousePos();
-    const glm::vec2 mousePos = { pos.x, -pos.y };
+    const glm::vec2 mousePos = { pos.x, pos.y };
     const glm::vec2 delta = (mousePos - m_lastMousePos) * 0.002f;
 
     if (!m_active) {

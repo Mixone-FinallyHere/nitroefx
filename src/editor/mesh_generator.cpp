@@ -80,7 +80,7 @@ GeneratedMesh MeshGenerator::generateCylinder(float radius, float height, int se
         float angle = 2.0f * glm::pi<float>() * i / segments;
         float x = radius * glm::cos(angle);
         float z = radius * glm::sin(angle);
-        mesh.vertices.push_back({x, halfHeight, z});
+        mesh.vertices.push_back({x, -halfHeight, z});
     }
 
     // Top circle
@@ -88,14 +88,14 @@ GeneratedMesh MeshGenerator::generateCylinder(float radius, float height, int se
         float angle = 2.0f * glm::pi<float>() * i / segments;
         float x = radius * glm::cos(angle);
         float z = radius * glm::sin(angle);
-        mesh.vertices.push_back({x, -halfHeight, z});
+        mesh.vertices.push_back({x, halfHeight, z});
     }
 
     // Center points for caps
     int bottomCenterIndex = static_cast<int>(mesh.vertices.size());
-    mesh.vertices.push_back({0.0f, halfHeight, 0.0f});
-    int topCenterIndex = static_cast<int>(mesh.vertices.size());
     mesh.vertices.push_back({0.0f, -halfHeight, 0.0f});
+    int topCenterIndex = static_cast<int>(mesh.vertices.size());
+    mesh.vertices.push_back({0.0f, halfHeight, 0.0f});
 
     // Side faces
     for (int i = 0; i < segments; ++i) {
@@ -152,7 +152,7 @@ GeneratedMesh MeshGenerator::generateHemisphere(float radius, int segments, int 
 
             mesh.vertices.push_back({
                 radius * sinTheta * cosPhi,
-                -radius * cosTheta,
+                radius * cosTheta,
                 radius * sinTheta * sinPhi
             });
         }

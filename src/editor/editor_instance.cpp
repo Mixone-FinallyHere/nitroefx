@@ -32,7 +32,7 @@ std::pair<bool, bool> EditorInstance::render() {
         const ImVec2 size = ImGui::GetContentRegionAvail();
         m_size = { size.x, size.y };
 
-        ImGui::Image((ImTextureID)(uintptr_t)m_viewport.getTexture(), size);
+        ImGui::Image((ImTextureID)(uintptr_t)m_viewport.getTexture(), size, ImVec2(0, 1), ImVec2(1, 0));
         if (ImGui::IsItemHovered()) {
             m_camera.setViewportHovered(true);
         }
