@@ -1526,12 +1526,14 @@ void Editor::renderDebugShapes(const std::shared_ptr<EditorInstance>& editor, st
             m_debugRenderer->addBox(emitter->getPosition(), { 0.2f, 0.2f, 0.2f }, glm::vec4(1, 1, 0, 0.2f));
             break;
         case SPLEmissionType::SphereSurface:
+            m_debugRenderer->addSphere(emitter->getPosition(), emitter->getRadius(), glm::vec4(1, 1, 0, 0.2f));
             break;
         case SPLEmissionType::CircleBorder:
             break;
         case SPLEmissionType::CircleBorderUniform:
             break;
         case SPLEmissionType::Sphere:
+            m_debugRenderer->addSphere(emitter->getPosition(), emitter->getRadius(), glm::vec4(1, 1, 0, 0.2f));
             break;
         case SPLEmissionType::Circle:
             break;
