@@ -241,6 +241,8 @@ void Editor::renderResourcePicker() {
             m_selectedResources[id] = -1;
         }
 
+        bool anyHovered = false;
+
         const auto contentRegion = ImGui::GetContentRegionAvail();
         if (ImGui::BeginListBox("##Resources", contentRegion)) {
             const ImGuiStyle& style = ImGui::GetStyle();
@@ -263,6 +265,11 @@ void Editor::renderResourcePicker() {
 
                 if (ImGui::IsItemHovered()) {
                     bgColor = style.Colors[ImGuiCol_ButtonHovered];
+                    anyHovered = true;
+
+                    if (ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
+                        ImGui::OpenPopup("##ResourcePopup");
+                    }
                 }
 
                 // Draw a filled rectangle behind the item
@@ -282,13 +289,35 @@ void Editor::renderResourcePicker() {
                 ImGui::SetCursorPosY(ImGui::GetCursorPosY() + (32 - textHeight) / 2);
                 ImGui::TextUnformatted(name.c_str());
 
+                if (ImGui::BeginPopup("##ResourcePopup")) {
+                    if (ImGui::MenuItem("Duplicate")) {
+                        resources.emplace_back(resources[i].duplicate());
+                        m_selectedResources[id] = resources.size() - 1;
+
+                        ImGui::CloseCurrentPopup();
+                    }
+
+                    if (ImGui::MenuItem("Delete")) {
+                        if (m_selectedResources[id] == i) {
+                            m_selectedResources[id] = -1;
+                        }
+
+                        resources.erase(resources.begin() + i);
+                        ImGui::CloseCurrentPopup();
+                    }
+
+                    ImGui::EndPopup();
+                }
+
                 ImGui::PopID();
             }
 
             ImGui::EndListBox();
         }
 
-        if (ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows) && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
+        if (!anyHovered
+            && ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows) 
+            && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
             ImGui::OpenPopup("##AddResourcePopup");
         }
 
@@ -298,6 +327,7 @@ void Editor::renderResourcePicker() {
                 m_selectedResources[id] = resources.size() - 1;
                 ImGui::CloseCurrentPopup();
             }
+
             ImGui::EndPopup();
         }
     }

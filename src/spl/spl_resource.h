@@ -703,5 +703,7 @@ struct SPLResource {
         return getBehavior(type) != nullptr;
     }
 
+    SPLResource duplicate() const;
+
     static SPLResource create();
 };
