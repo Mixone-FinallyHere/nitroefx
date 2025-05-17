@@ -2,7 +2,7 @@
 #include "spl/spl_resource.h"
 #include "gl_util.h"
 
-#include <gl/glew.h>
+#include <GL/glew.h>
 
 
 GLTexture::GLTexture(const SPLTexture& texture) 

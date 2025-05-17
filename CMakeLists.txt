@@ -1,5 +1,4 @@
-cmake_minimum_required(VERSION 3.30)
-include(ExternalProject)
+cmake_minimum_required(VERSION 3.15)
 
 if (WIN32)
     set(VCPKG_TARGET_TRIPLET x64-windows-static-md)
@@ -33,31 +32,22 @@ endif()
 if (WIN32)
     set(IMAGEQUANT_LIB "${LIBIMAGEQUANT_DIR}/target/release/imagequant_sys.lib")
 else()
-    set(IMAGEQUANT_LIB "${LIBIMAGEQUANT_DIR}/target/release/imagequant_sys.a")
+    set(IMAGEQUANT_LIB "${LIBIMAGEQUANT_DIR}/target/release/libimagequant_sys.a")
 endif()
 
-ExternalProject_Add(
-    libimagequant
-    DOWNLOAD_COMMAND ""
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND cargo build COMMAND cargo build --release
-    INSTALL_COMMAND ""
-    LOG_BUILD ON
-    PREFIX ${LIBIMAGEQUANT_DIR}
+add_custom_command(
+    OUTPUT ${IMAGEQUANT_LIB}
+    COMMAND cargo build --release --manifest-path ${LIBIMAGEQUANT_DIR}/imagequant-sys/Cargo.toml
+    WORKING_DIRECTORY ${LIBIMAGEQUANT_DIR}
+    COMMENT "Building imagequant_sys with cargo"
+    VERBATIM
 )
 
-ExternalProject_Add(
-    libimagequant-sys
-    DOWNLOAD_COMMAND ""
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND cargo build COMMAND cargo build --release
-    INSTALL_COMMAND ""
-    LOG_BUILD ON
-    BUILD_BYPRODUCTS ${IMAGEQUANT_LIB}
-    PREFIX ${LIBIMAGEQUANT_DIR}/imagequant-sys
+add_custom_target(libimagequant_sys_build ALL
+    DEPENDS ${IMAGEQUANT_LIB}
 )
 
-add_dependencies(nitroefx libimagequant libimagequant-sys)
+add_dependencies(nitroefx libimagequant_sys_build)
 
 target_include_directories(nitroefx PRIVATE 
     src 
@@ -83,5 +73,9 @@ if (WIN32)
         Ws2_32.lib
         ntdll.lib
         userenv.lib
+    )
+else()
+    target_compile_options(nitroefx PRIVATE
+        -Wno-int-to-pointer-cast
     )
 endif()

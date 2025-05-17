@@ -1,9 +1,9 @@
 #include "spl_resource.h"
 #include "spl_particle.h"
+#include "spl_random.h"
 
 #include <glm/common.hpp>
 
-#include "random.h"
 
 
 void SPLScaleAnim::apply(SPLParticle& ptcl, const SPLResource& resource, f32 lifeRate) const {
@@ -102,7 +102,7 @@ void SPLAlphaAnim::apply(SPLParticle& ptcl, const SPLResource& resource, f32 lif
     }
 
     ptcl.visibility.animAlpha = glm::clamp(
-        random::scaledRange(ptcl.visibility.animAlpha, flags.randomRange), 
+        SPLRandom::scaledRange(ptcl.visibility.animAlpha, flags.randomRange), 
         0.0f, 1.0f
     );
 }
@@ -121,7 +121,7 @@ void SPLAlphaAnim::plot(std::span<f32> xs, std::span<f32> ys) const {
             ys[i] = glm::mix(alpha.mid, alpha.end, (lifeRate - curve.getOut()) / (1.0f - curve.getOut()));
         }
 
-        ys[i] = random::scaledRange(ys[i], flags.randomRange);
+        ys[i] = SPLRandom::scaledRange(ys[i], flags.randomRange);
     }
 }
 

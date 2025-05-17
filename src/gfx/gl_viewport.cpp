@@ -1,6 +1,6 @@
 #include "gl_viewport.h"
 
-#include <gl/glew.h>
+#include <GL/glew.h>
 
 #include "spdlog/spdlog.h"
 

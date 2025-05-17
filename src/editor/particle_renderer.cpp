@@ -2,7 +2,7 @@
 #include "gfx/gl_util.h"
 
 #include <algorithm>
-#include <gl/glew.h>
+#include <GL/glew.h>
 #include <glm/gtc/type_ptr.hpp>
 #include <numeric>
 #include <ranges>

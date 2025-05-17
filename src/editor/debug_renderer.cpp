@@ -203,7 +203,7 @@ void DebugRenderer::addCircle(const glm::vec3& center, const glm::vec3& normal, 
     glm::vec3 prev = center + radius * b;
     for (int i = 1; i <= 32; ++i) {
         const f32 angle = glm::two_pi<f32>() * i / 32;
-        const glm::vec3 next = center + radius * (b * cos(angle) + c * sin(angle));
+        const glm::vec3 next = center + radius * (b * glm::cos(angle) + c * glm::sin(angle));
 
         addLine(prev, next, color);
         prev = next;

@@ -2,7 +2,7 @@
 #include "fonts/IconsFontAwesome6.h"
 
 #include <SDL2/SDL.h>
-#include <gl/glew.h>
+#include <GL/glew.h>
 #include <SDL2/SDL_opengl.h>
 #include <imgui.h>
 #include <implot.h>

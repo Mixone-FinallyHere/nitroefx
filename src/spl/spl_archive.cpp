@@ -1,7 +1,7 @@
 #include "spl_archive.h"
 #include "gfx/gl_util.h"
 
-#include <gl/glew.h>
+#include <GL/glew.h>
 #include <glm/gtc/constants.hpp>
 #include <spdlog/spdlog.h>
 #include <fstream>

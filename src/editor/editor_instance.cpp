@@ -1,9 +1,9 @@
 #include "editor_instance.h"
 #include "project_manager.h"
-#include "random.h"
+#include "spl/spl_random.h"
 #include "gfx/gl_util.h"
 
-#include <gl/glew.h>
+#include <GL/glew.h>
 #include <imgui.h>
 #include <random>
 #include <glm/ext/matrix_clip_space.hpp>
@@ -13,7 +13,7 @@
 EditorInstance::EditorInstance(const std::filesystem::path& path)
     : m_path(path), m_archive(path), m_particleSystem(1000, m_archive.getTextures())
     , m_camera(glm::radians(45.0f), { 800, 800 }, 1.0f, 500.0f) {
-    m_uniqueID = random::nextU64();
+    m_uniqueID = SPLRandom::nextU64();
 
     m_updateProj = true;
 }

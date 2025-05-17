@@ -1,5 +1,5 @@
 #include "spl_behavior.h"
-#include "random.h"
+#include "spl_random.h"
 #include "spl_archive.h"
 #include "spl_emitter.h"
 #include "spl_particle.h"
@@ -21,9 +21,9 @@ void SPLRandomBehavior::apply(SPLParticle& particle, glm::vec3& acceleration, SP
     const auto now = std::chrono::steady_clock::now();
     const auto delta = std::chrono::duration_cast<std::chrono::duration<float>>(now - lastApplication);
     if (delta.count() >= applyInterval) {
-        acceleration.x += random::aroundZero(magnitude.x);
-        acceleration.y += random::aroundZero(magnitude.y);
-        acceleration.z += random::aroundZero(magnitude.z);
+        acceleration.x += SPLRandom::aroundZero(magnitude.x);
+        acceleration.y += SPLRandom::aroundZero(magnitude.y);
+        acceleration.z += SPLRandom::aroundZero(magnitude.z);
         lastApplication = now;
     }
 }

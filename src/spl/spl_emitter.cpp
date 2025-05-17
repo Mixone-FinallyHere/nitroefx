@@ -1,12 +1,11 @@
 #include "spl_emitter.h"
 #include "editor/particle_system.h"
 #include "editor/camera.h"
-#include "random.h"
+#include "spl_random.h"
 
 #include <glm/gtc/random.hpp>
 #include <glm/gtc/constants.hpp>
 #include <ranges>
-
 
 
 SPLEmitter::SPLEmitter(const SPLResource* resource, ParticleSystem* system, bool looping, const glm::vec3& pos) {
@@ -343,14 +342,14 @@ void SPLEmitter::emit(u32 count) {
         } break;
         }
 
-        const f32 magPos = random::scaledRange2(header.initVelPosAmplifier, header.variance.initVel);
-        const f32 magAxis = random::scaledRange2(header.initVelAxisAmplifier, header.variance.initVel);
+        const f32 magPos = SPLRandom::scaledRange2(header.initVelPosAmplifier, header.variance.initVel);
+        const f32 magAxis = SPLRandom::scaledRange2(header.initVelAxisAmplifier, header.variance.initVel);
 
         glm::vec3 posNorm;
         if (header.flags.emissionType == SPLEmissionType::CylinderSurface) {
             posNorm = glm::normalize(ptcl->velocity.x * m_crossAxis1 + ptcl->velocity.y * m_crossAxis2);
         } else if (ptcl->position == glm::vec3(0)) {
-            posNorm = random::unitVector();
+            posNorm = SPLRandom::unitVector();
         } else {
             posNorm = glm::normalize(ptcl->position);
         }
@@ -358,7 +357,7 @@ void SPLEmitter::emit(u32 count) {
         ptcl->velocity = posNorm * magPos + m_axis * magAxis + m_particleInitVelocity;
         ptcl->emitterPos = m_position;
 
-        ptcl->baseScale = random::scaledRange2(header.baseScale, header.variance.baseScale);
+        ptcl->baseScale = SPLRandom::scaledRange2(header.baseScale, header.variance.baseScale);
         ptcl->animScale = 1.0f;
 
         if (header.flags.hasColorAnim && m_resource->colorAnim && m_resource->colorAnim->flags.randomStartColor) {
@@ -368,7 +367,7 @@ void SPLEmitter::emit(u32 count) {
                 m_resource->colorAnim->end
             };
 
-            ptcl->color = startColors[random::nextU32() % 3];
+            ptcl->color = startColors[SPLRandom::nextU32() % 3];
         } else {
             ptcl->color = header.color;
         }
@@ -377,25 +376,25 @@ void SPLEmitter::emit(u32 count) {
         ptcl->visibility.animAlpha = 1.0f;
 
         if (header.flags.randomInitAngle) {
-            ptcl->rotation = random::range(0.0f, glm::two_pi<f32>());
+            ptcl->rotation = SPLRandom::range(0.0f, glm::two_pi<f32>());
         } else {
             ptcl->rotation = header.initAngle;
         }
 
         if (header.flags.hasRotation) {
-            ptcl->angularVelocity = random::range(header.minRotation, header.maxRotation);
+            ptcl->angularVelocity = SPLRandom::range(header.minRotation, header.maxRotation);
         } else {
             ptcl->angularVelocity = 0;
         }
 
-        ptcl->lifeTime = random::scaledRange(header.particleLifeTime, header.variance.lifeTime);
+        ptcl->lifeTime = SPLRandom::scaledRange(header.particleLifeTime, header.variance.lifeTime);
         ptcl->age = 0;
         ptcl->emissionTimer = 0;
 
         if (header.flags.hasTexAnim && m_resource->texAnim) {
             const auto& texAnim = m_resource->texAnim.value();
             if (m_resource->texAnim->param.randomizeInit) {
-                ptcl->texture = texAnim.textures[random::nextU32() % texAnim.param.textureCount];
+                ptcl->texture = texAnim.textures[SPLRandom::nextU32() % texAnim.param.textureCount];
             } else {
                 ptcl->texture = texAnim.textures[0];
             }
@@ -403,7 +402,7 @@ void SPLEmitter::emit(u32 count) {
             ptcl->texture = header.misc.textureIndex;
         }
         
-        ptcl->lifeRateOffset = header.flags.randomizeLoopedAnim ? random::nextF32() : 0;
+        ptcl->lifeRateOffset = header.flags.randomizeLoopedAnim ? SPLRandom::nextF32() : 0;
     }
 }
 
@@ -425,9 +424,9 @@ void SPLEmitter::emitChildren(const SPLParticle& parent, u32 count) {
 
         ptcl->position = parent.position;
         ptcl->velocity = parent.velocity * child.velocityRatio + glm::vec3(
-            random::aroundZero(child.randomInitVelMag),
-            random::aroundZero(child.randomInitVelMag),
-            random::aroundZero(child.randomInitVelMag)
+            SPLRandom::aroundZero(child.randomInitVelMag),
+            SPLRandom::aroundZero(child.randomInitVelMag),
+            SPLRandom::aroundZero(child.randomInitVelMag)
         );
 
         ptcl->emitterPos = m_position;
