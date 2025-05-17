@@ -6,11 +6,9 @@
 
 #include "camera.h"
 #include "gfx/gl_viewport.h"
-#include "particle_renderer.h"
 #include "particle_system.h"
 #include "renderer.h"
-#include "debug_renderer.h"
-#include "grid_renderer.h"
+#include "editor_history.h"
 #include "spl/spl_archive.h"
 
 
@@ -24,13 +22,29 @@ public:
     void handleEvent(const SDL_Event& event);
 
     bool notifyClosing();
+    void notifyResourceChanged(size_t index);
     bool valueChanged(bool changed);
     bool isModified() const {
         return m_modified;
     }
 
+    void duplicateResource(size_t index);
+    void deleteResource(size_t index);
+    void addResource();
+
     void save();
     void saveAs(const std::filesystem::path& path);
+
+    bool canUndo() const {
+        return m_history.canUndo();
+    }
+
+    bool canRedo() const {
+        return m_history.canRedo();
+    }
+
+    EditorActionType undo();
+    EditorActionType redo();
 
     SPLArchive& getArchive() {
         return m_archive;
@@ -54,6 +68,10 @@ private:
     GLViewport m_viewport = GLViewport({ 800, 600 });
     ParticleSystem m_particleSystem;
     Camera m_camera;
+    EditorHistory m_history;
+
+    size_t m_selectedResource = -1;
+    SPLResource m_resourceBefore;
 
     glm::vec2 m_size = { 800, 600 };
     bool m_updateProj;

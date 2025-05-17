@@ -43,6 +43,11 @@ public:
     void loadConfig(const nlohmann::json& config);
     void saveConfig(nlohmann::json& config) const;
 
+    bool canUndo() const;
+    bool canRedo() const;
+    void undo();
+    void redo();
+
 private:
     void renderResourcePicker();
     void renderTextureManager();
@@ -71,6 +76,8 @@ private:
     void openTempTexture(std::string_view path);
     void discardTempTexture();
     void importTempTexture();
+
+    void ensureValidSelection(const std::shared_ptr<EditorInstance>& editor);
 
     static bool palettizeTexture(
         const u8* data, 

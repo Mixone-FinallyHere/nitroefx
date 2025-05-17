@@ -14,8 +14,8 @@ EditorInstance::EditorInstance(const std::filesystem::path& path)
     : m_path(path), m_archive(path), m_particleSystem(1000, m_archive.getTextures())
     , m_camera(glm::radians(45.0f), { 800, 800 }, 1.0f, 500.0f) {
     m_uniqueID = SPLRandom::nextU64();
-
     m_updateProj = true;
+    notifyResourceChanged(0);
 }
 
 std::pair<bool, bool> EditorInstance::render() {
@@ -84,9 +84,88 @@ bool EditorInstance::notifyClosing() {
     return true;
 }
 
+void EditorInstance::notifyResourceChanged(size_t index) {
+    if (index == -1) {
+        m_selectedResource = -1;
+        return;
+    }
+
+    if (index >= m_archive.getResources().size()) {
+        return;
+    }
+
+    m_selectedResource = index;
+    m_resourceBefore = m_archive.getResources().at(index).duplicate();
+}
+
 bool EditorInstance::valueChanged(bool changed) {
+    if (m_selectedResource >= m_archive.getResources().size()) {
+        return false;
+    }
+
     m_modified |= changed;
+
+    if (ImGui::IsItemDeactivatedAfterEdit()) {
+        const auto after = m_archive.getResources().at(m_selectedResource).duplicate();
+
+        m_history.push({
+            .type = EditorActionType::ResourceModify,
+            .resourceIndex = m_selectedResource,
+            .before = m_resourceBefore,
+            .after = after
+        });
+
+        m_resourceBefore = after.duplicate();
+    }
+
     return changed;
+}
+
+void EditorInstance::duplicateResource(size_t index) {
+    if (index >= m_archive.getResources().size()) {
+        return;
+    }
+
+    auto& resources = m_archive.getResources();
+    const auto& resource = resources[index];
+    const auto& newResource = resources.emplace_back(resource.duplicate());
+
+    m_history.push({
+        .type = EditorActionType::ResourceAdd,
+        .resourceIndex = resources.size() - 1,
+        .before = {}, // No before state for new resources
+        .after = newResource.duplicate()
+    });
+}
+
+void EditorInstance::deleteResource(size_t index) {
+    if (index >= m_archive.getResources().size()) {
+        return;
+    }
+
+    auto& resources = m_archive.getResources();
+    const auto& resource = resources[index];
+
+    m_history.push({
+        .type = EditorActionType::ResourceRemove,
+        .resourceIndex = index,
+        .before = resource.duplicate(),
+        .after = {} // No after state for deleted resources
+    });
+
+    resources.erase(resources.begin() + index);
+}
+
+void EditorInstance::addResource() {
+    auto& resources = m_archive.getResources();
+    const auto& resource = resources.emplace_back(SPLResource::create());
+
+    m_history.push({
+        .type = EditorActionType::ResourceAdd,
+        .resourceIndex = resources.size() - 1,
+        .before = {}, // No before state for new resources
+        .after = resource.duplicate()
+    });
 }
 
 void EditorInstance::save() {
@@ -101,4 +180,22 @@ void EditorInstance::save() {
 void EditorInstance::saveAs(const std::filesystem::path& path) {
     m_path = path;
     return save();
+}
+
+EditorActionType EditorInstance::undo() {
+    if (m_history.canUndo()) {
+        m_modified = true;
+        return m_history.undo(m_archive.getResources());
+    }
+
+    return EditorActionType::None;
+}
+
+EditorActionType EditorInstance::redo() {
+    if (m_history.canRedo()) {
+        m_modified = true;
+        return m_history.redo(m_archive.getResources());
+    }
+
+    return EditorActionType::None;
 }

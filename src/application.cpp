@@ -252,6 +252,18 @@ void Application::handleKeydown(const SDL_Event& event) {
         }
         break;
 
+    case SDLK_z:
+        if (event.key.keysym.mod & KMOD_CTRL) {
+            m_editor->undo();
+        }
+        break;
+
+    case SDLK_y:
+        if (event.key.keysym.mod & KMOD_CTRL) {
+            m_editor->redo();
+        }
+        break;
+
     case SDLK_F4:
         if (event.key.keysym.mod & KMOD_ALT) {
             m_running = false;
@@ -369,12 +381,12 @@ void Application::renderMenuBar() {
         }
 
         if (ImGui::BeginMenu("Edit")) {
-            if (ImGui::MenuItem("Undo", "Ctrl+Z", false, false)) {
-                spdlog::warn("Undo not implemented");
+            if (ImGui::MenuItem("Undo", "Ctrl+Z", false, m_editor->canUndo())) {
+                m_editor->undo();
             }
 
-            if (ImGui::MenuItem("Redo", "Ctrl+Y", false, false)) {
-                spdlog::warn("Redo not implemented");
+            if (ImGui::MenuItem("Redo", "Ctrl+Y", false, m_editor->canRedo())) {
+                m_editor->redo();
             }
 
             if (ImGui::MenuItem("Play Single Shot Emitter", "Ctrl+P", false, hasActiveEditor)) {

@@ -69,13 +69,8 @@ target_link_libraries(nitroefx PRIVATE
     ${IMAGEQUANT_LIB})
 
 if (WIN32)
-    target_link_libraries(nitroefx PRIVATE
-        Ws2_32.lib
-        ntdll.lib
-        userenv.lib
-    )
+    target_link_libraries(nitroefx PRIVATE Ws2_32.lib ntdll.lib userenv.lib)
+    target_compile_options(nitroefx PRIVATE /wd4312)
 else()
-    target_compile_options(nitroefx PRIVATE
-        -Wno-int-to-pointer-cast
-    )
+    target_compile_options(nitroefx PRIVATE -Wno-int-to-pointer-cast)
 endif()

@@ -170,6 +170,46 @@ void Editor::saveConfig(nlohmann::json& config) const {
     });
 }
 
+bool Editor::canUndo() const {
+    const auto& editor = g_projectManager->getActiveEditor();
+    if (!editor) {
+        return false;
+    }
+
+    return editor->canUndo();
+}
+
+bool Editor::canRedo() const {
+    const auto& editor = g_projectManager->getActiveEditor();
+    if (!editor) {
+        return false;
+    }
+
+    return editor->canRedo();
+}
+
+void Editor::undo() {
+    const auto& editor = g_projectManager->getActiveEditor();
+    if (!editor) {
+        return;
+    }
+
+    if (editor->undo() == EditorActionType::ResourceAdd) {
+        ensureValidSelection(editor);
+    }
+}
+
+void Editor::redo() {
+    const auto& editor = g_projectManager->getActiveEditor();
+    if (!editor) {
+        return;
+    }
+
+    if (editor->redo() == EditorActionType::ResourceRemove) {
+        ensureValidSelection(editor);
+    }
+}
+
 void Editor::playEmitterAction(EmitterSpawnType spawnType) {
     const auto& editor = g_projectManager->getActiveEditor();
     if (!editor) {
@@ -239,6 +279,7 @@ void Editor::renderResourcePicker() {
         const auto id = editor->getUniqueID();
         if (!m_selectedResources.contains(id)) {
             m_selectedResources[id] = -1;
+            editor->notifyResourceChanged(-1);
         }
 
         bool anyHovered = false;
@@ -261,6 +302,7 @@ void Editor::renderResourcePicker() {
                 const auto cursor = ImGui::GetCursorScreenPos();
                 if (ImGui::InvisibleButton("##Resource", { contentRegion.x, 32 })) {
                     m_selectedResources[id] = i;
+                    editor->notifyResourceChanged(i);
                 }
 
                 if (ImGui::IsItemHovered()) {
@@ -291,8 +333,9 @@ void Editor::renderResourcePicker() {
 
                 if (ImGui::BeginPopup("##ResourcePopup")) {
                     if (ImGui::MenuItem("Duplicate")) {
-                        resources.emplace_back(resources[i].duplicate());
+                        editor->duplicateResource(i);
                         m_selectedResources[id] = resources.size() - 1;
+                        editor->notifyResourceChanged(resources.size() - 1);
 
                         ImGui::CloseCurrentPopup();
                     }
@@ -300,9 +343,10 @@ void Editor::renderResourcePicker() {
                     if (ImGui::MenuItem("Delete")) {
                         if (m_selectedResources[id] == i) {
                             m_selectedResources[id] = -1;
+                            editor->notifyResourceChanged(-1);
                         }
 
-                        resources.erase(resources.begin() + i);
+                        editor->deleteResource(i);
                         ImGui::CloseCurrentPopup();
                     }
 
@@ -323,7 +367,7 @@ void Editor::renderResourcePicker() {
 
         if (ImGui::BeginPopup("##AddResourcePopup")) {
             if (ImGui::MenuItem("Add Resource")) {
-                resources.emplace_back(SPLResource::create());
+                editor->addResource();
                 m_selectedResources[id] = resources.size() - 1;
                 ImGui::CloseCurrentPopup();
             }
@@ -1761,6 +1805,16 @@ void Editor::importTempTexture() {
     discardTempTexture();
 
     activeEditor->getParticleSystem().getRenderer().setTextures(textures);
+}
+
+void Editor::ensureValidSelection(const std::shared_ptr<EditorInstance>& editor) {
+    const auto id = editor->getUniqueID();
+    const auto selectedResource = m_selectedResources[id];
+
+    if (selectedResource != -1 && selectedResource >= editor->getArchive().getResourceCount()) {
+        m_selectedResources[id] = -1;
+        editor->notifyResourceChanged(-1);
+    }
 }
 
 bool Editor::palettizeTexture(const u8* data, s32 width, s32 height, const TextureImportSpecification& spec, std::vector<u8>& outData, std::vector<u8>& outPalette) {
