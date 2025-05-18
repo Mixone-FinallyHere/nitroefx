@@ -1183,16 +1183,18 @@ bool Editor::renderScaleAnimEditor(SPLScaleAnim& res) {
     }
 
     hovered = ImGui::IsItemHovered();
+
+    bool result = false;
     if (ImGui::BeginPopupContextItem("##scaleAnimContext")) {
         if (ImGui::MenuItem("Delete")) {
             ImGui::CloseCurrentPopup();
-            return true;
+            result = true;
         }
 
         ImGui::EndPopup();
     }
 
-    return false;
+    return result;
 }
 
 bool Editor::renderColorAnimEditor(const SPLResource& mainRes, SPLColorAnim& res) {
@@ -1297,16 +1299,18 @@ bool Editor::renderColorAnimEditor(const SPLResource& mainRes, SPLColorAnim& res
     }
 
     hovered = ImGui::IsItemHovered();
+
+    bool result = false;
     if (ImGui::BeginPopupContextItem("##colorAnimContext")) {
         if (ImGui::MenuItem("Delete")) {
             ImGui::CloseCurrentPopup();
-            return true;
+            result = true;
         }
 
         ImGui::EndPopup();
     }
 
-    return false;
+    return result;
 }
 
 bool Editor::renderAlphaAnimEditor(SPLAlphaAnim& res) {
@@ -1357,16 +1361,18 @@ bool Editor::renderAlphaAnimEditor(SPLAlphaAnim& res) {
     }
 
     hovered = ImGui::IsItemHovered();
+
+    bool result = false;
     if (ImGui::BeginPopupContextItem("##alphaAnimContext")) {
         if (ImGui::MenuItem("Delete")) {
             ImGui::CloseCurrentPopup();
-            return true;
+            result = true;
         }
 
         ImGui::EndPopup();
     }
 
-    return false;
+    return result;
 }
 
 bool Editor::renderTexAnimEditor(SPLTexAnim& res) {
