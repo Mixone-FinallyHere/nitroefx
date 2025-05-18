@@ -35,7 +35,7 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update
-        sudo apt-get install -y libxmu-dev libxi-dev libgl-dev zip autoconf automake libtool pkg-config libglu1-mesa-dev
+        sudo apt-get install -y libxmu-dev libxi-dev libgl-dev zip autoconf automake libtool pkg-config libglu1-mesa-dev libltdl-dev
       shell: bash
 
     - name: Install vcpkg
@@ -61,6 +61,15 @@ jobs:
     - name: Setup MSVC environment (Windows)
       if: matrix.os == 'windows-latest'
       uses: ilammy/msvc-dev-cmd@v1
+    
+    - name: Fix PATH to avoid Git's link.exe on Windows
+      if: matrix.os == 'windows-latest'
+      shell: pwsh
+      run: |
+        # Remove Git's usr/bin from PATH to prevent Rust from using the wrong link.exe
+        $newPath = ($env:Path -split ';') | Where-Object { $_ -notlike '*Git\\usr\\bin*' } -join ';'
+        echo "PATH=$newPath" >> $env:GITHUB_ENV
+        Write-Host "Updated PATH to avoid Git's link.exe"
 
     - name: Configure CMake
       run: cmake --preset ${{ steps.select-preset.outputs.preset }}
