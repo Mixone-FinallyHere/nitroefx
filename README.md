@@ -1,5 +1,9 @@
-# nitroefx
-
+<div align="center">
+    <h1>nitroefx</h1>
+    <img src="data/nitroefx.png" width=256>
+    <br></br>
+    <p>Visual Editor for NITRO Particle Files. Primarily used in Nintendo DS Pokémon games.</p>
+</div>
 
 ## Building
 ```bash
