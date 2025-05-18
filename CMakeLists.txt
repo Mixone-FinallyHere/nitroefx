@@ -71,6 +71,7 @@ target_link_libraries(nitroefx PRIVATE
 if (WIN32)
     target_link_libraries(nitroefx PRIVATE Ws2_32.lib ntdll.lib userenv.lib)
     target_compile_options(nitroefx PRIVATE /wd4312)
+    target_sources(nitroefx PRIVATE data/icon.rc)
 else()
     target_compile_options(nitroefx PRIVATE -Wno-int-to-pointer-cast)
 endif()
