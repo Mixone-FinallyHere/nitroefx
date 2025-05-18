@@ -66,10 +66,8 @@ jobs:
       if: matrix.os == 'windows-latest'
       shell: pwsh
       run: |
-        # Remove Git's usr/bin from PATH to prevent Rust from using the wrong link.exe
-        $newPath = ($env:Path -split ';') | Where-Object { $_ -notlike '*Git\\usr\\bin*' } -join ';'
-        echo "PATH=$newPath" >> $env:GITHUB_ENV
-        Write-Host "Updated PATH to avoid Git's link.exe"
+        $cleanedPath = ($env:Path -split ';' | Where-Object { $_ -notlike '*Git\\usr\\bin*' }) -join ';'
+        echo "PATH=$cleanedPath" >> $env:GITHUB_ENV
 
     - name: Configure CMake
       run: cmake --preset ${{ steps.select-preset.outputs.preset }}
