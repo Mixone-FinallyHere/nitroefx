@@ -16,10 +16,7 @@ jobs:
         build_type: [dist]
     
     env:
-      USERNAME: "Fexty12573"
-      VCPKG_EXE: ${{ github.workspace }}/vcpkg/vcpkg
-      FEED_URL: https://nuget.pkg.github.com/Fexty12573/index.json
-      VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/Fexty12573/index.json,readwrite"
+      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
 
     steps:
     - name: Export GitHub Actions cache environment variables
@@ -75,6 +72,14 @@ jobs:
       run: cmake --preset ${{ steps.select-preset.outputs.preset }}
       shell: bash
 
-    - name: Build
+    - name: Build (Windows)
+      if: matrix.os == 'windows-latest'
+      shell: pwsh
+      run: |
+        $env:Path = ($env:Path -split ';' | Where-Object { $_ -notlike '*Git\\usr\\bin*' }) -join ';'
+        cmake --build build
+
+    - name: Build (Linux)
+      if: matrix.os == 'ubuntu-latest'
       run: cmake --build build
       shell: bash
