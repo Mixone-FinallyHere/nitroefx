@@ -1,6 +1,3 @@
-[submodule "external/tinyfiledialogs"]
-	path = external/tinyfiledialogs
-	url = http://git.code.sf.net/p/tinyfiledialogs/code
 [submodule "external/libimagequant"]
 	path = external/libimagequant
 	url = https://github.com/ImageOptim/libimagequant
