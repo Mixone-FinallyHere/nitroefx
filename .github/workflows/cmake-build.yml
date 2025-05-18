@@ -1,0 +1,67 @@
+name: CMake Build
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        build_type: [debug, dist]
+    
+    env:
+      # Let vcpkg install packages from the GitHub Actions cache
+      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+
+    steps:
+    - name: Export GitHub Actions cache environment variables
+      uses: actions/github-script@v7
+      with:
+        script: |
+          core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+          core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+        
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install Linux system dependencies
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libxmu-dev libxi-dev libgl-dev zip autoconf automake libtool pkg-config libglu1-mesa-dev
+      shell: bash
+
+    - name: Install vcpkg
+      run: |
+        git clone https://github.com/microsoft/vcpkg.git
+        ./vcpkg/bootstrap-vcpkg.sh || ./vcpkg/bootstrap-vcpkg.bat
+      shell: bash
+
+    - name: Set VCPKG_ROOT environment variable
+      run: echo "VCPKG_ROOT=$GITHUB_WORKSPACE/vcpkg" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Select CMake preset
+      id: select-preset
+      run: |
+        if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+          echo "preset=windows-x64-${{ matrix.build_type }}" >> $GITHUB_OUTPUT
+        else
+          echo "preset=linux-x64-${{ matrix.build_type }}" >> $GITHUB_OUTPUT
+        fi
+      shell: bash
+
+    - name: Configure CMake
+      run: cmake --preset ${{ steps.select-preset.outputs.preset }}
+      shell: bash
+
+    - name: Build
+      run: cmake --build build
+      shell: bash
