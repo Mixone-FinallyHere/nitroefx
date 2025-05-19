@@ -58,6 +58,13 @@ void ProjectManager::openEditor(const std::filesystem::path& path) {
     m_openEditors.push_back(editor);
 }
 
+void ProjectManager::openTempEditor(const std::filesystem::path& path) {
+    closeTempEditor();
+    const auto editor = std::make_shared<EditorInstance>(path, true);
+    m_openEditors.push_back(editor);
+    m_activeEditor = editor;
+}
+
 void ProjectManager::closeEditor(const std::shared_ptr<EditorInstance>& editor, bool force) {
     if (!force && editor->isModified()) {
         m_unsavedEditors.push_back(editor);
@@ -69,6 +76,17 @@ void ProjectManager::closeEditor(const std::shared_ptr<EditorInstance>& editor, 
         if (m_activeEditor == editor) {
             m_activeEditor.reset();
         }
+    }
+}
+
+void ProjectManager::closeTempEditor() {
+    const auto it = std::ranges::find_if(m_openEditors, [](const auto& editor) {
+        return editor->isTemp();
+    });
+
+    if (it != m_openEditors.end()) {
+        // Force shouldn't be necessary because temp editors are never modified but just in case
+        closeEditor(*it, true);
     }
 }
 
@@ -181,11 +199,18 @@ void ProjectManager::renderFile(const std::filesystem::path& path) {
 
     ImGui::Indent(40.0f);
     if (ImGui::Selectable(text.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick)) {
-        if (isSplFile && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
-            openEditor(path);
+        m_selectedFile = path;
+
+        if (isSplFile) {
+            m_selectedFile = path;
+
+            if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+                openEditor(path);
+            } else {
+                openTempEditor(path);
+            }
         }
     }
-
     ImGui::Unindent(40.0f);
 
     if (!isSplFile) {
@@ -200,7 +225,7 @@ void ProjectManager::renderFile(const std::filesystem::path& path) {
 
         if (ImGui::MenuItem("Delete")) {
             spdlog::info("Deleting file: {}", path.string());
-            // TODO: Actually delete the file
+            std::filesystem::remove(path);
         }
 
         ImGui::EndPopup();

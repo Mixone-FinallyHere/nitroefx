@@ -536,6 +536,7 @@ void Application::setColors() {
 }
 
 #include "fonts/tahoma_font.h"
+#include "fonts/tahoma_italic_font.h"
 #include "fonts/icon_font.h"
 
 void Application::loadFonts() {
@@ -563,6 +564,15 @@ void Application::loadFonts() {
         18.0f, 
         &config,
         iconRanges
+    );
+
+    config.MergeMode = false;
+
+    m_fonts["Italic"] = io.Fonts->AddFontFromMemoryCompressedTTF(
+        g_tahoma_italic_compressed_data,
+        g_tahoma_italic_compressed_size,
+        18.0f,
+        &config
     );
 
     io.Fonts->Build();
@@ -643,6 +653,11 @@ void Application::saveConfig() {
         spdlog::error("Failed to write config file: {}", e.what());
         return;
     }
+}
+
+ImFont* Application::getFont(const std::string& name) {
+    const auto it = m_fonts.find(name);
+    return it != m_fonts.end() ? it->second : nullptr;
 }
 
 void Application::addRecentFile(const std::string& path) {

@@ -14,7 +14,7 @@
 
 class EditorInstance {
 public:
-    explicit EditorInstance(const std::filesystem::path& path);
+    explicit EditorInstance(const std::filesystem::path& path, bool isTemp = false);
 
     std::pair<bool, bool> render();
     void renderParticles(const std::vector<Renderer*>& renderers);
@@ -26,6 +26,10 @@ public:
     bool valueChanged(bool changed);
     bool isModified() const {
         return m_modified;
+    }
+
+    bool isTemp() const {
+        return m_isTemp;
     }
 
     void duplicateResource(size_t index);
@@ -79,7 +83,7 @@ private:
 
     glm::vec2 m_size = { 800, 600 };
     bool m_updateProj;
-
+    bool m_isTemp = false;
     bool m_modified = false; // Has the file been modified?
     u64 m_uniqueID;
 };

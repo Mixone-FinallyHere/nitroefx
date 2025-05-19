@@ -164,8 +164,13 @@ void Editor::renderParticles() {
 
 void Editor::renderMenu(std::string_view name) {
     if (name == "View") {
-        ImGui::MenuItemIcon(ICON_FA_BRUSH, "Display Active Emitters", nullptr, & m_settings.displayActiveEmitters);
-        ImGui::MenuItemIcon(ICON_FA_BRUSH, "Display Edited Emitter", nullptr, &m_settings.displayEditedEmitter);
+        bool saveConfig = false;
+        saveConfig |= ImGui::MenuItemIcon(ICON_FA_BRUSH, "Display Active Emitters", nullptr, & m_settings.displayActiveEmitters);
+        saveConfig |= ImGui::MenuItemIcon(ICON_FA_BRUSH, "Display Edited Emitter", nullptr, &m_settings.displayEditedEmitter);
+
+        if (saveConfig) {
+            g_application->saveConfig();
+        }
     }
 
     if (name == "Edit") {
@@ -481,6 +486,7 @@ void Editor::renderResourcePicker() {
 
         if (ImGui::BeginPopup("##AddResourcePopup")) {
             if (ImGui::MenuItem("Add Resource")) {
+                killEmitters(); // Stop all emitters before adding a new resource to avoid crashes
                 editor->addResource();
                 m_selectedResources[id] = resources.size() - 1;
                 ImGui::CloseCurrentPopup();

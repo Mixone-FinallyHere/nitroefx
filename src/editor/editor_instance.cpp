@@ -1,4 +1,5 @@
 #include "editor_instance.h"
+#include "application.h"
 #include "project_manager.h"
 #include "spl/spl_random.h"
 #include "gfx/gl_util.h"
@@ -10,9 +11,9 @@
 #include <glm/ext/matrix_transform.hpp>
 
 
-EditorInstance::EditorInstance(const std::filesystem::path& path)
+EditorInstance::EditorInstance(const std::filesystem::path& path, bool isTemp)
     : m_path(path), m_archive(path), m_particleSystem(1000, m_archive.getTextures())
-    , m_camera(glm::radians(45.0f), { 800, 800 }, 1.0f, 500.0f) {
+    , m_camera(glm::radians(45.0f), { 800, 800 }, 1.0f, 500.0f), m_isTemp(isTemp) {
     m_uniqueID = SPLRandom::nextU64();
     m_updateProj = true;
     notifyResourceChanged(0);
@@ -24,13 +25,29 @@ std::pair<bool, bool> EditorInstance::render() {
 
     m_camera.setViewportHovered(false);
 
+    if (m_isTemp) {
+        ImGui::PushFont(g_application->getFont("Italic"));
+    }
+
     const auto name = m_modified ? m_path.filename().string() + "*" : m_path.filename().string();
-    if (ImGui::BeginTabItem(name.c_str(), &open)) {
+    const bool openTab = ImGui::BeginTabItem(name.c_str(), &open);
+
+    if (m_isTemp) {
+        ImGui::PopFont();
+    }
+
+    // Double click to persist the editor
+    if (ImGui::IsItemClicked(ImGuiMouseButton_Left) && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+        m_isTemp = false;
+    }
+
+    if (openTab) {
         active = true;
         m_camera.setActive(true);
 
         const ImVec2 size = ImGui::GetContentRegionAvail();
         m_size = { size.x, size.y };
+        m_size = glm::abs(m_size); // For some reason size.y is sometimes negative idk
 
         ImGui::Image((ImTextureID)(uintptr_t)m_viewport.getTexture(), size, ImVec2(0, 1), ImVec2(1, 0));
         if (ImGui::IsItemHovered()) {
@@ -49,6 +66,7 @@ void EditorInstance::renderParticles(const std::vector<Renderer*>& renderers) {
     if (m_updateProj || m_size != m_viewport.getSize()) {
         m_viewport.resize(m_size);
         m_camera.setViewport(m_size.x, m_size.y);
+        m_updateProj = false;
     }
 
     m_viewport.bind();
@@ -101,6 +119,10 @@ void EditorInstance::notifyResourceChanged(size_t index) {
 bool EditorInstance::valueChanged(bool changed) {
     if (m_selectedResource >= m_archive.getResources().size()) {
         return false;
+    }
+
+    if (changed) {
+        m_isTemp = false; // Changing anything inside a "temporary" editor will make it persistent
     }
 
     m_modified |= changed;

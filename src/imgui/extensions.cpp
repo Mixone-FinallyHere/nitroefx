@@ -93,3 +93,12 @@ bool ImGui::RedButton(const char* label, const ImVec2& size) {
 bool ImGui::MenuItemIcon(const char* icon, const char* label, const char* shortcut, bool selected, bool enabled) {
     return MenuItemEx(label, icon, shortcut, selected, enabled);
 }
+
+bool ImGui::MenuItemIcon(const char* icon, const char* label, const char* shortcut, bool* selected, bool enabled) {
+    const bool result = MenuItemEx(label, icon, shortcut, selected ? *selected : false, enabled);
+    if (result && selected) {
+        *selected = !*selected;
+    }
+    
+    return result;
+}

@@ -16,6 +16,8 @@ public:
     void loadConfig();
     void saveConfig();
 
+    ImFont* getFont(const std::string& name);
+
 private:
     void pollEvents();
     void handleKeydown(const SDL_Event& event);
@@ -41,6 +43,8 @@ private:
 
     std::deque<std::string> m_recentFiles;
     std::deque<std::string> m_recentProjects;
+
+    std::map<std::string, ImFont*> m_fonts;
 };
 
 inline Application* g_application = nullptr;

@@ -15,7 +15,9 @@ public:
     void openProject(const std::filesystem::path& path);
     void closeProject(bool force = false);
     void openEditor(const std::filesystem::path& path);
+    void openTempEditor(const std::filesystem::path& path);
     void closeEditor(const std::shared_ptr<EditorInstance>& editor, bool force = false);
+    void closeTempEditor();
     void closeAllEditors();
     void saveAllEditors();
 
@@ -76,6 +78,7 @@ private:
     bool m_open = true;
     bool m_hideOtherFiles = false;
     std::filesystem::path m_contextMenuPath;
+    std::filesystem::path m_selectedFile;
     std::string m_searchString;
 };
 
