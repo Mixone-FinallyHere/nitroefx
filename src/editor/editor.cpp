@@ -1,8 +1,10 @@
 #include "editor.h"
+#include "application.h"
 #include "project_manager.h"
 #include "spl/enum_names.h"
 #include "help_messages.h"
 #include "fonts/IconsFontAwesome6.h"
+#include "imgui/extensions.h"
 
 #include <array>
 #include <ranges>
@@ -37,6 +39,7 @@ Editor::Editor() : m_xAnimBuffer(), m_yAnimBuffer() {
     m_gridRenderer = std::make_shared<GridRenderer>(s_gridDimensions, s_gridSpacing);
     m_debugRenderer = std::make_unique<DebugRenderer>(1000);
     m_collisionGridRenderer = std::make_shared<GridRenderer>(s_gridDimensions / 2, s_gridSpacing);
+    m_settingsWindowId = ImHashStr("Settings##Editor");
 }
 
 void Editor::render() {
@@ -85,6 +88,10 @@ void Editor::render() {
 
     if (m_editorOpen) {
         renderResourceEditor();
+    }
+
+    if (m_settingsOpen) {
+        renderSettings();
     }
 
     const auto editors = g_projectManager->getUnsavedEditors();
@@ -157,8 +164,14 @@ void Editor::renderParticles() {
 
 void Editor::renderMenu(std::string_view name) {
     if (name == "View") {
-        ImGui::MenuItem(ICON_FA_BRUSH " Display Active Emitters", nullptr, & m_settings.displayActiveEmitters);
-        ImGui::MenuItem(ICON_FA_BRUSH " Display Edited Emitter", nullptr, &m_settings.displayEditedEmitter);
+        ImGui::MenuItemIcon(ICON_FA_BRUSH, "Display Active Emitters", nullptr, & m_settings.displayActiveEmitters);
+        ImGui::MenuItemIcon(ICON_FA_BRUSH, "Display Edited Emitter", nullptr, &m_settings.displayEditedEmitter);
+    }
+
+    if (name == "Edit") {
+        if (ImGui::MenuItemIcon(ICON_FA_GEAR, "Settings", nullptr)) {
+            openSettings();
+        }
     }
 }
 
@@ -168,6 +181,10 @@ void Editor::openPicker() {
 
 void Editor::openEditor() {
     m_editorOpen = true;
+}
+
+void Editor::openTextureManager() {
+    m_textureManagerOpen = true;
 }
 
 void Editor::updateParticles(float deltaTime) {
@@ -188,6 +205,18 @@ void Editor::updateParticles(float deltaTime) {
     }
 
     editor->updateParticles(deltaTime * m_timeScale);
+}
+
+void Editor::openSettings() {
+    if (m_settingsOpen) {
+        return;
+    }
+
+    m_settingsBackup = m_settings;
+    m_settingsOpen = true;
+    ImGui::PushOverrideID(m_settingsWindowId);
+    ImGui::OpenPopup("Settings##Editor");
+    ImGui::PopID();
 }
 
 void Editor::save() {
@@ -213,15 +242,45 @@ void Editor::loadConfig(const nlohmann::json& config) {
         return;
     }
 
+    constexpr auto loadVec4 = [](const nlohmann::json& j, const char* name, const glm::vec4& def = {}) {
+        if (!j.contains(name)) {
+            return def;
+        }
+
+        const auto& vec = j[name];
+        if (vec.size() != 4) {
+            return def;
+        }
+
+        return glm::vec4(
+            vec[0].get<float>(),
+            vec[1].get<float>(),
+            vec[2].get<float>(),
+            vec[3].get<float>()
+        );
+    };
+
     const auto& settings = config["settings"];
     m_settings.displayActiveEmitters = config.value<bool>("displayActiveEmitters", true);
     m_settings.displayEditedEmitter = config.value<bool>("displayEditedEmitter", true);
+    m_settings.activeEmitterColor = loadVec4(settings, "activeEmitterColor", m_settingsDefault.activeEmitterColor);
+    m_settings.editedEmitterColor = loadVec4(settings, "editedEmitterColor", m_settingsDefault.editedEmitterColor);
+    m_settings.collisionPlaneBounceColor = loadVec4(settings, "collisionPlaneBounceColor", m_settingsDefault.collisionPlaneBounceColor);
+    m_settings.collisionPlaneKillColor = loadVec4(settings, "collisionPlaneKillColor", m_settingsDefault.collisionPlaneKillColor);
 }
 
 void Editor::saveConfig(nlohmann::json& config) const {
+    constexpr auto saveVec4 = [](const glm::vec4& vec) {
+        return nlohmann::json::array({ vec.x, vec.y, vec.z, vec.w });
+    };
+
     config["settings"] = nlohmann::json::object({
         { "displayActiveEmitters", m_settings.displayActiveEmitters },
-        { "displayEditedEmitter", m_settings.displayEditedEmitter }
+        { "displayEditedEmitter", m_settings.displayEditedEmitter },
+        { "activeEmitterColor", saveVec4(m_settings.activeEmitterColor) },
+        { "editedEmitterColor", saveVec4(m_settings.editedEmitterColor) },
+        { "collisionPlaneBounceColor", saveVec4(m_settings.collisionPlaneBounceColor) },
+        { "collisionPlaneKillColor", saveVec4(m_settings.collisionPlaneKillColor) }
     });
 }
 
@@ -594,12 +653,12 @@ void Editor::renderResourceEditor() {
         if (!m_selectedResources.contains(id)) {
             m_selectedResources[id] = -1;
         }
-
+        
         if (m_selectedResources[id] != -1) {
             auto& resource = resources[m_selectedResources[id]];
             const auto& texture = textures[resource.header.misc.textureIndex];
 
-            if (ImGui::Button("Play Emitter")) {
+            if (ImGui::GreenButton("Play Emitter")) {
                 playEmitterAction(m_emitterSpawnType);
             }
 
@@ -613,7 +672,7 @@ void Editor::renderResourceEditor() {
                 ImGui::InputFloat("##Interval", &m_emitterInterval, 0.1f, 1.0f, "%.2fs");
             }
 
-            if (ImGui::Button("Kill Emitters")) {
+            if (ImGui::RedButton("Kill Emitters")) {
                 killEmitters();
             }
 
@@ -654,6 +713,54 @@ void Editor::renderResourceEditor() {
     ImGui::End();
 
     m_activeEditor.reset();
+}
+
+void Editor::renderSettings() {
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
+    ImGui::PushOverrideID(m_settingsWindowId);
+
+    bool closedThroughButton = false;
+    if (ImGui::BeginPopupModal("Settings##Editor", &m_settingsOpen)) {
+        ImGui::SeparatorText("Colors");
+        ImGui::ColorEdit4("Active Emitter Color", glm::value_ptr(m_settings.activeEmitterColor));
+        ImGui::ColorEdit4("Edited Emitter Color", glm::value_ptr(m_settings.editedEmitterColor));
+        ImGui::ColorEdit4("Collision Plane Bounce Color", glm::value_ptr(m_settings.collisionPlaneBounceColor));
+        ImGui::ColorEdit4("Collision Plane Kill Color", glm::value_ptr(m_settings.collisionPlaneKillColor));
+
+        if (ImGui::Button("Reset to Defaults")) {
+            m_settings = m_settingsDefault;
+        }
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("Save")) {
+            m_settingsBackup = m_settings;
+            m_settingsOpen = false;
+            closedThroughButton = true;
+            ImGui::CloseCurrentPopup();
+
+            g_application->saveConfig();
+        }
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("Cancel")) {
+            m_settings = m_settingsBackup;
+            m_settingsOpen = false;
+            closedThroughButton = true;
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
+
+    // If the window was closed through the 'x' button, we want to restore the settings
+    if (!m_settingsOpen && !closedThroughButton) {
+        m_settings = m_settingsBackup;
+    }
+
+    ImGui::PopID();
+    ImGui::PopStyleVar();
 }
 
 void Editor::renderHeaderEditor(SPLResourceHeader& header) const {
@@ -1020,13 +1127,13 @@ bool Editor::renderGravityBehaviorEditor(const std::shared_ptr<SPLGravityBehavio
     ImGui::BeginChild("##gravityEditor", {}, ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY);
     ImGui::TextUnformatted("Gravity");
 
-    NOTIFY(ImGui::DragFloat3("Magnitude", glm::value_ptr(gravity->magnitude)));
-
-    ImGui::EndChild();
-
     if (hovered) {
         ImGui::PopStyleColor();
     }
+
+    NOTIFY(ImGui::DragFloat3("Magnitude", glm::value_ptr(gravity->magnitude)));
+
+    ImGui::EndChild();
 
     hovered = ImGui::IsItemHovered();
     return ImGui::BeginPopupContextItem("##behaviorContext");
@@ -1041,14 +1148,14 @@ bool Editor::renderRandomBehaviorEditor(const std::shared_ptr<SPLRandomBehavior>
     ImGui::BeginChild("##randomEditor", {}, ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY);
     ImGui::TextUnformatted("Random");
 
+    if (hovered) {
+        ImGui::PopStyleColor();
+    }
+
     NOTIFY(ImGui::DragFloat3("Magnitude", glm::value_ptr(random->magnitude)));
     NOTIFY(ImGui::SliderFloat("Apply Interval", &random->applyInterval, 0, 5, "%.3fs", ImGuiSliderFlags_Logarithmic));
 
     ImGui::EndChild();
-
-    if (hovered) {
-        ImGui::PopStyleColor();
-    }
 
     hovered = ImGui::IsItemHovered();
     return ImGui::BeginPopupContextItem("##behaviorContext");
@@ -1063,14 +1170,14 @@ bool Editor::renderMagnetBehaviorEditor(const std::shared_ptr<SPLMagnetBehavior>
     ImGui::BeginChild("##magnetEditor", {}, ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY);
     ImGui::TextUnformatted("Magnet");
 
+    if (hovered) {
+        ImGui::PopStyleColor();
+    }
+
     NOTIFY(ImGui::DragFloat3("Target", glm::value_ptr(magnet->target), 0.05f, -5.0f, 5.0f));
     NOTIFY(ImGui::SliderFloat("Force", &magnet->force, 0, 5, "%.3f", ImGuiSliderFlags_Logarithmic));
 
     ImGui::EndChild();
-
-    if (hovered) {
-        ImGui::PopStyleColor();
-    }
 
     hovered = ImGui::IsItemHovered();
     return ImGui::BeginPopupContextItem("##behaviorContext");
@@ -1085,6 +1192,10 @@ bool Editor::renderSpinBehaviorEditor(const std::shared_ptr<SPLSpinBehavior>& sp
     ImGui::BeginChild("##spinEditor", {}, ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY);
     ImGui::TextUnformatted("Spin");
 
+    if (hovered) {
+        ImGui::PopStyleColor();
+    }
+
     NOTIFY(ImGui::SliderAngle("Angle", &spin->angle));
     ImGui::TextUnformatted("Axis");
     ImGui::Indent();
@@ -1094,10 +1205,6 @@ bool Editor::renderSpinBehaviorEditor(const std::shared_ptr<SPLSpinBehavior>& sp
     ImGui::Unindent();
 
     ImGui::EndChild();
-
-    if (hovered) {
-        ImGui::PopStyleColor();
-    }
 
     hovered = ImGui::IsItemHovered();
     return ImGui::BeginPopupContextItem("##behaviorContext");
@@ -1112,6 +1219,10 @@ bool Editor::renderCollisionPlaneBehaviorEditor(const std::shared_ptr<SPLCollisi
     ImGui::BeginChild("##collisionPlaneEditor", {}, ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY);
     ImGui::TextUnformatted("Collision Plane");
 
+    if (hovered) {
+        ImGui::PopStyleColor();
+    }
+
     NOTIFY(ImGui::DragFloat("Height", &collisionPlane->y, 0.05f));
     NOTIFY(ImGui::SliderFloat("Elasticity", &collisionPlane->elasticity, 0, 2, "%.3f", ImGuiSliderFlags_Logarithmic));
     ImGui::TextUnformatted("Collision Type");
@@ -1121,10 +1232,6 @@ bool Editor::renderCollisionPlaneBehaviorEditor(const std::shared_ptr<SPLCollisi
     ImGui::Unindent();
 
     ImGui::EndChild();
-
-    if (hovered) {
-        ImGui::PopStyleColor();
-    }
 
     hovered = ImGui::IsItemHovered();
     return ImGui::BeginPopupContextItem("##behaviorContext");
@@ -1139,14 +1246,14 @@ bool Editor::renderConvergenceBehaviorEditor(const std::shared_ptr<SPLConvergenc
     ImGui::BeginChild("##convergenceEditor", {}, ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY);
     ImGui::TextUnformatted("Convergence");
 
+    if (hovered) {
+        ImGui::PopStyleColor();
+    }
+
     NOTIFY(ImGui::DragFloat3("Target", glm::value_ptr(convergence->target), 0.05f, -5.0f, 5.0f));
     NOTIFY(ImGui::SliderFloat("Force", &convergence->force, -5, 5, "%.3f", ImGuiSliderFlags_Logarithmic));
 
     ImGui::EndChild();
-
-    if (hovered) {
-        ImGui::PopStyleColor();
-    }
 
     hovered = ImGui::IsItemHovered();
     return ImGui::BeginPopupContextItem("##behaviorContext");
@@ -1205,15 +1312,20 @@ bool Editor::renderScaleAnimEditor(SPLScaleAnim& res) {
     LOCK_EDITOR();
 
     static bool hovered = false;
-    if (hovered) {
-        ImGui::PushStyleColor(ImGuiCol_Border, s_hoverAccentColor);
-    }
 
     if (!ImGui::CollapsingHeader("Scale Animation")) {
         return false;
     }
 
+    if (hovered) {
+        ImGui::PushStyleColor(ImGuiCol_Border, s_hoverAccentColor);
+    }
+
     ImGui::BeginChild("##scaleAnimEditor", {}, ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY);
+
+    if (hovered) {
+        ImGui::PopStyleColor();
+    }
 
     NOTIFY(ImGui::SliderFloat("Start Scale", &res.start, 0.01f, 10.0f, "%.3f", ImGuiSliderFlags_Logarithmic));
     NOTIFY(ImGui::SliderFloat("Mid Scale", &res.mid, 0.01f, 10.0f, "%.3f", ImGuiSliderFlags_Logarithmic));
@@ -1232,10 +1344,6 @@ bool Editor::renderScaleAnimEditor(SPLScaleAnim& res) {
     }
 
     ImGui::EndChild();
-
-    if (hovered) {
-        ImGui::PopStyleColor();
-    }
 
     hovered = ImGui::IsItemHovered();
 
@@ -1256,15 +1364,20 @@ bool Editor::renderColorAnimEditor(const SPLResource& mainRes, SPLColorAnim& res
     LOCK_EDITOR();
 
     static bool hovered = false;
-    if (hovered) {
-        ImGui::PushStyleColor(ImGuiCol_Border, s_hoverAccentColor);
-    }
 
     if (!ImGui::CollapsingHeader("Color Animation")) {
         return false;
     }
 
+    if (hovered) {
+        ImGui::PushStyleColor(ImGuiCol_Border, s_hoverAccentColor);
+    }
+
     ImGui::BeginChild("##colorAnimEditor", {}, ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY);
+
+    if (hovered) {
+        ImGui::PopStyleColor();
+    }
 
     NOTIFY(ImGui::ColorEdit3("Start Color", glm::value_ptr(res.start)));
     NOTIFY(ImGui::ColorEdit3("End Color", glm::value_ptr(res.end)));
@@ -1349,10 +1462,6 @@ bool Editor::renderColorAnimEditor(const SPLResource& mainRes, SPLColorAnim& res
 
     ImGui::EndChild();
 
-    if (hovered) {
-        ImGui::PopStyleColor();
-    }
-
     hovered = ImGui::IsItemHovered();
 
     bool result = false;
@@ -1372,15 +1481,20 @@ bool Editor::renderAlphaAnimEditor(SPLAlphaAnim& res) {
     LOCK_EDITOR();
 
     static bool hovered = false;
-    if (hovered) {
-        ImGui::PushStyleColor(ImGuiCol_Border, s_hoverAccentColor);
-    }
 
     if (!ImGui::CollapsingHeader("Alpha Animation")) {
         return false;
     }
 
+    if (hovered) {
+        ImGui::PushStyleColor(ImGuiCol_Border, s_hoverAccentColor);
+    }
+
     ImGui::BeginChild("##alphaAnimEditor", {}, ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY);
+
+    if (hovered) {
+        ImGui::PopStyleColor();
+    }
 
     NOTIFY(ImGui::SliderFloat("Start Alpha", &res.alpha.start, 0, 1));
     NOTIFY(ImGui::SliderFloat("Mid Alpha", &res.alpha.mid, 0, 1));
@@ -1410,10 +1524,6 @@ bool Editor::renderAlphaAnimEditor(SPLAlphaAnim& res) {
     }
 
     ImGui::EndChild();
-
-    if (hovered) {
-        ImGui::PopStyleColor();
-    }
 
     hovered = ImGui::IsItemHovered();
 
@@ -1680,18 +1790,19 @@ void Editor::renderDebugShapes(const std::shared_ptr<EditorInstance>& editor, st
                 break;
             }
 
+            const glm::vec4& color = m_settings.editedEmitterColor;
             switch (resource.header.flags.emissionType) {
             case SPLEmissionType::Point:
-                m_debugRenderer->addBox(resource.header.emitterBasePos, { 0.2f, 0.2f, 0.2f }, glm::vec4(1, 0, 1, 0.5f));
+                m_debugRenderer->addBox(resource.header.emitterBasePos, { 0.2f, 0.2f, 0.2f }, color);
                 break;
             case SPLEmissionType::SphereSurface: [[fallthrough]];
             case SPLEmissionType::Sphere:
-                m_debugRenderer->addSphere(resource.header.emitterBasePos, resource.header.radius, glm::vec4(1, 0, 1, 0.5f));
+                m_debugRenderer->addSphere(resource.header.emitterBasePos, resource.header.radius, color);
                 break;
             case SPLEmissionType::CircleBorder: [[fallthrough]];
             case SPLEmissionType::CircleBorderUniform: [[fallthrough]];
             case SPLEmissionType::Circle:
-                m_debugRenderer->addCircle(resource.header.emitterBasePos, axis, resource.header.radius, glm::vec4(1, 0, 1, 0.5f));
+                m_debugRenderer->addCircle(resource.header.emitterBasePos, axis, resource.header.radius, color);
                 break;
             case SPLEmissionType::CylinderSurface: [[fallthrough]];
             case SPLEmissionType::Cylinder:
@@ -1700,12 +1811,12 @@ void Editor::renderDebugShapes(const std::shared_ptr<EditorInstance>& editor, st
                     axis,
                     resource.header.length,
                     resource.header.radius, 
-                    glm::vec4(1, 0, 1, 0.5f)
+                    color
                 );
                 break;
             case SPLEmissionType::HemisphereSurface:
             case SPLEmissionType::Hemisphere:
-                m_debugRenderer->addHemisphere(resource.header.emitterBasePos, axis, resource.header.radius, glm::vec4(1, 0, 1, 0.5f));
+                m_debugRenderer->addHemisphere(resource.header.emitterBasePos, axis, resource.header.radius, color);
                 break;
             }
         }
@@ -1713,7 +1824,9 @@ void Editor::renderDebugShapes(const std::shared_ptr<EditorInstance>& editor, st
         for (const auto& bhv : resource.behaviors) {
             if (bhv->type == SPLBehaviorType::CollisionPlane) {
                 const auto colPlane = std::dynamic_pointer_cast<SPLCollisionPlaneBehavior>(bhv);
-                const glm::vec4 color = colPlane->collisionType == SPLCollisionType::Kill ? glm::vec4(1, 0, 0, 0.5f) : glm::vec4(0, 1, 0, 0.5f);
+                const glm::vec4 color = colPlane->collisionType == SPLCollisionType::Kill 
+                    ? m_settings.collisionPlaneKillColor 
+                    : m_settings.collisionPlaneBounceColor;
                 m_collisionGridRenderer->setColor(color);
                 m_collisionGridRenderer->setHeight(colPlane->y);
                 renderers.push_back(m_collisionGridRenderer.get());
@@ -1746,18 +1859,19 @@ void Editor::renderDebugShapes(const std::shared_ptr<EditorInstance>& editor, st
             break;
         }
 
+        const glm::vec4& color = m_settings.activeEmitterColor;
         switch (resource->header.flags.emissionType) {
         case SPLEmissionType::Point:
-            m_debugRenderer->addBox(emitter->getPosition(), { 0.2f, 0.2f, 0.2f }, glm::vec4(1, 1, 0, 0.5f));
+            m_debugRenderer->addBox(emitter->getPosition(), { 0.2f, 0.2f, 0.2f }, color);
             break;
         case SPLEmissionType::SphereSurface: [[fallthrough]];
         case SPLEmissionType::Sphere:
-            m_debugRenderer->addSphere(emitter->getPosition(), resource->header.radius, glm::vec4(1, 1, 0, 0.5f));
+            m_debugRenderer->addSphere(emitter->getPosition(), resource->header.radius, color);
             break;
         case SPLEmissionType::CircleBorder: [[fallthrough]];
         case SPLEmissionType::CircleBorderUniform: [[fallthrough]];
         case SPLEmissionType::Circle:
-            m_debugRenderer->addCircle(emitter->getPosition(), axis, resource->header.radius, glm::vec4(1, 1, 0, 0.5f));
+            m_debugRenderer->addCircle(emitter->getPosition(), axis, resource->header.radius, color);
             break;
         case SPLEmissionType::CylinderSurface: [[fallthrough]];
         case SPLEmissionType::Cylinder:
@@ -1766,12 +1880,12 @@ void Editor::renderDebugShapes(const std::shared_ptr<EditorInstance>& editor, st
                 axis,
                 resource->header.length,
                 resource->header.radius,
-                glm::vec4(1, 1, 0, 0.5f)
+                color
             );
             break;
         case SPLEmissionType::HemisphereSurface: [[fallthrough]];
         case SPLEmissionType::Hemisphere:
-            m_debugRenderer->addHemisphere(emitter->getPosition(), axis, resource->header.radius, glm::vec4(1, 1, 0, 0.5f));
+            m_debugRenderer->addHemisphere(emitter->getPosition(), axis, resource->header.radius, color);
             break;
         }
     }

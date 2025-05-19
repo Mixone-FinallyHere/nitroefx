@@ -1,5 +1,6 @@
 #include "application.h"
 #include "fonts/IconsFontAwesome6.h"
+#include "imgui/extensions.h"
 
 #include <SDL2/SDL.h>
 #include <GL/glew.h>
@@ -37,6 +38,15 @@ static void debugCallback(GLenum source, GLenum type, GLuint id, GLenum severity
     default:
         break;
     }
+}
+
+Application::Application() {
+    if (g_application) {
+        spdlog::error("Application already exists");
+        throw std::runtime_error("Application already exists");
+    }
+
+    g_application = this;
 }
 
 int Application::run(int argc, char** argv) {
@@ -288,11 +298,11 @@ void Application::renderMenuBar() {
 
         if (ImGui::BeginMenu("File")) {
             if (ImGui::BeginMenu("New")) {
-                if (ImGui::MenuItem(ICON_FA_FOLDER_PLUS " Project", "Ctrl+Shift+N")) {
+                if (ImGui::MenuItemIcon(ICON_FA_FOLDER_PLUS, "Project", "Ctrl+Shift+N")) {
                     spdlog::warn("New Project not implemented");
                 }
 
-                if (ImGui::MenuItem(ICON_FA_FILE_CIRCLE_PLUS " SPL File", "Ctrl+N")) {
+                if (ImGui::MenuItemIcon(ICON_FA_FILE_CIRCLE_PLUS, "SPL File", "Ctrl+N")) {
                     spdlog::warn("New SPL File not implemented");
                 }
 
@@ -300,7 +310,7 @@ void Application::renderMenuBar() {
             }
 
             if (ImGui::BeginMenu("Open")) {
-                if (ImGui::MenuItem(ICON_FA_FOLDER " Project", "Ctrl+Shift+O")) {
+                if (ImGui::MenuItemIcon(ICON_FA_FOLDER, "Project", "Ctrl+Shift+O")) {
                     const auto path = openProject();
                     if (!path.empty()) {
                         addRecentProject(path);
@@ -308,7 +318,7 @@ void Application::renderMenuBar() {
                     }
                 }
 
-                if (ImGui::MenuItem(ICON_FA_FILE " SPL File", "Ctrl+O")) {
+                if (ImGui::MenuItemIcon(ICON_FA_FILE, "SPL File", "Ctrl+O")) {
                     const auto path = openFile();
                     if (!path.empty()) {
                         addRecentFile(path);
@@ -345,11 +355,11 @@ void Application::renderMenuBar() {
                 ImGui::EndMenu();
             }
 
-            if (ImGui::MenuItem(ICON_FA_FLOPPY_DISK " Save", "Ctrl+S", false, hasActiveEditor)) {
+            if (ImGui::MenuItemIcon(ICON_FA_FLOPPY_DISK, "Save", "Ctrl+S", false, hasActiveEditor)) {
                 m_editor->save();
             }
 
-            if (ImGui::MenuItem(ICON_FA_FLOPPY_DISK " Save As...", nullptr, false, hasActiveEditor)) {
+            if (ImGui::MenuItemIcon(ICON_FA_FLOPPY_DISK, "Save As...", nullptr, false, hasActiveEditor)) {
                 const auto path = saveFile();
                 if (!path.empty()) {
                     m_editor->saveAs(path);
@@ -357,23 +367,23 @@ void Application::renderMenuBar() {
                 }
             }
 
-            if (ImGui::MenuItem(ICON_FA_FLOPPY_DISK " Save All", "Ctrl+Shift+S", false, hasOpenEditors)) {
+            if (ImGui::MenuItemIcon(ICON_FA_FLOPPY_DISK, "Save All", "Ctrl+Shift+S", false, hasOpenEditors)) {
                 g_projectManager->saveAllEditors();
             }
 
-            if (ImGui::MenuItem(ICON_FA_XMARK " Close", "Ctrl+W", false, hasActiveEditor)) {
+            if (ImGui::MenuItemIcon(ICON_FA_XMARK, "Close", "Ctrl+W", false, hasActiveEditor)) {
                 g_projectManager->closeEditor(g_projectManager->getActiveEditor());
             }
 
-            if (ImGui::MenuItem(ICON_FA_XMARK " Close All", "Ctrl+Shift+W", false, hasOpenEditors)) {
+            if (ImGui::MenuItemIcon(ICON_FA_XMARK, "Close All", "Ctrl+Shift+W", false, hasOpenEditors)) {
                 g_projectManager->closeAllEditors();
             }
 
-            if (ImGui::MenuItem(ICON_FA_XMARK " Close Project", nullptr, false, hasProject)) {
+            if (ImGui::MenuItemIcon(ICON_FA_XMARK, "Close Project", nullptr, false, hasProject)) {
                 g_projectManager->closeProject();
             }
 
-            if (ImGui::MenuItem(ICON_FA_POWER_OFF " Exit", "Alt+F4")) {
+            if (ImGui::MenuItemIcon(ICON_FA_POWER_OFF, "Exit", "Alt+F4")) {
                 m_running = false;
             }
 
@@ -381,19 +391,19 @@ void Application::renderMenuBar() {
         }
 
         if (ImGui::BeginMenu("Edit")) {
-            if (ImGui::MenuItem("Undo", "Ctrl+Z", false, m_editor->canUndo())) {
+            if (ImGui::MenuItemIcon(ICON_FA_ROTATE_LEFT, "Undo", "Ctrl+Z", false, m_editor->canUndo())) {
                 m_editor->undo();
             }
 
-            if (ImGui::MenuItem("Redo", "Ctrl+Y", false, m_editor->canRedo())) {
+            if (ImGui::MenuItemIcon(ICON_FA_ROTATE_RIGHT, "Redo", "Ctrl+Y", false, m_editor->canRedo())) {
                 m_editor->redo();
             }
 
-            if (ImGui::MenuItem("Play Single Shot Emitter", "Ctrl+P", false, hasActiveEditor)) {
+            if (ImGui::MenuItemIcon(ICON_FA_PLAY, "Play Single Shot Emitter", "Ctrl+P", false, hasActiveEditor)) {
                 m_editor->playEmitterAction(EmitterSpawnType::SingleShot);
             }
 
-            if (ImGui::MenuItem("Play Looped Emitter", "Ctrl+Shift+P", false, hasActiveEditor)) {
+            if (ImGui::MenuItemIcon(ICON_FA_REPEAT, "Play Looped Emitter", "Ctrl+Shift+P", false, hasActiveEditor)) {
                 m_editor->playEmitterAction(EmitterSpawnType::Looped);
             }
 
@@ -411,15 +421,19 @@ void Application::renderMenuBar() {
         }
 
         if (ImGui::BeginMenu("View")) {
-            if (ImGui::MenuItem("Project Manager")) {
+            if (ImGui::MenuItemIcon(ICON_FA_FOLDER_TREE, "Project Manager")) {
                 g_projectManager->open();
             }
 
-            if (ImGui::MenuItem("Resource Picker")) {
+            if (ImGui::MenuItemIcon(ICON_FA_WRENCH, "Resource Picker")) {
                 m_editor->openPicker();
             }
 
-            if (ImGui::MenuItem("Resource Editor")) {
+            if (ImGui::MenuItemIcon(ICON_FA_IMAGES, "Texture Manager")) {
+                m_editor->openTextureManager();
+            }
+
+            if (ImGui::MenuItemIcon(ICON_FA_SLIDERS, "Resource Editor")) {
                 m_editor->openEditor();
             }
 
@@ -446,10 +460,10 @@ void Application::setColors() {
     style.ChildRounding = 0.0f;
     style.ChildBorderSize = 2.0f;
     style.PopupRounding = 2.0f;
-    style.PopupBorderSize = 0.0f;
+    style.PopupBorderSize = 1.0f;
     style.FramePadding = ImVec2(11.0f, 4.0f);
-    style.FrameRounding = 2.2f;
-    style.FrameBorderSize = 0.0f;
+    style.FrameRounding = 3.0f;
+    style.FrameBorderSize = 1.0f;
     style.ItemSpacing = ImVec2(8.0f, 7.0f);
     style.ItemInnerSpacing = ImVec2(4.0f, 4.0f);
     style.CellPadding = ImVec2(4.0f, 2.0f);
@@ -614,6 +628,8 @@ void Application::saveConfig() {
     for (const auto& project : m_recentProjects) {
         config["recentProjects"].push_back(project);
     }
+
+    m_editor->saveConfig(config);
 
     std::ofstream outFile(configFile);
     if (!outFile) {

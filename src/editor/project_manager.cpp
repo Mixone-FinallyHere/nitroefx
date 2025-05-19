@@ -14,7 +14,7 @@ void ProjectManager::openProject(const std::filesystem::path& path) {
             { SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, 0, "No" },
             { SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 1, "Yes" }
         };
-        constexpr SDL_MessageBoxData data = {
+        const SDL_MessageBoxData data = {
             SDL_MESSAGEBOX_INFORMATION,
             nullptr,
             "Close project?",
@@ -37,6 +37,7 @@ void ProjectManager::openProject(const std::filesystem::path& path) {
 }
 
 void ProjectManager::closeProject(bool force) {
+    // TODO: Check if any editors are modified and prompt to save
     bool canClose = true;
     for (const auto& editor : m_openEditors) {
         canClose &= editor->notifyClosing();

@@ -29,7 +29,9 @@ public:
     void renderMenu(std::string_view name);
     void openPicker();
     void openEditor();
+    void openTextureManager();
     void updateParticles(float deltaTime);
+    void openSettings();
 
     void playEmitterAction(EmitterSpawnType spawnType);
     void killEmitters();
@@ -52,6 +54,7 @@ private:
     void renderResourcePicker();
     void renderTextureManager();
     void renderResourceEditor();
+    void renderSettings();
 
     void renderHeaderEditor(SPLResourceHeader& header) const;
     void renderBehaviorEditor(SPLResource& res);
@@ -106,9 +109,14 @@ private:
     bool m_pickerOpen = true;
     bool m_textureManagerOpen = true;
     bool m_editorOpen = true;
+    bool m_settingsOpen = false;
     float m_timeScale = 1.0f;
 
+    u32 m_settingsWindowId = 0;
+
     EditorSettings m_settings;
+    EditorSettings m_settingsBackup;
+    EditorSettings m_settingsDefault;
 
     EmitterSpawnType m_emitterSpawnType = EmitterSpawnType::SingleShot;
     float m_emitterInterval = 1.0f; // seconds

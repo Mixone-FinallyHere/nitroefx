@@ -9,7 +9,12 @@
 
 class Application {
 public:
+    Application();
+
     int run(int argc, char** argv);
+
+    void loadConfig();
+    void saveConfig();
 
 private:
     void pollEvents();
@@ -18,8 +23,6 @@ private:
     void renderMenuBar();
     void setColors();
     void loadFonts();
-    void loadConfig();
-    void saveConfig();
 
     void addRecentFile(const std::string& path);
     void addRecentProject(const std::string& path);
@@ -39,3 +42,5 @@ private:
     std::deque<std::string> m_recentFiles;
     std::deque<std::string> m_recentProjects;
 };
+
+inline Application* g_application = nullptr;
