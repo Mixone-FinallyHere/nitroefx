@@ -15,7 +15,7 @@ public:
     void openProject(const std::filesystem::path& path);
     void closeProject(bool force = false);
     void openEditor(const std::filesystem::path& path);
-    void closeEditor(const std::shared_ptr<EditorInstance>& editor);
+    void closeEditor(const std::shared_ptr<EditorInstance>& editor, bool force = false);
     void closeAllEditors();
     void saveAllEditors();
 
@@ -52,6 +52,14 @@ public:
 
     void handleEvent(const SDL_Event& event);
 
+    std::span<const std::shared_ptr<EditorInstance>> getUnsavedEditors() {
+        return m_unsavedEditors;
+    }
+
+    void clearUnsavedEditors() {
+        m_unsavedEditors.clear();
+    }
+
 private:
     void renderDirectory(const std::filesystem::path& path);
     void renderFile(const std::filesystem::path& path);
@@ -61,6 +69,9 @@ private:
 
     std::vector<std::shared_ptr<EditorInstance>> m_openEditors;
     std::shared_ptr<EditorInstance> m_activeEditor;
+
+    // Unsaved changes data
+    std::vector<std::shared_ptr<EditorInstance>> m_unsavedEditors;
 
     bool m_open = true;
     bool m_hideOtherFiles = false;

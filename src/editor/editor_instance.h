@@ -46,6 +46,10 @@ public:
     EditorActionType undo();
     EditorActionType redo();
 
+    const std::filesystem::path& getPath() const {
+        return m_path;
+    }
+
     SPLArchive& getArchive() {
         return m_archive;
     }

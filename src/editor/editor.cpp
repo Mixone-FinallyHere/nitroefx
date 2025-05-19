@@ -86,6 +86,61 @@ void Editor::render() {
     if (m_editorOpen) {
         renderResourceEditor();
     }
+
+    const auto editors = g_projectManager->getUnsavedEditors();
+    if (!editors.empty()) {
+        const auto windowSize = ImGui::GetMainViewport()->Size;
+        const auto windowPos = ImGui::GetWindowPos();
+        const auto popupPos = windowPos + ImVec2(windowSize.x / 2, windowSize.y / 2);
+
+        ImGui::SetNextWindowSize({ 370, 310 }, ImGuiCond_Once);
+        ImGui::SetNextWindowPos(popupPos, ImGuiCond_Appearing, { 0.5f, 0.5f });
+        ImGui::OpenPopup("Unsaved Changes##Editor");
+    }
+
+    if (ImGui::BeginPopupModal("Unsaved Changes##Editor", nullptr, ImGuiWindowFlags_NoResize)) {
+        ImGui::Text("You have unsaved changes in the following files:");
+        ImGui::Separator();
+        if (ImGui::BeginListBox("##Unsaved Files")) {
+            for (const auto& editor : editors) {
+                ImGui::Text("%s", editor->getPath().filename().string().c_str());
+            }
+
+            ImGui::EndListBox();
+        }
+
+        ImGui::Separator();
+
+        if (ImGui::Button("Save")) {
+            for (const auto& editor : editors) {
+                editor->save();
+                g_projectManager->closeEditor(editor);
+            }
+
+            g_projectManager->clearUnsavedEditors();
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("Don't Save")) {
+            for (const auto& editor : editors) {
+                g_projectManager->closeEditor(editor, true);
+            }
+
+            g_projectManager->clearUnsavedEditors();
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("Cancel")) {
+            g_projectManager->clearUnsavedEditors();
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
 }
 
 void Editor::renderParticles() {

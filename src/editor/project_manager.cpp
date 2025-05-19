@@ -14,7 +14,7 @@ void ProjectManager::openProject(const std::filesystem::path& path) {
             { SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, 0, "No" },
             { SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 1, "Yes" }
         };
-        const SDL_MessageBoxData data = {
+        constexpr SDL_MessageBoxData data = {
             SDL_MESSAGEBOX_INFORMATION,
             nullptr,
             "Close project?",
@@ -57,8 +57,13 @@ void ProjectManager::openEditor(const std::filesystem::path& path) {
     m_openEditors.push_back(editor);
 }
 
-void ProjectManager::closeEditor(const std::shared_ptr<EditorInstance>& editor) {
-    if (editor->notifyClosing()) {
+void ProjectManager::closeEditor(const std::shared_ptr<EditorInstance>& editor, bool force) {
+    if (!force && editor->isModified()) {
+        m_unsavedEditors.push_back(editor);
+        return;
+    }
+
+    if (force || editor->notifyClosing()) {
         std::erase(m_openEditors, editor);
         if (m_activeEditor == editor) {
             m_activeEditor.reset();
@@ -67,12 +72,10 @@ void ProjectManager::closeEditor(const std::shared_ptr<EditorInstance>& editor) 
 }
 
 void ProjectManager::closeAllEditors() {
-    for (const auto& editor : m_openEditors) {
-        editor->notifyClosing();
+    const auto editorList = m_openEditors; // Copy the list to avoid modifying it while iterating
+    for (const auto& editor : editorList) {
+        closeEditor(editor);
     }
-
-    m_openEditors.clear();
-    m_activeEditor.reset();
 }
 
 void ProjectManager::saveAllEditors() {

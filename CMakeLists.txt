@@ -54,7 +54,10 @@ target_include_directories(nitroefx PRIVATE
     external/tinyfiledialogs
     external/stb
     external/libimagequant/imagequant-sys)
-target_compile_definitions(nitroefx PRIVATE SDL_MAIN_HANDLED GLM_ENABLE_EXPERIMENTAL)
+target_compile_definitions(nitroefx PRIVATE 
+    SDL_MAIN_HANDLED
+    GLM_ENABLE_EXPERIMENTAL
+    IMGUI_DEFINE_MATH_OPERATORS)
 target_link_libraries(nitroefx PRIVATE 
     SDL2::SDL2 
     SDL2::SDL2main 
