@@ -64,7 +64,7 @@ int Application::run(int argc, char** argv) {
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
 
-    constexpr auto windowFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI;
+    constexpr auto windowFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_HIDDEN;
     m_window = SDL_CreateWindow("NitroEFX", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, windowFlags);
     if (m_window == nullptr) {
         spdlog::error("SDL_CreateWindow Error: {}", SDL_GetError());
@@ -103,6 +103,10 @@ int Application::run(int argc, char** argv) {
     loadConfig();
     loadFonts();
     setColors();
+
+    // loadConfig might change the window size so we create the window
+    // in a hidden state and show it after loading the config
+    SDL_ShowWindow(m_window);
 
     ImGui_ImplSDL2_InitForOpenGL(m_window, m_context);
     ImGui_ImplOpenGL3_Init("#version 450");
@@ -167,6 +171,8 @@ void Application::pollEvents() {
             if (event.window.event == SDL_WINDOWEVENT_CLOSE 
                 && event.window.windowID == SDL_GetWindowID(m_window)) {
                 m_running = false;
+            } else if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
+                saveConfig(); // Save the window size
             }
             break;
 
@@ -618,6 +624,15 @@ void Application::loadConfig() {
         m_recentProjects.push_back(project.get<std::string>());
     }
 
+    if (config.contains("windowSize")) {
+        const auto size = config["windowSize"];
+        if (size.value("maximized", false)) {
+            SDL_MaximizeWindow(m_window);
+        } else {
+            SDL_SetWindowSize(m_window, size["w"].get<int>(), size["h"].get<int>());
+        }
+    }
+
     m_editor->loadConfig(config);
 }
 
@@ -639,6 +654,14 @@ void Application::saveConfig() {
         config["recentProjects"].push_back(project);
     }
 
+    int width, height;
+    SDL_GetWindowSize(m_window, &width, &height);
+    config["windowSize"] = {
+        { "w", width },
+        { "h", height },
+        { "maximized", !!(SDL_GetWindowFlags(m_window) & SDL_WINDOW_MAXIMIZED) }
+    };
+    
     m_editor->saveConfig(config);
 
     std::ofstream outFile(configFile);

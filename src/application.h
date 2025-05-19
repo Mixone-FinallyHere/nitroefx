@@ -13,9 +13,7 @@ public:
 
     int run(int argc, char** argv);
 
-    void loadConfig();
     void saveConfig();
-
     ImFont* getFont(const std::string& name);
 
 private:
@@ -25,6 +23,7 @@ private:
     void renderMenuBar();
     void setColors();
     void loadFonts();
+    void loadConfig();
 
     void addRecentFile(const std::string& path);
     void addRecentProject(const std::string& path);
