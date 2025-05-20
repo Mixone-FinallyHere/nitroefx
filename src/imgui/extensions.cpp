@@ -82,12 +82,20 @@ bool ImGui::GradientButton(const char* label, const ImVec2& size, ImU32 textColo
     return pressed;
 }
 
+bool ImGui::RedButton(const char* label, const ImVec2& size) {
+    return GradientButton(label, size, IM_COL32(213, 213, 213, 255), IM_COL32(137, 32, 37, 255), IM_COL32(85, 20, 23, 255));
+}
+
 bool ImGui::GreenButton(const char* label, const ImVec2& size) {
     return GradientButton(label, size, IM_COL32(213, 213, 213, 255), IM_COL32(35, 134, 54, 255), IM_COL32(21, 83, 33, 255));
 }
 
-bool ImGui::RedButton(const char* label, const ImVec2& size) {
-    return GradientButton(label, size, IM_COL32(213, 213, 213, 255), IM_COL32(137, 32, 37, 255), IM_COL32(85, 20, 23, 255));
+bool ImGui::BlueButton(const char* label, const ImVec2& size) {
+    return GradientButton(label, size, IM_COL32(213, 213, 213, 255), IM_COL32(34, 80, 104, 255), IM_COL32(25, 48, 60, 255));
+}
+
+bool ImGui::GreyButton(const char* label, const ImVec2& size) {
+    return GradientButton(label, size, IM_COL32(0, 0, 0, 255), IM_COL32(174, 174, 174, 255), IM_COL32(107, 107, 107, 255));
 }
 
 bool ImGui::MenuItemIcon(const char* icon, const char* label, const char* shortcut, bool selected, bool enabled) {
@@ -101,4 +109,11 @@ bool ImGui::MenuItemIcon(const char* icon, const char* label, const char* shortc
     }
     
     return result;
+}
+
+bool ImGui::PaddedTreeNode(const char* label, const ImVec2& padding, ImGuiTreeNodeFlags flags) {
+    PushStyleVar(ImGuiStyleVar_FramePadding, padding);
+    const bool open = TreeNodeEx(label, flags | ImGuiTreeNodeFlags_FramePadding);
+    PopStyleVar();
+    return open;
 }

@@ -406,6 +406,7 @@ void Editor::renderResourcePicker() {
         const auto contentRegion = ImGui::GetContentRegionAvail();
         if (ImGui::BeginListBox("##Resources", contentRegion)) {
             const ImGuiStyle& style = ImGui::GetStyle();
+            const float itemWidth = contentRegion.x - (style.ItemSpacing.x + style.WindowPadding.x) * 1.3f;
 
             for (size_t i = 0; i < resources.size(); ++i) {
                 const auto& resource = resources[i];
@@ -419,7 +420,7 @@ void Editor::renderResourcePicker() {
                     : style.Colors[ImGuiCol_Button];
 
                 const auto cursor = ImGui::GetCursorScreenPos();
-                if (ImGui::InvisibleButton("##Resource", { contentRegion.x, 32 })) {
+                if (ImGui::InvisibleButton("##Resource", { itemWidth, 32 })) {
                     m_selectedResources[id] = i;
                     editor->notifyResourceChanged(i);
                 }
@@ -433,12 +434,24 @@ void Editor::renderResourcePicker() {
                     }
                 }
 
+                const auto bgColor2 = bgColor * ImVec4(0.8f, 0.8f, 0.8f, 1.0f);
+
                 // Draw a filled rectangle behind the item
-                ImGui::GetWindowDrawList()->AddRectFilled(
+                const auto drawList = ImGui::GetWindowDrawList();
+                const int firstVtx = drawList->VtxBuffer.Size;
+                drawList->AddRectFilled(
                     cursor, 
-                    { cursor.x + contentRegion.x, cursor.y + 32 }, 
+                    { cursor.x + itemWidth, cursor.y + 32 },
                     ImGui::ColorConvertFloat4ToU32(bgColor),
-                    2.5f
+                    style.FrameRounding
+                );
+                const int lastVtx = drawList->VtxBuffer.Size;
+
+                ImGui::ShadeVertsLinearColorGradientKeepAlpha(drawList,
+                    firstVtx, lastVtx,
+                    cursor, { cursor.x, cursor.y + 32 },
+                    ImGui::ColorConvertFloat4ToU32(bgColor), 
+                    ImGui::ColorConvertFloat4ToU32(bgColor2)
                 );
 
                 ImGui::SetCursorScreenPos(cursor);
@@ -447,11 +460,11 @@ void Editor::renderResourcePicker() {
                 ImGui::SameLine();
 
                 const auto textHeight = ImGui::GetFontSize();
-                ImGui::SetCursorPosY(ImGui::GetCursorPosY() + (32 - textHeight) / 2);
+                ImGui::SetCursorPosY(ImGui::GetCursorPosY() + (32 - textHeight) / 2.0f);
                 ImGui::TextUnformatted(name.c_str());
 
                 if (ImGui::BeginPopup("##ResourcePopup")) {
-                    if (ImGui::MenuItem("Duplicate")) {
+                    if (ImGui::MenuItemIcon(ICON_FA_CLONE, "Duplicate")) {
                         editor->duplicateResource(i);
                         m_selectedResources[id] = resources.size() - 1;
                         editor->notifyResourceChanged(resources.size() - 1);
@@ -459,7 +472,7 @@ void Editor::renderResourcePicker() {
                         ImGui::CloseCurrentPopup();
                     }
 
-                    if (ImGui::MenuItem("Delete")) {
+                    if (ImGui::MenuItemIcon(ICON_FA_TRASH, "Delete")) {
                         if (m_selectedResources[id] == i) {
                             m_selectedResources[id] = -1;
                             editor->notifyResourceChanged(-1);
@@ -485,7 +498,7 @@ void Editor::renderResourcePicker() {
         }
 
         if (ImGui::BeginPopup("##AddResourcePopup")) {
-            if (ImGui::MenuItem("Add Resource")) {
+            if (ImGui::MenuItemIcon(ICON_FA_CIRCLE_PLUS, "Add Resource")) {
                 killEmitters(); // Stop all emitters before adding a new resource to avoid crashes
                 editor->addResource();
                 m_selectedResources[id] = resources.size() - 1;
@@ -511,7 +524,7 @@ void Editor::renderTextureManager() {
         auto& archive = editor->getArchive();
         auto& textures = archive.getTextures();
 
-        if (ImGui::Button("Import")) {
+        if (ImGui::BlueButton(ICON_FA_FILE_IMPORT " Import")) {
             const auto path = tinyfd_openFileDialog(
                 "Import Texture", 
                 "", 
@@ -526,13 +539,15 @@ void Editor::renderTextureManager() {
             }
         }
 
+        const ImVec2 padding = { ImGui::GetStyle().FramePadding.x, 16.0f - ImGui::GetTextLineHeight() * 0.5f };
+
         for (int i = 0; i < textures.size(); ++i) {
             auto& texture = textures[i];
             const auto name = fmt::format("[{}] Tex {}x{}", i, texture.width, texture.height);
-
+            
             ImGui::Image((ImTextureID)texture.glTexture->getHandle(), { 32, 32 });
             ImGui::SameLine();
-            if (ImGui::TreeNodeEx(name.c_str(), ImGuiTreeNodeFlags_SpanAvailWidth)) {
+            if (ImGui::PaddedTreeNode(name.c_str(), padding, ImGuiTreeNodeFlags_SpanAvailWidth)) {
                 ImGui::InputScalar("S", ImGuiDataType_U8, &texture.param.s);
                 ImGui::InputScalar("T", ImGuiDataType_U8, &texture.param.t);
                 
@@ -584,7 +599,8 @@ void Editor::renderTextureManager() {
             //ImGui::Text("Suggested Format: %s", getTextureFormat(m_tempTexture->suggestedSpec.format));
             if (ImGui::BeginCombo("Format", getTextureFormat(m_tempTexture->suggestedSpec.format))) {
                 for (auto i = (int)TextureFormat::A3I5; i < (int)TextureFormat::Count; i++) {
-                    if (ImGui::Selectable(getTextureFormat((TextureFormat)i), (int)m_tempTexture->suggestedSpec.format == i)) {
+                    const auto flags = (TextureFormat)i == TextureFormat::Comp4x4 ? ImGuiSelectableFlags_Disabled : 0;
+                    if (ImGui::Selectable(getTextureFormat((TextureFormat)i), (int)m_tempTexture->suggestedSpec.format == i, flags)) {
                         m_tempTexture->suggestedSpec.setFormat((TextureFormat)i);
                         quantizeTexture(
                             m_tempTexture->data,
@@ -1044,7 +1060,7 @@ void Editor::renderBehaviorEditor(SPLResource& res) {
     LOCK_EDITOR();
     std::vector<std::shared_ptr<SPLBehavior>> toRemove;
 
-    if (ImGui::Button("Add Behavior...")) {
+    if (ImGui::BlueButton(ICON_FA_CIRCLE_PLUS " Add Behavior...")) {
         ImGui::OpenPopup("##addBehavior");
     }
 
@@ -1272,7 +1288,7 @@ void Editor::renderAnimationEditor(SPLResource& res) {
 
     LOCK_EDITOR();
 
-    if (ImGui::Button("Add Animation...")) {
+    if (ImGui::BlueButton(ICON_FA_CIRCLE_PLUS " Add Behavior...")) {
         ImGui::OpenPopup("##addAnimation");
     }
 
