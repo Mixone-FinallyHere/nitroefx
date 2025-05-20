@@ -2,7 +2,7 @@
 
 #include <imgui.h>
 #include <imgui_stdlib.h>
-#include <SDL_messagebox.h>
+#include "SDL3/SDL_messagebox.h"
 #include <spdlog/spdlog.h>
 
 #include "fonts/IconsFontAwesome6.h"
@@ -140,8 +140,8 @@ void ProjectManager::render() {
 
 void ProjectManager::handleEvent(const SDL_Event& event) {
     switch (event.type) {
-    case SDL_DROPFILE: {
-        const std::filesystem::path path = event.drop.file;
+    case SDL_EVENT_DROP_FILE: {
+        const std::filesystem::path path = event.drop.data;
         if (std::filesystem::is_directory(path)) {
             openProject(path);
         } else if (path.extension() == ".spa") {
@@ -198,15 +198,14 @@ void ProjectManager::renderFile(const std::filesystem::path& path) {
     }
 
     ImGui::Indent(40.0f);
-    if (ImGui::Selectable(text.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick)) {
-        m_selectedFile = path;
-
+    ImGui::Selectable(text.c_str(), false);
+    if (ImGui::IsItemHovered()) {
         if (isSplFile) {
-            m_selectedFile = path;
-
             if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
                 openEditor(path);
-            } else {
+            }
+
+            if (ImGui::IsMouseReleasedWithDelay(ImGuiMouseButton_Left, ImGui::GetIO().MouseDoubleClickTime)) {
                 openTempEditor(path);
             }
         }

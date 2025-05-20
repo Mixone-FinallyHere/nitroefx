@@ -20,13 +20,9 @@ bool ImGui::GradientButton(const char* label, const ImVec2& size, ImU32 textColo
     ItemSize(item_size, style.FramePadding.y);
     if (!ItemAdd(bb, id))
         return false;
-
-    ImGuiButtonFlags flags = ImGuiButtonFlags_None;
-    if (g.LastItemData.InFlags & ImGuiItemFlags_ButtonRepeat)
-        flags |= ImGuiButtonFlags_Repeat;
-
+    
     bool hovered, held;
-    bool pressed = ButtonBehavior(bb, id, &hovered, &held, flags);
+    bool pressed = ButtonBehavior(bb, id, &hovered, &held, 0);
 
     // Render
     const bool is_gradient = bgColor1 != bgColor2;

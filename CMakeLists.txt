@@ -9,7 +9,7 @@ project(nitroefx)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(SDL2 CONFIG REQUIRED)
+find_package(SDL3 CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(OpenGL REQUIRED)
@@ -55,13 +55,10 @@ target_include_directories(nitroefx PRIVATE
     external/stb
     external/libimagequant/imagequant-sys)
 target_compile_definitions(nitroefx PRIVATE 
-    SDL_MAIN_HANDLED
     GLM_ENABLE_EXPERIMENTAL
     IMGUI_DEFINE_MATH_OPERATORS)
 target_link_libraries(nitroefx PRIVATE 
-    SDL2::SDL2 
-    SDL2::SDL2main 
-    SDL2::SDL2-static
+    SDL3::SDL3 
     imgui::imgui 
     spdlog::spdlog
     fmt::fmt

@@ -61,7 +61,7 @@ void Camera::handleEvent(const SDL_Event& event) {
         return;
     }
 
-    if (event.type == SDL_MOUSEWHEEL) {
+    if (event.type == SDL_EVENT_MOUSE_WHEEL) {
         zoomCamera(event.wheel.y * 0.1f);
         updateView();
     }

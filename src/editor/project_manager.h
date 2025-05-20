@@ -2,7 +2,7 @@
 
 #include "editor_instance.h"
 
-#include <SDL_events.h>
+#include <SDL3/SDL_events.h>
 #include <filesystem>
 #include <memory>
 #include <span>

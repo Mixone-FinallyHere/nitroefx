@@ -2,13 +2,13 @@
 #include "fonts/IconsFontAwesome6.h"
 #include "imgui/extensions.h"
 
-#include <SDL2/SDL.h>
+#include <SDL3/SDL.h>
 #include <GL/glew.h>
-#include <SDL2/SDL_opengl.h>
+#include <SDL3/SDL_opengl.h>
 #include <imgui.h>
 #include <implot.h>
 #include <imgui_internal.h>
-#include <imgui_impl_sdl2.h>
+#include <imgui_impl_sdl3.h>
 #include <imgui_impl_opengl3.h>
 #include <spdlog/spdlog.h>
 #include <nlohmann/json.hpp>
@@ -50,8 +50,7 @@ Application::Application() {
 }
 
 int Application::run(int argc, char** argv) {
-    SDL_SetMainReady();
-    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+    if (!SDL_Init(SDL_INIT_VIDEO)) {
         spdlog::error("SDL_Init Error: {}", SDL_GetError());
         return 1;
     }
@@ -64,8 +63,8 @@ int Application::run(int argc, char** argv) {
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
 
-    constexpr auto windowFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_HIDDEN;
-    m_window = SDL_CreateWindow("NitroEFX", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, windowFlags);
+    constexpr auto windowFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_HIDDEN;
+    m_window = SDL_CreateWindow("NitroEFX", 1280, 720, windowFlags);
     if (m_window == nullptr) {
         spdlog::error("SDL_CreateWindow Error: {}", SDL_GetError());
         return 1;
@@ -108,7 +107,7 @@ int Application::run(int argc, char** argv) {
     // in a hidden state and show it after loading the config
     SDL_ShowWindow(m_window);
 
-    ImGui_ImplSDL2_InitForOpenGL(m_window, m_context);
+    ImGui_ImplSDL3_InitForOpenGL(m_window, m_context);
     ImGui_ImplOpenGL3_Init("#version 450");
 
     std::chrono::time_point<std::chrono::high_resolution_clock> lastFrame = std::chrono::high_resolution_clock::now();
@@ -122,7 +121,7 @@ int Application::run(int argc, char** argv) {
         m_editor->renderParticles();
 
         ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplSDL2_NewFrame();
+        ImGui_ImplSDL3_NewFrame();
         ImGui::NewFrame();
         ImGui::DockSpaceOverViewport();
 
@@ -149,7 +148,7 @@ int Application::run(int argc, char** argv) {
     }
 
     ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplSDL2_Shutdown();
+    ImGui_ImplSDL3_Shutdown();
     ImPlot::DestroyContext();
     ImGui::DestroyContext();
 
@@ -161,22 +160,22 @@ int Application::run(int argc, char** argv) {
 void Application::pollEvents() {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
-        ImGui_ImplSDL2_ProcessEvent(&event);
+        ImGui_ImplSDL3_ProcessEvent(&event);
         switch (event.type) {
-        case SDL_QUIT:
+        case SDL_EVENT_QUIT:
             m_running = false;
             break;
 
-        case SDL_WINDOWEVENT:
-            if (event.window.event == SDL_WINDOWEVENT_CLOSE 
-                && event.window.windowID == SDL_GetWindowID(m_window)) {
+        case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+            if (event.window.windowID == SDL_GetWindowID(m_window)) {
                 m_running = false;
-            } else if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
-                saveConfig(); // Save the window size
             }
+
+        case SDL_EVENT_WINDOW_RESIZED:
+            saveConfig(); // Save the window size
             break;
 
-        case SDL_KEYDOWN:
+        case SDL_EVENT_KEY_DOWN:
             handleKeydown(event);
             break;
 
@@ -193,11 +192,11 @@ void Application::handleKeydown(const SDL_Event& event) {
     if (io.WantTextInput) {
         return;
     }
-
-    switch (event.key.keysym.sym) {
-    case SDLK_n:
-        if (event.key.keysym.mod & KMOD_CTRL) {
-            if (event.key.keysym.mod & KMOD_SHIFT) {
+    
+    switch (event.key.key) {
+    case SDLK_N:
+        if (event.key.mod & SDL_KMOD_CTRL) {
+            if (event.key.mod & SDL_KMOD_SHIFT) {
                 spdlog::warn("New Project not implemented");
             } else {
                 spdlog::warn("New SPL File not implemented");
@@ -205,9 +204,9 @@ void Application::handleKeydown(const SDL_Event& event) {
         }
         break;
 
-    case SDLK_o:
-        if (event.key.keysym.mod & KMOD_CTRL) {
-            if (event.key.keysym.mod & KMOD_SHIFT) {
+    case SDLK_O:
+        if (event.key.mod & SDL_KMOD_CTRL) {
+            if (event.key.mod & SDL_KMOD_SHIFT) {
                 const auto path = openProject();
                 if (!path.empty()) {
                     g_projectManager->openProject(path);
@@ -222,9 +221,9 @@ void Application::handleKeydown(const SDL_Event& event) {
         
         break;
 
-    case SDLK_s:
-        if (event.key.keysym.mod & KMOD_CTRL) {
-            if (event.key.keysym.mod & KMOD_SHIFT) {
+    case SDLK_S:
+        if (event.key.mod & SDL_KMOD_CTRL) {
+            if (event.key.mod & SDL_KMOD_SHIFT) {
                 g_projectManager->saveAllEditors();
             } else {
                 m_editor->save();
@@ -232,9 +231,9 @@ void Application::handleKeydown(const SDL_Event& event) {
         }
         break;
 
-    case SDLK_w:
-        if (event.key.keysym.mod & KMOD_CTRL) {
-            if (event.key.keysym.mod & KMOD_SHIFT) {
+    case SDLK_W:
+        if (event.key.mod & SDL_KMOD_CTRL) {
+            if (event.key.mod & SDL_KMOD_SHIFT) {
                 if (g_projectManager->hasOpenEditors()) {
                     g_projectManager->closeAllEditors();
                 }
@@ -246,9 +245,9 @@ void Application::handleKeydown(const SDL_Event& event) {
         }
         break;
 
-    case SDLK_p:
-        if (event.key.keysym.mod & KMOD_CTRL) {
-            if (event.key.keysym.mod & KMOD_SHIFT) {
+    case SDLK_P:
+        if (event.key.mod & SDL_KMOD_CTRL) {
+            if (event.key.mod & SDL_KMOD_SHIFT) {
                 m_editor->playEmitterAction(EmitterSpawnType::Looped);
             } else {
                 m_editor->playEmitterAction(EmitterSpawnType::SingleShot);
@@ -256,32 +255,32 @@ void Application::handleKeydown(const SDL_Event& event) {
         }
         break;
 
-    case SDLK_k:
-        if (event.key.keysym.mod & KMOD_CTRL) {
+    case SDLK_K:
+        if (event.key.mod & SDL_KMOD_CTRL) {
             m_editor->killEmitters();
         }
         break;
     
-    case SDLK_r:
-        if (event.key.keysym.mod & KMOD_CTRL) {
+    case SDLK_R:
+        if (event.key.mod & SDL_KMOD_CTRL) {
             m_editor->resetCamera();
         }
         break;
 
-    case SDLK_z:
-        if (event.key.keysym.mod & KMOD_CTRL) {
+    case SDLK_Z:
+        if (event.key.mod & SDL_KMOD_CTRL) {
             m_editor->undo();
         }
         break;
 
-    case SDLK_y:
-        if (event.key.keysym.mod & KMOD_CTRL) {
+    case SDLK_Y:
+        if (event.key.mod & SDL_KMOD_CTRL) {
             m_editor->redo();
         }
         break;
 
     case SDLK_F4:
-        if (event.key.keysym.mod & KMOD_ALT) {
+        if (event.key.mod & SDL_KMOD_ALT) {
             m_running = false;
         }
         break;
@@ -481,7 +480,8 @@ void Application::setColors() {
     style.GrabRounding = 2.2f;
     style.TabRounding = 2.0f;
     style.TabBorderSize = 0.0f;
-    style.TabMinWidthForCloseButton = 0.0f;
+    style.TabCloseButtonMinWidthSelected = 0.0f;
+    style.TabCloseButtonMinWidthUnselected = 0.0f;
     style.ColorButtonPosition = ImGuiDir_Right;
     style.ButtonTextAlign = ImVec2(0.5f, 0.5f);
     style.SelectableTextAlign = ImVec2(0.0f, 0.0f);
@@ -624,8 +624,17 @@ void Application::loadConfig() {
         m_recentProjects.push_back(project.get<std::string>());
     }
 
+    if (config.contains("windowPos")) {
+        const auto& pos = config["windowPos"];
+        SDL_SetWindowPosition(
+            m_window,
+            pos.value<int>("x", SDL_WINDOWPOS_CENTERED),
+            pos.value<int>("y", SDL_WINDOWPOS_CENTERED)
+        );
+    }
+
     if (config.contains("windowSize")) {
-        const auto size = config["windowSize"];
+        const auto& size = config["windowSize"];
         if (size.value("maximized", false)) {
             SDL_MaximizeWindow(m_window);
         } else {
@@ -653,6 +662,13 @@ void Application::saveConfig() {
     for (const auto& project : m_recentProjects) {
         config["recentProjects"].push_back(project);
     }
+
+    int x, y;
+    SDL_GetWindowPosition(m_window, &x, &y);
+    config["windowPos"] = {
+        { "x", x },
+        { "y", y }
+    };
 
     int width, height;
     SDL_GetWindowSize(m_window, &width, &height);

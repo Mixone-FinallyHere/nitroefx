@@ -2,7 +2,7 @@
 
 #include <filesystem>
 #include <utility> // std::pair
-#include <SDL2/SDL_events.h>
+#include <SDL3/SDL_events.h>
 
 #include "camera.h"
 #include "gfx/gl_viewport.h"

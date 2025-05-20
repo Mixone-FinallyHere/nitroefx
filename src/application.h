@@ -3,7 +3,7 @@
 #include "editor/editor.h"
 #include "editor/project_manager.h"
 
-#include <SDL_events.h>
+#include <SDL3/SDL_events.h>
 #include <string_view>
 
 

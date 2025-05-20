@@ -905,7 +905,7 @@ void Editor::renderHeaderEditor(SPLResourceHeader& header) const {
         HELP(drawType);
 
         const auto& textures = LOCKED_EDITOR()->getArchive().getTextures();
-        if (ImGui::ImageButton((ImTextureID)textures[header.misc.textureIndex].glTexture->getHandle(), { 32, 32 })) {
+        if (ImGui::ImageButton("##tex", (ImTextureID)textures[header.misc.textureIndex].glTexture->getHandle(), {32, 32})) {
             ImGui::OpenPopup(ImGui::GetID("##texturePicker"));
         }
         ImGui::SameLine();
@@ -1038,8 +1038,10 @@ void Editor::renderHeaderEditor(SPLResourceHeader& header) const {
 
         if (ImGui::BeginPopup("##texturePicker")) {
             for (int i = 0; i < textures.size(); ++i) {
+                ImGui::PushID(i);
+
                 const auto& texture = textures[i];
-                if (NOTIFY(ImGui::ImageButton((ImTextureID)texture.glTexture->getHandle(), { 32, 32 }))) {
+                if (NOTIFY(ImGui::ImageButton("##tex", (ImTextureID)texture.glTexture->getHandle(), {32, 32}))) {
                     header.misc.textureIndex = i;
                     ImGui::CloseCurrentPopup();
                 }
@@ -1047,6 +1049,8 @@ void Editor::renderHeaderEditor(SPLResourceHeader& header) const {
                 if (i % 4 != 3) {
                     ImGui::SameLine();
                 }
+
+                ImGui::PopID();
             }
 
             ImGui::EndPopup();
@@ -1670,7 +1674,7 @@ void Editor::renderChildrenEditor(SPLResource& res) {
         HELP(drawType);
 
         const auto& textures = LOCKED_EDITOR()->getArchive().getTextures();
-        if (ImGui::ImageButton((ImTextureID)textures[misc.texture].glTexture->getHandle(), { 32, 32 })) {
+        if (ImGui::ImageButton("##tex", (ImTextureID)textures[misc.texture].glTexture->getHandle(), {32, 32})) {
             ImGui::OpenPopup("##childTexturePicker");
         }
         ImGui::SameLine();
@@ -1767,8 +1771,9 @@ void Editor::renderChildrenEditor(SPLResource& res) {
 
         if (ImGui::BeginPopup("##childTexturePicker")) {
             for (int i = 0; i < textures.size(); ++i) {
+                ImGui::PushID(i);
                 const auto& texture = textures[i];
-                if (NOTIFY(ImGui::ImageButton((ImTextureID)texture.glTexture->getHandle(), { 32, 32 }))) {
+                if (NOTIFY(ImGui::ImageButton("##tex", (ImTextureID)texture.glTexture->getHandle(), {32, 32}))) {
                     child.misc.texture = i;
                     ImGui::CloseCurrentPopup();
                 }
@@ -1776,6 +1781,8 @@ void Editor::renderChildrenEditor(SPLResource& res) {
                 if ((i + 1) % 4 != 0) {
                     ImGui::SameLine();
                 }
+
+                ImGui::PopID();
             }
 
             ImGui::EndPopup();

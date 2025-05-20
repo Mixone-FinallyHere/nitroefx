@@ -7,10 +7,10 @@
       "features": [
         "docking-experimental",
         "opengl3-binding",
-        "sdl2-binding"
+        "sdl3-binding"
       ]
     },
-    "sdl2",
+    "sdl3",
     "spdlog",
     "glew",
     "implot",

@@ -91,8 +91,8 @@ void EditorInstance::updateParticles(float deltaTime) {
 void EditorInstance::handleEvent(const SDL_Event& event) {
     m_camera.handleEvent(event);
 
-    if (event.type == SDL_KEYDOWN) {
-        if (event.key.keysym.sym == SDLK_r && event.key.keysym.mod & KMOD_CTRL) {
+    if (event.type == SDL_EVENT_KEY_DOWN) {
+        if (event.key.key == SDLK_R && event.key.mod & SDL_KMOD_CTRL) {
             m_camera.reset();
         }
     }
