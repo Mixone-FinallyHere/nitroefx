@@ -1,5 +1,11 @@
 #pragma once
 
+#include "types.h"
+#include "util/crc32.h"
+
+#include <map>
+#include <string>
+
 #include <glm/glm.hpp>
 
 
@@ -11,3 +17,5 @@ struct EditorSettings {
     glm::vec4 collisionPlaneBounceColor = { 0.0f, 1.0f, 0.0f, 0.3f }; // Color of the collision plane (bounce mode)
     glm::vec4 collisionPlaneKillColor = { 1.0f, 0.0f, 0.0f, 0.3f }; // Color of the collision plane (kill mode)
 };
+
+

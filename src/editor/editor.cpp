@@ -749,6 +749,9 @@ void Editor::renderSettings() {
         ImGui::ColorEdit4("Collision Plane Bounce Color", glm::value_ptr(m_settings.collisionPlaneBounceColor));
         ImGui::ColorEdit4("Collision Plane Kill Color", glm::value_ptr(m_settings.collisionPlaneKillColor));
 
+        ImGui::SeparatorText("Key Bindings");
+
+
         if (ImGui::Button("Reset to Defaults")) {
             m_settings = m_settingsDefault;
         }

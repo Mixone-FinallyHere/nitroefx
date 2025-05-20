@@ -20,6 +20,7 @@
 #endif
 #include <tinyfiledialogs.h>
 
+#define KEYBINDSTR(name) getKeybind(ApplicationAction::##name)->toString().c_str()
 
 static void debugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam) {
     switch (severity) {
@@ -98,6 +99,7 @@ int Application::run(int argc, char** argv) {
     io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;       // Enable Multi-Viewport / Platform Windows
 
     m_editor = std::make_unique<Editor>();
+    m_settings = ApplicationSettings::getDefault();
 
     loadConfig();
     loadFonts();
@@ -109,6 +111,8 @@ int Application::run(int argc, char** argv) {
 
     ImGui_ImplSDL3_InitForOpenGL(m_window, m_context);
     ImGui_ImplOpenGL3_Init("#version 450");
+
+    m_preferencesWindowId = ImHashStr("Preferences##Application");
 
     if (argc > 1) {
         const std::filesystem::path arg = argv[1];
@@ -139,6 +143,13 @@ int Application::run(int argc, char** argv) {
         renderMenuBar();
         g_projectManager->render();
         m_editor->render();
+
+        if (m_preferencesOpen) {
+            const auto center = ImGui::GetMainViewport()->GetCenter();
+            ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, { 0.5f, 0.5f });
+
+            renderPreferences();
+        }
 
         ImGui::Render();
         glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
@@ -181,6 +192,7 @@ void Application::pollEvents() {
             if (event.window.windowID == SDL_GetWindowID(m_window)) {
                 m_running = false;
             }
+            break;
 
         case SDL_EVENT_WINDOW_RESIZED:
             saveConfig(); // Save the window size
@@ -188,6 +200,9 @@ void Application::pollEvents() {
 
         case SDL_EVENT_KEY_DOWN:
             handleKeydown(event);
+            break;
+
+        case SDL_EVENT_MOUSE_BUTTON_DOWN:
             break;
 
         default:
@@ -202,6 +217,32 @@ void Application::handleKeydown(const SDL_Event& event) {
     const auto io = ImGui::GetIO();
     if (io.WantTextInput) {
         return;
+    }
+
+    if (m_listeningForInput) {
+        if (event.key.key == SDLK_ESCAPE) {
+            m_listeningForInput = false;
+            m_listeningKeybind = nullptr;
+            m_exitKeybindListening = true;
+            return;
+        }
+
+        m_listeningKeybind->type = KeybindType::Key;
+        m_listeningKeybind->key = event.key.key;
+        m_listeningKeybind->modifiers = event.key.mod;
+        m_listeningForInput = false;
+        m_listeningKeybind = nullptr;
+        m_exitKeybindListening = true;
+        return;
+    }
+
+    for (const auto& [action, keybind] : m_settings.keybinds) {
+        if (keybind.type == KeybindType::Key) {
+            if (event.key.key == keybind.key && event.key.mod == keybind.modifiers) {
+                executeAction(action);
+                return;
+            }
+        }
     }
     
     switch (event.key.key) {
@@ -326,7 +367,7 @@ void Application::renderMenuBar() {
             }
 
             if (ImGui::BeginMenu("Open")) {
-                if (ImGui::MenuItemIcon(ICON_FA_FOLDER, "Project", "Ctrl+Shift+O")) {
+                if (ImGui::MenuItemIcon(ICON_FA_FOLDER, "Project", KEYBINDSTR(OpenProject))) {
                     const auto path = openProject();
                     if (!path.empty()) {
                         addRecentProject(path);
@@ -334,7 +375,7 @@ void Application::renderMenuBar() {
                     }
                 }
 
-                if (ImGui::MenuItemIcon(ICON_FA_FILE, "SPL File", "Ctrl+O")) {
+                if (ImGui::MenuItemIcon(ICON_FA_FILE, "SPL File", KEYBINDSTR(OpenFile))) {
                     const auto path = openFile();
                     if (!path.empty()) {
                         addRecentFile(path);
@@ -371,7 +412,7 @@ void Application::renderMenuBar() {
                 ImGui::EndMenu();
             }
 
-            if (ImGui::MenuItemIcon(ICON_FA_FLOPPY_DISK, "Save", "Ctrl+S", false, hasActiveEditor)) {
+            if (ImGui::MenuItemIcon(ICON_FA_FLOPPY_DISK, "Save", KEYBINDSTR(Save), false, hasActiveEditor)) {
                 m_editor->save();
             }
 
@@ -383,15 +424,15 @@ void Application::renderMenuBar() {
                 }
             }
 
-            if (ImGui::MenuItemIcon(ICON_FA_FLOPPY_DISK, "Save All", "Ctrl+Shift+S", false, hasOpenEditors)) {
+            if (ImGui::MenuItemIcon(ICON_FA_FLOPPY_DISK, "Save All", KEYBINDSTR(SaveAll), false, hasOpenEditors)) {
                 g_projectManager->saveAllEditors();
             }
 
-            if (ImGui::MenuItemIcon(ICON_FA_XMARK, "Close", "Ctrl+W", false, hasActiveEditor)) {
+            if (ImGui::MenuItemIcon(ICON_FA_XMARK, "Close", KEYBINDSTR(Close), false, hasActiveEditor)) {
                 g_projectManager->closeEditor(g_projectManager->getActiveEditor());
             }
 
-            if (ImGui::MenuItemIcon(ICON_FA_XMARK, "Close All", "Ctrl+Shift+W", false, hasOpenEditors)) {
+            if (ImGui::MenuItemIcon(ICON_FA_XMARK, "Close All", KEYBINDSTR(CloseAll), false, hasOpenEditors)) {
                 g_projectManager->closeAllEditors();
             }
 
@@ -399,7 +440,7 @@ void Application::renderMenuBar() {
                 g_projectManager->closeProject();
             }
 
-            if (ImGui::MenuItemIcon(ICON_FA_POWER_OFF, "Exit", "Alt+F4")) {
+            if (ImGui::MenuItemIcon(ICON_FA_POWER_OFF, "Exit", KEYBINDSTR(Exit))) {
                 m_running = false;
             }
 
@@ -407,28 +448,36 @@ void Application::renderMenuBar() {
         }
 
         if (ImGui::BeginMenu("Edit")) {
-            if (ImGui::MenuItemIcon(ICON_FA_ROTATE_LEFT, "Undo", "Ctrl+Z", false, m_editor->canUndo())) {
+            if (ImGui::MenuItemIcon(ICON_FA_ROTATE_LEFT, "Undo", KEYBINDSTR(Undo), false, m_editor->canUndo())) {
                 m_editor->undo();
             }
 
-            if (ImGui::MenuItemIcon(ICON_FA_ROTATE_RIGHT, "Redo", "Ctrl+Y", false, m_editor->canRedo())) {
+            if (ImGui::MenuItemIcon(ICON_FA_ROTATE_RIGHT, "Redo", KEYBINDSTR(Redo), false, m_editor->canRedo())) {
                 m_editor->redo();
             }
 
-            if (ImGui::MenuItemIcon(ICON_FA_PLAY, "Play Single Shot Emitter", "Ctrl+P", false, hasActiveEditor)) {
+            if (ImGui::MenuItemIcon(ICON_FA_PLAY, "Play Emitter", KEYBINDSTR(PlayEmitter), false, hasActiveEditor)) {
                 m_editor->playEmitterAction(EmitterSpawnType::SingleShot);
             }
 
-            if (ImGui::MenuItemIcon(ICON_FA_REPEAT, "Play Looped Emitter", "Ctrl+Shift+P", false, hasActiveEditor)) {
+            if (ImGui::MenuItemIcon(ICON_FA_REPEAT, "Play Looped Emitter", KEYBINDSTR(PlayEmitterLooped), false, hasActiveEditor)) {
                 m_editor->playEmitterAction(EmitterSpawnType::Looped);
             }
 
-            if (ImGui::MenuItem("Kill Emitters", "Ctrl+K", false, hasActiveEditor)) {
+            if (ImGui::MenuItem("Kill Emitters", KEYBINDSTR(KillEmitters), false, hasActiveEditor)) {
                 m_editor->killEmitters();
             }
 
-            if (ImGui::MenuItem("Reset Camera", "Ctrl+R", false, hasActiveEditor)) {
+            if (ImGui::MenuItem("Reset Camera", KEYBINDSTR(ResetCamera), false, hasActiveEditor)) {
                 m_editor->resetCamera();
+            }
+
+            if (ImGui::MenuItemIcon(ICON_FA_WRENCH, "Preferences")) {
+                m_preferencesOpen = true;
+
+                ImGui::PushOverrideID(m_preferencesWindowId);
+                ImGui::OpenPopup("Preferences##Application");
+                ImGui::PopID();
             }
 
             m_editor->renderMenu("Edit");
@@ -460,6 +509,67 @@ void Application::renderMenuBar() {
 
         ImGui::EndMainMenuBar();
     }
+}
+
+void Application::renderPreferences() {
+    ImGui::PushOverrideID(m_preferencesWindowId);
+
+    if (ImGui::BeginPopupModal("Preferences##Application", &m_preferencesOpen, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::SeparatorText("Keybinds");
+
+        if (ImGui::BeginTable("Keybinds##Application", 2, ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersH)) {
+            ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("Keybind", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableHeadersRow();
+            
+            for (auto& [action, keybind] : m_settings.keybinds) {
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+
+                ImGui::AlignTextToFramePadding();
+                ImGui::TextUnformatted(ApplicationAction::Names.at(action));
+                
+                ImGui::TableSetColumnIndex(1);
+                ImGui::SetNextItemWidth(300);
+
+                const auto flags = ImGuiSelectableFlags_SpanAvailWidth | ImGuiSelectableFlags_NoAutoClosePopups;
+                if (ImGui::Selectable(keybind.toString().c_str(), false, flags)) {
+                    m_listeningForInput = true;
+                    m_listeningKeybind = &keybind;
+                    ImGui::OpenPopup("Keybind##Application");
+                }
+            }
+
+            if (m_listeningForInput) {
+                ImGui::PushStyleVar(ImGuiStyleVar_PopupBorderSize, 0.0f);
+                // Place the popup in the center of the window
+                const ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+                ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+                ImGui::SetNextWindowSize({ 300, 2100 }, ImGuiCond_Always);
+
+                const auto flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoInputs;
+                if (ImGui::BeginPopupModal("Keybind##Application", nullptr, flags)) {
+                    ImGui::Text("Press any key or key combination\nto set the keybind");
+
+                    if (m_exitKeybindListening) {
+                        ImGui::CloseCurrentPopup();
+                        m_exitKeybindListening = false;
+                    }
+
+                    ImGui::EndPopup();
+                }
+
+                ImGui::PopStyleVar();
+            }
+
+            ImGui::EndTable();
+        }
+        
+
+        ImGui::EndPopup();
+    }
+
+    ImGui::PopID();
 }
 
 void Application::setColors() {
@@ -635,6 +745,22 @@ void Application::loadConfig() {
         m_recentProjects.push_back(project.get<std::string>());
     }
 
+    if (config.contains("keybinds")) {
+        for (const auto& keybind : config["keybinds"]) {
+            Keybind bind{};
+            bind.type = static_cast<KeybindType>(keybind["type"].get<int>());
+            if (bind.type == KeybindType::Key) {
+                bind.key = keybind.value<SDL_Keycode>("key", SDLK_UNKNOWN);
+                bind.modifiers = keybind.value<SDL_Keymod>("modifiers", 0);
+            }
+            else if (bind.type == KeybindType::Mouse) {
+                bind.button = keybind.value<Uint8>("button", SDL_BUTTON_X1);
+            }
+
+            m_settings.keybinds[keybind["id"].get<u32>()] = bind;
+        }
+    }
+
     if (config.contains("windowPos")) {
         const auto& pos = config["windowPos"];
         SDL_SetWindowPosition(
@@ -656,6 +782,58 @@ void Application::loadConfig() {
     m_editor->loadConfig(config);
 }
 
+void Application::executeAction(u32 action) {
+    spdlog::info("Executing Action: {}", ApplicationAction::Names.at(action));
+
+    switch (action) {
+    case ApplicationAction::OpenProject: {
+        const auto projectPath = openProject();
+        if (!projectPath.empty()) {
+            addRecentProject(projectPath);
+            g_projectManager->openProject(projectPath);
+        }
+    } break;
+    case ApplicationAction::OpenFile: {
+        const auto filePath = openFile();
+        if (!filePath.empty()) {
+            addRecentFile(filePath);
+            g_projectManager->openEditor(filePath);
+        }
+    } break;
+    case ApplicationAction::Save:
+        m_editor->save();
+        break;
+    case ApplicationAction::SaveAll:
+        g_projectManager->saveAllEditors();
+        break;
+    case ApplicationAction::Close:
+        if (g_projectManager->hasActiveEditor()) {
+            g_projectManager->closeEditor(g_projectManager->getActiveEditor());
+        }
+        break;
+    case ApplicationAction::CloseAll:
+        if (g_projectManager->hasOpenEditors()) {
+            g_projectManager->closeAllEditors();
+        }
+        break;
+    case ApplicationAction::Exit:
+        m_running = false;
+        break;
+    case ApplicationAction::PlayEmitter:
+        m_editor->playEmitterAction(EmitterSpawnType::SingleShot);
+        break;
+    case ApplicationAction::PlayEmitterLooped:
+        m_editor->playEmitterAction(EmitterSpawnType::Looped);
+        break;
+    case ApplicationAction::KillEmitters:
+        m_editor->killEmitters();
+        break;
+    case ApplicationAction::ResetCamera:
+        m_editor->resetCamera();
+        break;
+    }
+}
+
 void Application::saveConfig() {
     const auto configPath = getConfigPath();
     if (!std::filesystem::exists(configPath)) {
@@ -673,6 +851,23 @@ void Application::saveConfig() {
     for (const auto& project : m_recentProjects) {
         config["recentProjects"].push_back(project);
     }
+
+    auto keybinds = nlohmann::json::array();
+    for (const auto& keybind : m_settings.keybinds) {
+        auto b = nlohmann::json::object();
+        b["id"] = keybind.first;
+        b["type"] = keybind.second.type;
+        if (keybind.second.type == KeybindType::Key) {
+            b["key"] = keybind.second.key;
+            b["modifiers"] = keybind.second.modifiers;
+        } else if (keybind.second.type == KeybindType::Mouse) {
+            b["button"] = keybind.second.button;
+        }
+
+        keybinds.push_back(b);
+    }
+
+    config["keybinds"] = keybinds;
 
     int x, y;
     SDL_GetWindowPosition(m_window, &x, &y);
@@ -708,6 +903,18 @@ void Application::saveConfig() {
 ImFont* Application::getFont(const std::string& name) {
     const auto it = m_fonts.find(name);
     return it != m_fonts.end() ? it->second : nullptr;
+}
+
+std::optional<Keybind> Application::getKeybind(u32 action) const {
+    if (!m_settings.keybinds.contains(action)) {
+        return std::nullopt;
+    }
+
+    return m_settings.keybinds.at(action);
+}
+
+std::optional<Keybind> Application::getKeybind(const std::string_view& name) const {
+    return getKeybind(crc::crc32(name.data(), name.size()));
 }
 
 void Application::addRecentFile(const std::string& path) {
