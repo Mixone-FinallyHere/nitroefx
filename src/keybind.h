@@ -28,7 +28,7 @@ struct Keybind {
 
     [[nodiscard]] std::string toString() const {
         if (type == KeybindType::Key) {
-            return fmt::format("{}+{}", getModifierName(modifiers), SDL_GetKeyName(key));
+            return fmt::format("{}{}", getModifierName(modifiers), SDL_GetKeyName(key));
         }
         else {
             return fmt::format("Mouse{}", button);
@@ -47,7 +47,7 @@ private:
                 name += value + "+";
             }
         }
-        name.pop_back(); // Remove the last '+'
+
         return name;
     }
 
@@ -57,8 +57,6 @@ private:
         { SDL_KMOD_CTRL, "Ctrl" },
         { SDL_KMOD_SHIFT, "Shift" },
         { SDL_KMOD_ALT, "Alt" },
-        { SDL_KMOD_GUI, "Win" },
-        { SDL_KMOD_NUM, "Num" },
-        { SDL_KMOD_CAPS, "Caps" }
+        { SDL_KMOD_GUI, "Win" }
     };
 };

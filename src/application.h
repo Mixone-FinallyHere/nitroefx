@@ -8,6 +8,7 @@
 #include <string_view>
 
 #include <optional>
+#include <set>
 
 
 class Application {
@@ -25,6 +26,7 @@ public:
 private:
     void pollEvents();
     void handleKeydown(const SDL_Event& event);
+    void handleMouseDown(const SDL_Event& event);
     void dispatchEvent(const SDL_Event& event);
     void renderMenuBar();
     void renderPreferences();
@@ -54,11 +56,14 @@ private:
     std::map<std::string, ImFont*> m_fonts;
     
     ApplicationSettings m_settings;
+    std::vector<u32> m_sortedActions;
     int m_preferencesWindowId = 0;
     bool m_preferencesOpen = false;
     bool m_listeningForInput = false;
     bool m_exitKeybindListening = false;
     Keybind* m_listeningKeybind = nullptr;
+
+    std::set<SDL_Keycode> m_modifierKeys;
 };
 
 inline Application* g_application = nullptr;

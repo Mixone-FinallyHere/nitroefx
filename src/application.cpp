@@ -48,6 +48,31 @@ Application::Application() {
     }
 
     g_application = this;
+
+    m_sortedActions = {
+        ApplicationAction::OpenProject,
+        ApplicationAction::OpenFile,
+        ApplicationAction::Save,
+        ApplicationAction::SaveAll,
+        ApplicationAction::Close,
+        ApplicationAction::CloseAll,
+        ApplicationAction::Exit,
+        ApplicationAction::Undo,
+        ApplicationAction::Redo,
+        ApplicationAction::PlayEmitter,
+        ApplicationAction::PlayEmitterLooped,
+        ApplicationAction::KillEmitters,
+        ApplicationAction::ResetCamera,
+    };
+
+    m_modifierKeys = {
+        SDLK_LCTRL, SDLK_RCTRL,
+        SDLK_LSHIFT, SDLK_RSHIFT,
+        SDLK_LALT, SDLK_RALT,
+        SDLK_LGUI, SDLK_RGUI,
+        SDLK_LMETA, SDLK_RMETA,
+        SDLK_LHYPER, SDLK_RHYPER,
+    };
 }
 
 int Application::run(int argc, char** argv) {
@@ -203,6 +228,7 @@ void Application::pollEvents() {
             break;
 
         case SDL_EVENT_MOUSE_BUTTON_DOWN:
+            handleMouseDown(event);
             break;
 
         default:
@@ -220,6 +246,10 @@ void Application::handleKeydown(const SDL_Event& event) {
     }
 
     if (m_listeningForInput) {
+        if (m_modifierKeys.contains(event.key.key)) {
+            return; // Ignore modifier keys
+        }
+
         if (event.key.key == SDLK_ESCAPE) {
             m_listeningForInput = false;
             m_listeningKeybind = nullptr;
@@ -339,6 +369,30 @@ void Application::handleKeydown(const SDL_Event& event) {
 
     default:
         break;
+    }
+}
+
+void Application::handleMouseDown(const SDL_Event& event) {
+    if (m_listeningForInput) {
+        if (event.button.button == SDL_BUTTON_LEFT || event.button.button == SDL_BUTTON_RIGHT) {
+            return; // Don't allow remapping left/right mouse buttons
+        }
+
+        m_listeningKeybind->type = KeybindType::Mouse;
+        m_listeningKeybind->button = event.button.button;
+        m_listeningForInput = false;
+        m_listeningKeybind = nullptr;
+        m_exitKeybindListening = true;
+        return;
+    }
+
+    for (const auto& [action, keybind] : m_settings.keybinds) {
+        if (keybind.type == KeybindType::Mouse) {
+            if (event.button.button == keybind.button) {
+                executeAction(action);
+                return;
+            }
+        }
     }
 }
 
@@ -513,6 +567,8 @@ void Application::renderMenuBar() {
 
 void Application::renderPreferences() {
     ImGui::PushOverrideID(m_preferencesWindowId);
+    ImGui::PushStyleVar(ImGuiStyleVar_PopupBorderSize, 1.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16.0f, 16.0f));
 
     if (ImGui::BeginPopupModal("Preferences##Application", &m_preferencesOpen, ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::SeparatorText("Keybinds");
@@ -522,7 +578,9 @@ void Application::renderPreferences() {
             ImGui::TableSetupColumn("Keybind", ImGuiTableColumnFlags_WidthStretch);
             ImGui::TableHeadersRow();
             
-            for (auto& [action, keybind] : m_settings.keybinds) {
+            for (auto action : m_sortedActions) {
+                auto& keybind = m_settings.keybinds[action];
+
                 ImGui::TableNextRow();
                 ImGui::TableSetColumnIndex(0);
 
@@ -532,7 +590,7 @@ void Application::renderPreferences() {
                 ImGui::TableSetColumnIndex(1);
                 ImGui::SetNextItemWidth(300);
 
-                const auto flags = ImGuiSelectableFlags_SpanAvailWidth | ImGuiSelectableFlags_NoAutoClosePopups;
+                constexpr auto flags = ImGuiSelectableFlags_SpanAvailWidth | ImGuiSelectableFlags_NoAutoClosePopups;
                 if (ImGui::Selectable(keybind.toString().c_str(), false, flags)) {
                     m_listeningForInput = true;
                     m_listeningKeybind = &keybind;
@@ -545,11 +603,22 @@ void Application::renderPreferences() {
                 // Place the popup in the center of the window
                 const ImVec2 center = ImGui::GetMainViewport()->GetCenter();
                 ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-                ImGui::SetNextWindowSize({ 300, 2100 }, ImGuiCond_Always);
+                ImGui::SetNextWindowSize({ 350, 200 }, ImGuiCond_Always);
 
-                const auto flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoInputs;
+                constexpr auto flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoInputs;
                 if (ImGui::BeginPopupModal("Keybind##Application", nullptr, flags)) {
-                    ImGui::Text("Press any key or key combination\nto set the keybind");
+                    const auto drawList = ImGui::GetWindowDrawList();
+
+                    const auto windowPos = ImGui::GetWindowPos();
+                    const auto windowSize = ImGui::GetWindowSize();
+                    const auto textSize = ImGui::CalcTextSize("Press any key or button to bind");
+
+                    const auto textPos = windowPos + ImVec2((windowSize.x - textSize.x) / 2, (windowSize.y - textSize.y) / 2);
+                    drawList->AddText(
+                        textPos, 
+                        ImGui::ColorConvertFloat4ToU32(ImVec4(1.0f, 1.0f, 1.0f, 1.0f)), 
+                        "Press any key or button to bind"
+                    );
 
                     if (m_exitKeybindListening) {
                         ImGui::CloseCurrentPopup();
@@ -564,11 +633,11 @@ void Application::renderPreferences() {
 
             ImGui::EndTable();
         }
-        
 
         ImGui::EndPopup();
     }
 
+    ImGui::PopStyleVar(2);
     ImGui::PopID();
 }
 
