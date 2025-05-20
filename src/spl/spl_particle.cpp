@@ -26,7 +26,7 @@ void SPLParticle::render(ParticleRenderer* renderer, const CameraParams& params,
 }
 
 glm::vec3 SPLParticle::getWorldPosition() const {
-    return emitterPos + position + emitter->getResource()->header.emitterBasePos;
+    return emitterPos + position;
 }
 
 void SPLParticle::renderBillboard(ParticleRenderer* renderer, const CameraParams& params, f32 s, f32 t) const {
@@ -63,10 +63,10 @@ void SPLParticle::renderBillboard(ParticleRenderer* renderer, const CameraParams
         .color = { color, visibility.baseAlpha * visibility.animAlpha },
         .transform = transform,
         .texCoords = {
-            { 0, 0 },
-            { s, 0 },
+            { 0, t },
             { s, t },
-            { 0, t }
+            { s, 0 },
+            { 0, 0 }
         }
     });
 }

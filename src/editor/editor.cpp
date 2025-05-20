@@ -1292,7 +1292,7 @@ void Editor::renderAnimationEditor(SPLResource& res) {
 
     LOCK_EDITOR();
 
-    if (ImGui::BlueButton(ICON_FA_CIRCLE_PLUS " Add Behavior...")) {
+    if (ImGui::BlueButton(ICON_FA_CIRCLE_PLUS " Add Animation...")) {
         ImGui::OpenPopup("##addAnimation");
     }
 

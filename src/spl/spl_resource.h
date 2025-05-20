@@ -480,7 +480,7 @@ struct SPLAlphaAnim final : SPLAnim {
         return SPLAlphaAnim(
             { 1.0f, 15.0f / 31.0f, 0.0f },
             { .in = 128, .out = 128 },
-            { .randomRange = 1.0f, .loop = false }
+            { .randomRange = 0.0f, .loop = false }
         );
     }
 };

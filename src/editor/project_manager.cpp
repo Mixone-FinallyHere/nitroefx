@@ -5,6 +5,7 @@
 #include "SDL3/SDL_messagebox.h"
 #include <spdlog/spdlog.h>
 
+#include "imgui/extensions.h"
 #include "fonts/IconsFontAwesome6.h"
 
 
@@ -51,10 +52,21 @@ void ProjectManager::closeProject(bool force) {
 }
 
 void ProjectManager::openEditor(const std::filesystem::path& path) {
+    const auto existing = std::ranges::find_if(m_openEditors, [&path](const auto& editor) { 
+        return editor->getPath() == path; 
+    });
+
+    if (existing != m_openEditors.end()) {
+        m_activeEditor = *existing;
+        existing->get()->makePermanent();
+        return;
+    }
+
     const auto editor = std::make_shared<EditorInstance>(path);
     if (m_openEditors.empty()) {
         m_activeEditor = editor;
     }
+
     m_openEditors.push_back(editor);
 }
 
@@ -168,6 +180,7 @@ void ProjectManager::renderDirectory(const std::filesystem::path& path) {
 
     if (ImGui::BeginPopup("New file##ProjectManager")) {
         ImGui::Text("New file");
+
         ImGui::EndPopup();
     }
 
@@ -198,16 +211,11 @@ void ProjectManager::renderFile(const std::filesystem::path& path) {
     }
 
     ImGui::Indent(40.0f);
-    ImGui::Selectable(text.c_str(), false);
-    if (ImGui::IsItemHovered()) {
-        if (isSplFile) {
-            if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
-                openEditor(path);
-            }
-
-            if (ImGui::IsMouseReleasedWithDelay(ImGuiMouseButton_Left, ImGui::GetIO().MouseDoubleClickTime)) {
-                openTempEditor(path);
-            }
+    if (ImGui::Selectable(text.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick) && isSplFile) {
+        if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+            openEditor(path);
+        } else {
+            openTempEditor(path);
         }
     }
     ImGui::Unindent(40.0f);
@@ -218,11 +226,11 @@ void ProjectManager::renderFile(const std::filesystem::path& path) {
     }
 
     if (ImGui::BeginPopupContextItem(nullptr, ImGuiPopupFlags_MouseButtonRight)) {
-        if (ImGui::MenuItem("Open")) {
+        if (ImGui::MenuItemIcon(ICON_FA_FILE_IMPORT, "Open")) {
             openEditor(path);
         }
 
-        if (ImGui::MenuItem("Delete")) {
+        if (ImGui::MenuItemIcon(ICON_FA_TRASH, "Delete")) {
             spdlog::info("Deleting file: {}", path.string());
             std::filesystem::remove(path);
         }

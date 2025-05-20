@@ -24,16 +24,16 @@
 static void debugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam) {
     switch (severity) {
     case GL_DEBUG_SEVERITY_HIGH:
-        spdlog::critical("OpenGL Error: {}", message);
+        spdlog::error("OpenGL Error: {}", message);
         break;
     case GL_DEBUG_SEVERITY_MEDIUM:
         spdlog::warn("OpenGL Error: {}", message);
         break;
     case GL_DEBUG_SEVERITY_LOW:
-        spdlog::info("OpenGL Error: {}", message);
+        spdlog::info("OpenGL Warn: {}", message);
         break;
     case GL_DEBUG_SEVERITY_NOTIFICATION:
-        spdlog::debug("OpenGL Error: {}", message);
+        spdlog::debug("OpenGL Info: {}", message);
         break;
     default:
         break;
@@ -109,6 +109,17 @@ int Application::run(int argc, char** argv) {
 
     ImGui_ImplSDL3_InitForOpenGL(m_window, m_context);
     ImGui_ImplOpenGL3_Init("#version 450");
+
+    if (argc > 1) {
+        const std::filesystem::path arg = argv[1];
+        if (std::filesystem::is_directory(arg)) {
+            g_projectManager->openProject(arg);
+        } else if (arg.extension() == ".spl") {
+            g_projectManager->openEditor(arg);
+        } else {
+            spdlog::warn("Invalid argument: {}", arg.string());
+        }
+    }
 
     std::chrono::time_point<std::chrono::high_resolution_clock> lastFrame = std::chrono::high_resolution_clock::now();
 

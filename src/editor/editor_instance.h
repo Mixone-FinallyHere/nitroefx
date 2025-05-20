@@ -28,6 +28,10 @@ public:
         return m_modified;
     }
 
+    void makePermanent() {
+        m_isTemp = false;
+    }
+
     bool isTemp() const {
         return m_isTemp;
     }
