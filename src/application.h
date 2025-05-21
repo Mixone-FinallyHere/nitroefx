@@ -23,6 +23,10 @@ public:
     std::optional<Keybind> getKeybind(u32 action) const;
     std::optional<Keybind> getKeybind(const std::string_view& name) const;
 
+    Editor* getEditor() const {
+        return m_editor.get();
+    }
+
 private:
     void pollEvents();
     void handleKeydown(const SDL_Event& event);

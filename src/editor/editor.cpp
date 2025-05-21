@@ -174,7 +174,7 @@ void Editor::renderMenu(std::string_view name) {
     }
 
     if (name == "Edit") {
-        if (ImGui::MenuItemIcon(ICON_FA_GEAR, "Settings", nullptr)) {
+        if (ImGui::MenuItemIcon(ICON_FA_GEAR, "Editor Settings", nullptr)) {
             openSettings();
         }
     }
@@ -266,12 +266,13 @@ void Editor::loadConfig(const nlohmann::json& config) {
     };
 
     const auto& settings = config["settings"];
-    m_settings.displayActiveEmitters = config.value<bool>("displayActiveEmitters", true);
-    m_settings.displayEditedEmitter = config.value<bool>("displayEditedEmitter", true);
+    m_settings.displayActiveEmitters = config.value<bool>("displayActiveEmitters", m_settingsDefault.displayActiveEmitters);
+    m_settings.displayEditedEmitter = config.value<bool>("displayEditedEmitter", m_settingsDefault.displayEditedEmitter);
     m_settings.activeEmitterColor = loadVec4(settings, "activeEmitterColor", m_settingsDefault.activeEmitterColor);
     m_settings.editedEmitterColor = loadVec4(settings, "editedEmitterColor", m_settingsDefault.editedEmitterColor);
     m_settings.collisionPlaneBounceColor = loadVec4(settings, "collisionPlaneBounceColor", m_settingsDefault.collisionPlaneBounceColor);
     m_settings.collisionPlaneKillColor = loadVec4(settings, "collisionPlaneKillColor", m_settingsDefault.collisionPlaneKillColor);
+    m_settings.maxParticles = settings.value("maxParticles", m_settingsDefault.maxParticles);
 }
 
 void Editor::saveConfig(nlohmann::json& config) const {
@@ -285,7 +286,8 @@ void Editor::saveConfig(nlohmann::json& config) const {
         { "activeEmitterColor", saveVec4(m_settings.activeEmitterColor) },
         { "editedEmitterColor", saveVec4(m_settings.editedEmitterColor) },
         { "collisionPlaneBounceColor", saveVec4(m_settings.collisionPlaneBounceColor) },
-        { "collisionPlaneKillColor", saveVec4(m_settings.collisionPlaneKillColor) }
+        { "collisionPlaneKillColor", saveVec4(m_settings.collisionPlaneKillColor) },
+        { "maxParticles", m_settings.maxParticles }
     });
 }
 
@@ -743,14 +745,20 @@ void Editor::renderSettings() {
 
     bool closedThroughButton = false;
     if (ImGui::BeginPopupModal("Settings##Editor", &m_settingsOpen)) {
+        ImGui::SeparatorText("General");
+        ImGui::InputScalar("Max Particles", ImGuiDataType_U32, &m_settings.maxParticles);
+        ImGui::SameLine();
+        ImGui::TextDisabled("(?)");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("The maximum number of particles that can be processed/rendered at once per editor.\n"
+                              "Note that games using SPL usually have a limit of around 1000.");
+        }
+
         ImGui::SeparatorText("Colors");
         ImGui::ColorEdit4("Active Emitter Color", glm::value_ptr(m_settings.activeEmitterColor));
         ImGui::ColorEdit4("Edited Emitter Color", glm::value_ptr(m_settings.editedEmitterColor));
         ImGui::ColorEdit4("Collision Plane Bounce Color", glm::value_ptr(m_settings.collisionPlaneBounceColor));
         ImGui::ColorEdit4("Collision Plane Kill Color", glm::value_ptr(m_settings.collisionPlaneKillColor));
-
-        ImGui::SeparatorText("Key Bindings");
-
 
         if (ImGui::Button("Reset to Defaults")) {
             m_settings = m_settingsDefault;
@@ -759,6 +767,10 @@ void Editor::renderSettings() {
         ImGui::SameLine();
 
         if (ImGui::Button("Save")) {
+            if (m_settings.maxParticles != m_settingsBackup.maxParticles) {
+                updateMaxParticles(); // Apply the setting to all open editors
+            }
+
             m_settingsBackup = m_settings;
             m_settingsOpen = false;
             closedThroughButton = true;
@@ -1920,6 +1932,13 @@ void Editor::renderDebugShapes(const std::shared_ptr<EditorInstance>& editor, st
             m_debugRenderer->addHemisphere(emitter->getPosition(), axis, resource->header.radius, color);
             break;
         }
+    }
+}
+
+void Editor::updateMaxParticles() {
+    const auto editors = g_projectManager->getOpenEditors();
+    for (const auto& editor : editors) {
+        editor->setMaxParticles(m_settings.maxParticles);
     }
 }
 

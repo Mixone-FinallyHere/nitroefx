@@ -69,7 +69,18 @@ SPLEmitter::SPLEmitter(const SPLResource* resource, ParticleSystem* system, bool
     m_crossAxis2 = {};
 }
 
-SPLEmitter::~SPLEmitter() = default;
+SPLEmitter::~SPLEmitter() {
+    for (const auto ptcl : m_particles) {
+        m_system->freeParticle(ptcl);
+    }
+
+    for (const auto ptcl : m_childParticles) {
+        m_system->freeParticle(ptcl);
+    }
+
+    m_particles.clear();
+    m_childParticles.clear();
+}
 
 void SPLEmitter::update(float deltaTime) {
     const auto& header = m_resource->header;

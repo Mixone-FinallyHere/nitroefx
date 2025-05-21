@@ -29,6 +29,7 @@ public:
     const glm::mat4& getView() const { return m_view; }
 
     void setTextures(std::span<const SPLTexture> textures);
+    void setMaxInstances(u32 maxInstances);
 
 private:
     u32 m_maxInstances;

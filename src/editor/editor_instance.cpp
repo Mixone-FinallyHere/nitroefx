@@ -12,7 +12,8 @@
 
 
 EditorInstance::EditorInstance(const std::filesystem::path& path, bool isTemp)
-    : m_path(path), m_archive(path), m_particleSystem(1000, m_archive.getTextures())
+    : m_path(path), m_archive(path)
+    , m_particleSystem(g_application->getEditor()->getSettings().maxParticles, m_archive.getTextures())
     , m_camera(glm::radians(45.0f), { 800, 800 }, 1.0f, 500.0f), m_isTemp(isTemp) {
     m_uniqueID = SPLRandom::nextU64();
     m_updateProj = true;

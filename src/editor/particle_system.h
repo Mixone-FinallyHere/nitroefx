@@ -13,7 +13,7 @@ struct CameraParams;
 
 class ParticleSystem {
 public:
-    explicit ParticleSystem(u32 maxParticles, std::span<const SPLTexture> textures);
+    ParticleSystem(u32 maxParticles, std::span<const SPLTexture> textures);
     ~ParticleSystem();
 
     void update(float deltaTime);
@@ -26,8 +26,13 @@ public:
     SPLParticle* allocateParticle();
     void freeParticle(SPLParticle* particle);
 
+    void setMaxParticles(u32 maxParticles);
+
     ParticleRenderer& getRenderer() { return m_renderer; }
     std::span<const std::shared_ptr<SPLEmitter>> getEmitters() const { return m_emitters; }
+
+private:
+    void forceKillAllEmitters();
 
 private:
     ParticleRenderer m_renderer;

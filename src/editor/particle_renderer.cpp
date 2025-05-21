@@ -189,3 +189,13 @@ void ParticleRenderer::setTextures(std::span<const SPLTexture> textures) {
         m_particles.emplace_back().reserve(m_maxInstances / textures.size()); // Rough distribution for fewer reallocations
     }
 }
+
+void ParticleRenderer::setMaxInstances(u32 maxInstances) {
+    if (m_isRendering) {
+        throw std::runtime_error("Cannot set max instances while rendering");
+    }
+
+    m_maxInstances = maxInstances;
+    glCall(glBindBuffer(GL_ARRAY_BUFFER, m_transformVbo));
+    glCall(glBufferData(GL_ARRAY_BUFFER, m_maxInstances * sizeof(ParticleInstance), nullptr, GL_DYNAMIC_DRAW));
+}

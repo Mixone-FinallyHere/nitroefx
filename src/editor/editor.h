@@ -50,6 +50,10 @@ public:
     void undo();
     void redo();
 
+    const EditorSettings& getSettings() const {
+        return m_settings;
+    }
+
 private:
     void renderResourcePicker();
     void renderTextureManager();
@@ -71,10 +75,11 @@ private:
     bool renderColorAnimEditor(const SPLResource& mainRes, SPLColorAnim& res);
     bool renderAlphaAnimEditor(SPLAlphaAnim& res);
     bool renderTexAnimEditor(SPLTexAnim& res);
-
     void renderChildrenEditor(SPLResource& res);
 
     void renderDebugShapes(const std::shared_ptr<EditorInstance>& editor, std::vector<Renderer*>& renderers);
+
+    void updateMaxParticles();
 
     void openTempTexture(std::string_view path);
     void discardTempTexture();

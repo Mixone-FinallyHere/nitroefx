@@ -28,6 +28,10 @@ public:
         return m_modified;
     }
 
+    void setMaxParticles(u32 maxParticles) {
+        m_particleSystem.setMaxParticles(maxParticles);
+    }
+
     void makePermanent() {
         m_isTemp = false;
     }

@@ -85,3 +85,21 @@ SPLParticle* ParticleSystem::allocateParticle() {
 void ParticleSystem::freeParticle(SPLParticle* particle) {
     m_availableParticles.push(particle);
 }
+
+void ParticleSystem::setMaxParticles(u32 maxParticles) {
+    forceKillAllEmitters();
+
+    delete[] m_particles;
+    m_particles = new SPLParticle[maxParticles];
+    m_availableParticles = std::queue<SPLParticle*>();
+
+    for (u32 i = 0; i < maxParticles; i++) {
+        m_availableParticles.push(&m_particles[i]);
+    }
+
+    m_renderer.setMaxInstances(maxParticles);
+}
+
+void ParticleSystem::forceKillAllEmitters() {
+    m_emitters.clear();
+}
