@@ -27,6 +27,7 @@ public:
     void render();
     void renderParticles();
     void renderMenu(std::string_view name);
+    void renderStats();
     void openPicker();
     void openEditor();
     void openTextureManager();

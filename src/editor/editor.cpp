@@ -7,6 +7,7 @@
 #include "imgui/extensions.h"
 
 #include <array>
+#include <cinttypes>
 #include <ranges>
 #include <fmt/format.h>
 #include <glm/gtc/type_ptr.hpp>
@@ -178,6 +179,30 @@ void Editor::renderMenu(std::string_view name) {
             openSettings();
         }
     }
+}
+
+void Editor::renderStats() {
+    const auto& editor = g_projectManager->getActiveEditor();
+    if (!editor) {
+        return;
+    }
+
+    const auto& system = editor->getParticleSystem();
+
+    const auto activeParticles = system.getParticleCount();
+    const auto maxParticles = system.getMaxParticles();
+    const auto fraction = static_cast<float>(activeParticles) / maxParticles;
+    const auto particleText = fmt::format("Particles: {}/{}", activeParticles, maxParticles);
+
+    constexpr auto colorLow = glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
+    constexpr auto colorHigh = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+    const auto color = glm::mix(colorLow, colorHigh, fraction);
+
+    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4{ color.r, color.g, color.b, color.a });
+    ImGui::ProgressBar(fraction, ImVec2(0.0f, 0.0f), particleText.c_str());
+    ImGui::PopStyleColor();
+    
+    ImGui::Text("Active Emitters: %" PRIu64, system.getEmitters().size());
 }
 
 void Editor::openPicker() {

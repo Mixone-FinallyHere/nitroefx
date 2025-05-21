@@ -27,6 +27,8 @@ public:
     void freeParticle(SPLParticle* particle);
 
     void setMaxParticles(u32 maxParticles);
+    u32 getMaxParticles() const { return m_maxParticles; }
+    u32 getParticleCount() const { return m_maxParticles - (u32)m_availableParticles.size(); }
 
     ParticleRenderer& getRenderer() { return m_renderer; }
     std::span<const std::shared_ptr<SPLEmitter>> getEmitters() const { return m_emitters; }
@@ -38,7 +40,8 @@ private:
     ParticleRenderer m_renderer;
     std::queue<SPLParticle*> m_availableParticles;
     std::vector<std::shared_ptr<SPLEmitter>> m_emitters;
-    bool m_cycle =false;
+    bool m_cycle = false;
 
+    u32 m_maxParticles;
     SPLParticle* m_particles;
 };

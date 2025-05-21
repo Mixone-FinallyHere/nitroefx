@@ -34,6 +34,7 @@ private:
     void dispatchEvent(const SDL_Event& event);
     void renderMenuBar();
     void renderPreferences();
+    void renderPerformanceWindow();
     void setColors();
     void loadFonts();
     void loadConfig();
@@ -68,6 +69,9 @@ private:
     Keybind* m_listeningKeybind = nullptr;
 
     std::set<SDL_Keycode> m_modifierKeys;
+
+    bool m_performanceWindowOpen = false;
+    float m_deltaTime = 0.0f;
 };
 
 inline Application* g_application = nullptr;

@@ -155,6 +155,8 @@ int Application::run(int argc, char** argv) {
     while (m_running) {
         const auto now = std::chrono::high_resolution_clock::now();
         const auto delta = std::chrono::duration<float>(now - lastFrame).count();
+        m_deltaTime = delta;
+
         pollEvents();
 
         m_editor->updateParticles(delta);
@@ -174,6 +176,10 @@ int Application::run(int argc, char** argv) {
             ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, { 0.5f, 0.5f });
 
             renderPreferences();
+        }
+
+        if (m_performanceWindowOpen) {
+            renderPerformanceWindow();
         }
 
         ImGui::Render();
@@ -556,6 +562,8 @@ void Application::renderMenuBar() {
                 m_editor->openEditor();
             }
 
+            ImGui::MenuItemIcon(ICON_FA_GAUGE, "Performance", nullptr, &m_performanceWindowOpen);
+
             m_editor->renderMenu("View");
 
             ImGui::EndMenu();
@@ -639,6 +647,20 @@ void Application::renderPreferences() {
 
     ImGui::PopStyleVar(2);
     ImGui::PopID();
+}
+
+void Application::renderPerformanceWindow() {
+    if (ImGui::Begin("Performance", &m_performanceWindowOpen)) {
+        ImGui::SeparatorText("Application");
+        ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
+        ImGui::Text("Delta Time: %.3f ms", m_deltaTime * 1000.0f);
+        ImGui::Text("Frame Time: %.3f ms", ImGui::GetIO().DeltaTime * 1000.0f);
+
+        ImGui::SeparatorText("Current Editor");
+        m_editor->renderStats();
+    }
+
+    ImGui::End();
 }
 
 void Application::setColors() {

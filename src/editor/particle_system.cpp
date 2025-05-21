@@ -3,7 +3,7 @@
 
 
 ParticleSystem::ParticleSystem(u32 maxParticles, std::span<const SPLTexture> textures)
-    : m_renderer(maxParticles, textures) {
+    : m_renderer(maxParticles, textures), m_maxParticles(maxParticles) {
     m_particles = new SPLParticle[maxParticles];
 
     for (u32 i = 0; i < maxParticles; i++) {
@@ -97,6 +97,7 @@ void ParticleSystem::setMaxParticles(u32 maxParticles) {
         m_availableParticles.push(&m_particles[i]);
     }
 
+    m_maxParticles = maxParticles;
     m_renderer.setMaxInstances(maxParticles);
 }
 
