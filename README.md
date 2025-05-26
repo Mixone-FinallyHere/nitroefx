@@ -6,6 +6,13 @@
 </div>
 
 ## Building
+### Prerequisites
+- [Rust toolchain](https://rustup.rs/) (for libimagequant)
+- CMake (version 3.15 or higher)
+- [vcpkg](https://github.com/microsoft/vcpkg) (for dependencies)
+  - You also need to set the `VCPKG_ROOT` environment variable to the path of your vcpkg installation.
+
+### Cloning the Repository
 ```bash
 git clone --recurse-submodules https://github.com/Fexty12573/nitroefx.git
 ```

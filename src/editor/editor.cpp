@@ -613,8 +613,8 @@ void Editor::renderTextureManager() {
             ImGui::Text("Texture Info:");
             ImGui::Text("Size: %dx%d", m_tempTexture->width, m_tempTexture->height);
             ImGui::Text("Channels: %d", m_tempTexture->channels);
-            ImGui::Text("Number of unique Colors: %llu", m_tempTexture->suggestedSpec.uniqueColors.size());
-            ImGui::Text("Number of unique Alphas: %llu", m_tempTexture->suggestedSpec.uniqueAlphas.size());
+            ImGui::Text("Number of unique Colors: %" PRIu64, m_tempTexture->suggestedSpec.uniqueColors.size());
+            ImGui::Text("Number of unique Alphas: %" PRIu64, m_tempTexture->suggestedSpec.uniqueAlphas.size());
 
             const auto estimatedSize = m_tempTexture->suggestedSpec.getSizeEstimate(m_tempTexture->width, m_tempTexture->height);
             if (estimatedSize >= 1024) {

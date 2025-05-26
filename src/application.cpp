@@ -20,7 +20,7 @@
 #endif
 #include <tinyfiledialogs.h>
 
-#define KEYBINDSTR(name) getKeybind(ApplicationAction::##name)->toString().c_str()
+#define KEYBINDSTR(name) getKeybind(ApplicationAction::name)->toString().c_str()
 
 static void debugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam) {
     switch (severity) {
