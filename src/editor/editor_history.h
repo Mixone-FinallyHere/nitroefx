@@ -18,13 +18,15 @@ struct EditorAction {
     size_t resourceIndex;
     SPLResource before;
     SPLResource after;
+    uint64_t uniqueID = 0;
 };
 
 class EditorHistory {
 public:
     EditorHistory() = default;
 
-    void push(const EditorAction& action);
+    void push(EditorAction&& action);
+    void push(EditorActionType type, size_t resourceIndex, const SPLResource& before, const SPLResource& after);
     bool canUndo() const;
     bool canRedo() const;
     EditorActionType undo(std::vector<SPLResource>& resources);

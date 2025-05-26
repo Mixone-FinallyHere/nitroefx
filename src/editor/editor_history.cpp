@@ -1,8 +1,33 @@
 #include "editor_history.h"
+#include "spl/spl_random.h"
 
-void EditorHistory::push(const EditorAction& action) {
-    m_undoStack.push_back(action);
-    m_redoStack.clear();
+#include <spdlog/spdlog.h>
+
+
+void EditorHistory::push(EditorAction&& action) {
+    action.uniqueID = SPLRandom::nextU64();
+
+    spdlog::info("EditorHistory: Pushing action {} (T={}, I={})", action.uniqueID, static_cast<int>(action.type), action.resourceIndex);
+
+    m_undoStack.push_back(std::move(action));
+    m_redoStack.clear(); // Clear redo stack on new action
+}
+
+void EditorHistory::push(EditorActionType type, size_t resourceIndex, const SPLResource& before, const SPLResource& after) {
+    const auto id = SPLRandom::nextU64();
+
+    spdlog::info("EditorHistory: Pushing action {} (T={}, I={})", id, static_cast<int>(type), resourceIndex);
+
+    m_undoStack.emplace_back(
+        EditorAction{
+            .type = type,
+            .resourceIndex = resourceIndex,
+            .before = before,
+            .after = after,
+            .uniqueID = id
+        }
+    );
+    m_redoStack.clear(); // Clear redo stack on new action
 }
 
 bool EditorHistory::canUndo() const {
@@ -41,6 +66,8 @@ EditorActionType EditorHistory::undo(std::vector<SPLResource>& resources) {
         break;
     }
 
+    spdlog::info("EditorHistory: Undoing action {} (T={}, I={})", action.uniqueID, static_cast<int>(action.type), action.resourceIndex);
+
     m_redoStack.push_back(action);
     m_undoStack.pop_back();
 
@@ -64,6 +91,8 @@ EditorActionType EditorHistory::redo(std::vector<SPLResource>& resources) {
     case EditorActionType::ResourceAdd:
         if (action.resourceIndex < resources.size()) {
             resources.insert(resources.begin() + action.resourceIndex, action.after);
+        } else { // Last resource was added
+            resources.push_back(action.after);
         }
         break;
     case EditorActionType::ResourceRemove:
@@ -72,6 +101,8 @@ EditorActionType EditorHistory::redo(std::vector<SPLResource>& resources) {
         }
         break;
     }
+
+    spdlog::info("EditorHistory: Redoing action {} (T={}, I={})", action.uniqueID, static_cast<int>(action.type), action.resourceIndex);
 
     m_undoStack.push_back(action);
     m_redoStack.pop_back();
