@@ -12,7 +12,8 @@ jobs:
       fail-fast: false
 
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        # ubuntu-latest doesn't have mono installed anymore so we use ubuntu-22.04
+        os: [ubuntu-22.04, windows-latest]
         build_type: [dist]
     
     env:
@@ -28,7 +29,7 @@ jobs:
         submodules: recursive
 
     - name: Install Linux system dependencies
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-22.04'
       run: |
         sudo apt-get update
         sudo apt-get install -y libxmu-dev libxi-dev libgl-dev zip autoconf automake libtool pkg-config libglu1-mesa-dev libltdl-dev
@@ -45,7 +46,7 @@ jobs:
       shell: bash
 
     - name: Add vcpkg nuget sources (Linux)
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-22.04'
       shell: bash
       run: |
         mono `${{ env.VCPKG_EXE }} fetch nuget | tail -n 1` \
@@ -107,6 +108,6 @@ jobs:
         cmake --build build
 
     - name: Build (Linux)
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-22.04'
       run: cmake --build build
       shell: bash
