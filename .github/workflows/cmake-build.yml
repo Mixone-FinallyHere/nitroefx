@@ -13,7 +13,7 @@ jobs:
 
       matrix:
         # ubuntu-latest doesn't have mono installed anymore so we use ubuntu-22.04
-        os: [ubuntu-22.04, windows-latest]
+        os: [ubuntu-latest, windows-latest]
         build_type: [dist]
     
     env:
@@ -32,7 +32,7 @@ jobs:
       if: matrix.os == 'ubuntu-22.04'
       run: |
         sudo apt-get update
-        sudo apt-get install -y libxmu-dev libxi-dev libgl-dev zip autoconf automake libtool pkg-config libglu1-mesa-dev libltdl-dev
+        sudo apt-get install -y libxmu-dev libxi-dev libgl-dev zip autoconf automake libtool pkg-config libglu1-mesa-dev libltdl-dev mono-complete
       shell: bash
 
     - name: Install vcpkg
