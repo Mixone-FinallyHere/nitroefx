@@ -408,14 +408,14 @@ void Application::dispatchEvent(const SDL_Event& event) {
 }
 
 void Application::renderMenuBar() {
-    if (ImGui::BeginMainMenuBar()) {
-        const bool hasProject = g_projectManager->hasProject();
-        const bool hasActiveEditor = g_projectManager->hasActiveEditor();
-        const bool hasOpenEditors = g_projectManager->hasOpenEditors();
+    const bool hasProject = g_projectManager->hasProject();
+    const bool hasActiveEditor = g_projectManager->hasActiveEditor();
+    const bool hasOpenEditors = g_projectManager->hasOpenEditors();
 
+    if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::BeginMenu("New")) {
-                if (ImGui::MenuItemIcon(ICON_FA_FOLDER_PLUS, "Project", "Ctrl+Shift+N")) {
+                if (ImGui::MenuItemIcon(ICON_FA_FOLDER_PLUS, "Project", "Ctrl+Shift+N", false, IM_COL32(157, 142, 106, 255))) {
                     spdlog::warn("New Project not implemented");
                 }
 
@@ -427,7 +427,7 @@ void Application::renderMenuBar() {
             }
 
             if (ImGui::BeginMenu("Open")) {
-                if (ImGui::MenuItemIcon(ICON_FA_FOLDER, "Project", KEYBINDSTR(OpenProject))) {
+                if (ImGui::MenuItemIcon(ICON_FA_FOLDER_OPEN, "Project", KEYBINDSTR(OpenProject), false, IM_COL32(157, 142, 106, 255))) {
                     const auto path = openProject();
                     if (!path.empty()) {
                         addRecentProject(path);
@@ -472,11 +472,11 @@ void Application::renderMenuBar() {
                 ImGui::EndMenu();
             }
 
-            if (ImGui::MenuItemIcon(ICON_FA_FLOPPY_DISK, "Save", KEYBINDSTR(Save), false, hasActiveEditor)) {
+            if (ImGui::MenuItemIcon(ICON_FA_FLOPPY_DISK, "Save", KEYBINDSTR(Save), false, IM_COL32(105, 190, 255, 255), hasActiveEditor)) {
                 m_editor->save();
             }
 
-            if (ImGui::MenuItemIcon(ICON_FA_FLOPPY_DISK, "Save As...", nullptr, false, hasActiveEditor)) {
+            if (ImGui::MenuItemIcon(ICON_FA_FLOPPY_DISK, "Save As...", nullptr, false, IM_COL32(105, 190, 255, 255), hasActiveEditor)) {
                 const auto path = saveFile();
                 if (!path.empty()) {
                     m_editor->saveAs(path);
@@ -484,23 +484,23 @@ void Application::renderMenuBar() {
                 }
             }
 
-            if (ImGui::MenuItemIcon(ICON_FA_FLOPPY_DISK, "Save All", KEYBINDSTR(SaveAll), false, hasOpenEditors)) {
+            if (ImGui::MenuItemIcon(ICON_FA_FLOPPY_DISK, "Save All", KEYBINDSTR(SaveAll), false, IM_COL32(105, 190, 255, 255), hasOpenEditors)) {
                 g_projectManager->saveAllEditors();
             }
 
-            if (ImGui::MenuItemIcon(ICON_FA_XMARK, "Close", KEYBINDSTR(Close), false, hasActiveEditor)) {
+            if (ImGui::MenuItemIcon(ICON_FA_XMARK, "Close", KEYBINDSTR(Close), false, 0, hasActiveEditor)) {
                 g_projectManager->closeEditor(g_projectManager->getActiveEditor());
             }
 
-            if (ImGui::MenuItemIcon(ICON_FA_XMARK, "Close All", KEYBINDSTR(CloseAll), false, hasOpenEditors)) {
+            if (ImGui::MenuItemIcon(ICON_FA_XMARK, "Close All", KEYBINDSTR(CloseAll), false, 0, hasOpenEditors)) {
                 g_projectManager->closeAllEditors();
             }
 
-            if (ImGui::MenuItemIcon(ICON_FA_XMARK, "Close Project", nullptr, false, hasProject)) {
+            if (ImGui::MenuItemIcon(ICON_FA_XMARK, "Close Project", nullptr, false, 0, hasProject)) {
                 g_projectManager->closeProject();
             }
 
-            if (ImGui::MenuItemIcon(ICON_FA_POWER_OFF, "Exit", KEYBINDSTR(Exit))) {
+            if (ImGui::MenuItemIcon(ICON_FA_RIGHT_FROM_BRACKET, "Exit", KEYBINDSTR(Exit))) {
                 m_running = false;
             }
 
@@ -508,27 +508,27 @@ void Application::renderMenuBar() {
         }
 
         if (ImGui::BeginMenu("Edit")) {
-            if (ImGui::MenuItemIcon(ICON_FA_ROTATE_LEFT, "Undo", KEYBINDSTR(Undo), false, m_editor->canUndo())) {
+            if (ImGui::MenuItemIcon(ICON_FA_ROTATE_LEFT, "Undo", KEYBINDSTR(Undo), false, 0, m_editor->canUndo())) {
                 m_editor->undo();
             }
 
-            if (ImGui::MenuItemIcon(ICON_FA_ROTATE_RIGHT, "Redo", KEYBINDSTR(Redo), false, m_editor->canRedo())) {
+            if (ImGui::MenuItemIcon(ICON_FA_ROTATE_RIGHT, "Redo", KEYBINDSTR(Redo), false, 0, m_editor->canRedo())) {
                 m_editor->redo();
             }
 
-            if (ImGui::MenuItemIcon(ICON_FA_PLAY, "Play Emitter", KEYBINDSTR(PlayEmitter), false, hasActiveEditor)) {
+            if (ImGui::MenuItemIcon(ICON_FA_PLAY, "Play Emitter", KEYBINDSTR(PlayEmitter), false, IM_COL32(143, 228, 143, 255), hasActiveEditor)) {
                 m_editor->playEmitterAction(EmitterSpawnType::SingleShot);
             }
 
-            if (ImGui::MenuItemIcon(ICON_FA_REPEAT, "Play Looped Emitter", KEYBINDSTR(PlayEmitterLooped), false, hasActiveEditor)) {
+            if (ImGui::MenuItemIcon(ICON_FA_REPEAT, "Play Looped Emitter", KEYBINDSTR(PlayEmitterLooped), false, IM_COL32(133, 208, 133, 255), hasActiveEditor)) {
                 m_editor->playEmitterAction(EmitterSpawnType::Looped);
             }
 
-            if (ImGui::MenuItem("Kill Emitters", KEYBINDSTR(KillEmitters), false, hasActiveEditor)) {
+            if (ImGui::MenuItemIcon(ICON_FA_STOP, "Kill Emitters", KEYBINDSTR(KillEmitters), false, IM_COL32(245, 87, 98, 255), hasActiveEditor)) {
                 m_editor->killEmitters();
             }
 
-            if (ImGui::MenuItem("Reset Camera", KEYBINDSTR(ResetCamera), false, hasActiveEditor)) {
+            if (ImGui::MenuItemIcon(ICON_FA_CAMERA_ROTATE, "Reset Camera", KEYBINDSTR(ResetCamera), false, 0, hasActiveEditor)) {
                 m_editor->resetCamera();
             }
 
@@ -571,6 +571,79 @@ void Application::renderMenuBar() {
 
         ImGui::EndMainMenuBar();
     }
+
+    const auto viewport = (ImGuiViewportP*)ImGui::GetMainViewport();
+    constexpr auto flags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_MenuBar;
+    constexpr float barSize = 24.0f;
+    constexpr ImVec2 size = { barSize, barSize };
+
+    ImGui::PushStyleColor(ImGuiCol_Button, 0x00000000);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(79, 79, 79, 200));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(90, 90, 90, 255));
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, { 0.5f, 0.5f });
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 2.0f, 2.0f });
+    ImGui::PushStyleVarX(ImGuiStyleVar_ItemSpacing, 4.0f); // Cut item spacing in half
+
+    if (ImGui::BeginViewportSideBar("##SecondaryMenuBar", viewport, ImGuiDir_Up, ImGui::GetFrameHeight(), flags)) {
+        if (ImGui::BeginMenuBar()) {
+            if (ImGui::IconButton(ICON_FA_FILE, size)) {
+                const auto file = openFile();
+                if (!file.empty()) {
+                    addRecentFile(file);
+                    g_projectManager->openEditor(file);
+                }
+            }
+
+            if (ImGui::IconButton(ICON_FA_FOLDER_OPEN, size, IM_COL32(157, 142, 106, 255))) {
+                const auto project = openProject();
+                if (!project.empty()) {
+                    addRecentProject(project);
+                    g_projectManager->openProject(project);
+                }
+            }
+
+            ImGui::VerticalSeparator(barSize);
+
+            if (ImGui::IconButton(ICON_FA_FLOPPY_DISK, size, IM_COL32(105, 190, 255, 255), hasActiveEditor)) {
+                m_editor->save();
+            }
+
+            ImGui::VerticalSeparator(barSize);
+
+            if (ImGui::IconButton(ICON_FA_ROTATE_LEFT, size, 0, m_editor->canUndo())) {
+                m_editor->undo();
+            }
+
+            if (ImGui::IconButton(ICON_FA_ROTATE_RIGHT, size, 0, m_editor->canRedo())) {
+                m_editor->redo();
+            }
+
+            ImGui::VerticalSeparator(barSize);
+
+            if (ImGui::IconButton(ICON_FA_PLAY, size, IM_COL32(143, 228, 143, 255), hasActiveEditor)) {
+                m_editor->playEmitterAction(EmitterSpawnType::SingleShot);
+            }
+
+            if (ImGui::IconButton(ICON_FA_REPEAT, size, IM_COL32(133, 208, 133, 255), hasActiveEditor)) {
+                m_editor->playEmitterAction(EmitterSpawnType::Looped);
+            }
+
+            if (ImGui::IconButton(ICON_FA_STOP, size, IM_COL32(245, 87, 98, 255), hasActiveEditor)) {
+                m_editor->killEmitters();
+            }
+
+            if (ImGui::IconButton(ICON_FA_CAMERA_ROTATE, size, 0, hasActiveEditor)) {
+                m_editor->resetCamera();
+            }
+
+            ImGui::EndMenuBar();
+        }
+    }
+    ImGui::End();
+
+    ImGui::PopStyleVar(4);
+    ImGui::PopStyleColor(3);
 }
 
 void Application::renderPreferences() {

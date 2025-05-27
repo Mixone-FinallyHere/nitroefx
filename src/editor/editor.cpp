@@ -551,7 +551,8 @@ void Editor::renderTextureManager() {
         auto& archive = editor->getArchive();
         auto& textures = archive.getTextures();
 
-        if (ImGui::BlueButton(ICON_FA_FILE_IMPORT " Import")) {
+        if (ImGui::IconButton(ICON_FA_FILE_IMPORT, "Import", IM_COL32(93, 171, 231, 255))) {
+        //if (ImGui::BlueButton(ICON_FA_FILE_IMPORT " Import")) {
             const auto path = tinyfd_openFileDialog(
                 "Import Texture", 
                 "", 
@@ -707,9 +708,13 @@ void Editor::renderResourceEditor() {
             auto& resource = resources[m_selectedResources[id]];
             const auto& texture = textures[resource.header.misc.textureIndex];
 
-            if (ImGui::GreenButton("Play Emitter")) {
+            if (ImGui::IconButton(ICON_FA_PLAY, "Play Emitter", IM_COL32(143, 228, 143, 255))) {
                 playEmitterAction(m_emitterSpawnType);
             }
+
+            //if (ImGui::GreenButton("Play Emitter")) {
+            //    playEmitterAction(m_emitterSpawnType);
+            //}
 
             ImGui::SameLine();
             ImGui::SetNextItemWidth(150);
@@ -721,9 +726,13 @@ void Editor::renderResourceEditor() {
                 ImGui::InputFloat("##Interval", &m_emitterInterval, 0.1f, 1.0f, "%.2fs");
             }
 
-            if (ImGui::RedButton("Kill Emitters")) {
+            if (ImGui::IconButton(ICON_FA_STOP, "Kill Emitters", IM_COL32(245, 87, 98, 255))) {
                 killEmitters();
             }
+
+            //if (ImGui::RedButton("Kill Emitters")) {
+            //    killEmitters();
+            //}
 
             if (ImGui::BeginTabBar("##editorTabs")) {
                 if (ImGui::BeginTabItem("General")) {
@@ -1104,7 +1113,7 @@ void Editor::renderBehaviorEditor(SPLResource& res) {
     LOCK_EDITOR();
     std::vector<std::shared_ptr<SPLBehavior>> toRemove;
 
-    if (ImGui::BlueButton(ICON_FA_CIRCLE_PLUS " Add Behavior...")) {
+    if (ImGui::IconButton(ICON_FA_CIRCLE_PLUS, "Add Behavior...", IM_COL32(35, 209, 139, 255))) {
         ImGui::OpenPopup("##addBehavior");
     }
 
@@ -1332,7 +1341,7 @@ void Editor::renderAnimationEditor(SPLResource& res) {
 
     LOCK_EDITOR();
 
-    if (ImGui::BlueButton(ICON_FA_CIRCLE_PLUS " Add Animation...")) {
+    if (ImGui::IconButton(ICON_FA_CIRCLE_PLUS , "Add Animation...", IM_COL32(35, 209, 139, 255))) {
         ImGui::OpenPopup("##addAnimation");
     }
 
