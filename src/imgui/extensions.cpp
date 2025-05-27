@@ -277,7 +277,13 @@ bool ImGui::IconButton(const char* icon, const char* text, ImU32 iconTint, bool 
     bool pressed = ButtonBehavior(bb, id, &hovered, &held);
 
     PushStyleColor(ImGuiCol_Button, 0);
-    PushStyleVar(ImGuiStyleVar_FrameBorderSize, hovered ? 1.0f : 0.0f);
+    PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(61, 61, 61, 168));
+    if (hovered || pressed) {
+        PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+        PushStyleColor(ImGuiCol_Border, IM_COL32(112, 112, 112, 150));
+    } else {
+        PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+    }
 
     // Render
     const ImU32 col = GetColorU32((held && hovered) ? ImGuiCol_ButtonActive : hovered ? ImGuiCol_ButtonHovered : ImGuiCol_Button);
@@ -285,7 +291,7 @@ bool ImGui::IconButton(const char* icon, const char* text, ImU32 iconTint, bool 
     RenderFrame(bb.Min, bb.Max, col, true, style.FrameRounding);
 
     PopStyleVar(); // FrameBorderSize
-    PopStyleColor(); // Button
+    PopStyleColor((pressed || hovered) ? 3 : 2); // Button, ButtonHovered + Border
 
     if (g.LogEnabled)
         LogSetNextTextDecoration("[", "]");
