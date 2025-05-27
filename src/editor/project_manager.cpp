@@ -27,7 +27,7 @@ void ProjectManager::openProject(const std::filesystem::path& path) {
 
         int button = 0;
         const auto result = SDL_ShowMessageBox(&data, &button);
-        if (result < 0 || button == 0) {
+        if (!result || button == 0) {
             return;
         }
 

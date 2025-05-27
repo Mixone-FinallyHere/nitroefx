@@ -233,7 +233,7 @@ void Editor::updateParticles(float deltaTime) {
             task.time = now;
         }
     }
-
+    
     editor->updateParticles(deltaTime * m_timeScale);
 }
 

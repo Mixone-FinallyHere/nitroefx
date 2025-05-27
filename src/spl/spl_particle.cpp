@@ -96,13 +96,13 @@ void SPLParticle::renderDirectionalBillboard(ParticleRenderer* renderer, const C
     dir = glm::normalize(dir);
     const auto velDir = glm::normalize(velocity);
 
-    const f32 dot = glm::dot(velDir, -params.forward);
+    f32 dot = glm::dot(velDir, -params.forward);
     if (dot < 0.0f) { // Particle is behind the camera
-        return;
+        dot = -dot;
     }
 
     scale.y *= (1.0f - dot) * resource->header.misc.dbbScale + 1.0f;
-    const auto pos = getWorldPosition();
+    const auto pos = glm::vec4(getWorldPosition(), 1) * params.view;
     const auto transform = glm::mat4(
         dir.x * scale.x, dir.y * scale.x, 0, 0,
         -dir.y * scale.y, dir.x * scale.y, 0, 0,
