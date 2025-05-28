@@ -430,6 +430,8 @@ void Editor::renderResourcePicker() {
 
         bool anyHovered = false;
 
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.40f, 0.40f, 0.40f, 0.84f));
+
         const auto contentRegion = ImGui::GetContentRegionAvail();
         if (ImGui::BeginListBox("##Resources", contentRegion)) {
             const ImGuiStyle& style = ImGui::GetStyle();
@@ -517,6 +519,8 @@ void Editor::renderResourcePicker() {
 
             ImGui::EndListBox();
         }
+
+        ImGui::PopStyleColor();
 
         if (!anyHovered
             && ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows) 
