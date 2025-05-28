@@ -1092,6 +1092,11 @@ void Application::addRecentFile(const std::string& path) {
         m_recentFiles.pop_back();
     }
 
+    const auto existing = std::ranges::find(m_recentFiles, path);
+    if (existing != m_recentFiles.end()) {
+        m_recentFiles.erase(existing);
+    }
+
     m_recentFiles.push_front(path);
 
     saveConfig();
@@ -1100,6 +1105,11 @@ void Application::addRecentFile(const std::string& path) {
 void Application::addRecentProject(const std::string& path) {
     if (m_recentProjects.size() >= 10) {
         m_recentProjects.pop_back();
+    }
+
+    const auto existing = std::ranges::find(m_recentProjects, path);
+    if (existing != m_recentProjects.end()) {
+        m_recentProjects.erase(existing);
     }
 
     m_recentProjects.push_front(path);
