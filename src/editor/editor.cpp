@@ -363,6 +363,11 @@ void Editor::playEmitterAction(EmitterSpawnType spawnType) {
     }
 
     const auto resourceIndex = m_selectedResources[editor->getUniqueID()];
+    if (resourceIndex < 0 || resourceIndex >= editor->getArchive().getResources().size()) {
+        spdlog::warn("Invalid resource index: {}", resourceIndex);
+        return;
+    }
+
     editor->getParticleSystem().addEmitter(
         editor->getArchive().getResource(resourceIndex),
         spawnType == EmitterSpawnType::Looped
@@ -568,6 +573,15 @@ void Editor::renderTextureManager() {
             if (path) {
                 openTempTexture(path);
                 ImGui::OpenPopup("##ImportTexturePopup");
+            }
+        }
+
+        ImGui::SameLine();
+
+        if (ImGui::IconButton(ICON_FA_FILE_EXPORT, "Export All...", IM_COL32(255, 221, 93, 255))) {
+            const auto path = Application::openDirectory(L"Select Destination");
+            if (!path.empty()) {
+                archive.exportTextures(path, Application::getTempPath());
             }
         }
 

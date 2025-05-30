@@ -251,8 +251,10 @@ bool ImGui::IconButton(const char* icon, const char* text, ImU32 iconTint, bool 
     BeginDisabled(!enabled);
 
     ImGuiWindow* window = GetCurrentWindow();
-    if (window->SkipItems)
+    if (window->SkipItems) {
+        EndDisabled();
         return false;
+    }
 
     //PushStyleVarY(ImGuiStyleVar_FramePadding, 8.0f);
 
@@ -270,8 +272,10 @@ bool ImGui::IconButton(const char* icon, const char* text, ImU32 iconTint, bool 
 
     const ImRect bb(pos, pos + size);
     ItemSize(size, style.FramePadding.y);
-    if (!ItemAdd(bb, id))
+    if (!ItemAdd(bb, id)) {
+        EndDisabled();
         return false;
+    }
 
     bool hovered, held;
     bool pressed = ButtonBehavior(bb, id, &hovered, &held);

@@ -637,6 +637,8 @@ struct SPLTexture {
     std::span<const u8> paletteData;
     std::shared_ptr<GLTexture> glTexture;
 
+    std::vector<u8> convertToRGBA8888() const;
+
     static TextureImportSpecification suggestSpecification(
         s32 width, 
         s32 height, 

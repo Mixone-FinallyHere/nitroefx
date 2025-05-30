@@ -4,8 +4,12 @@
 #include <GL/glew.h>
 #include <glm/gtc/constants.hpp>
 #include <spdlog/spdlog.h>
+#include <stb_image_write.h>
 #include <fstream>
 #include <concepts>
+#include <ranges>
+
+#include "spl_random.h"
 
 
 template<class T> requires std::is_trivially_copyable_v<T>
@@ -274,6 +278,47 @@ void SPLArchive::save(const std::filesystem::path& filename) {
 
     file.seekp(0, std::ios::beg);
     file << m_header;
+}
+
+void SPLArchive::exportTextures(const std::filesystem::path& directory, const std::filesystem::path& backupDir) const {
+    const bool doBackup = !backupDir.empty();
+    std::filesystem::path backupDest;
+    if (doBackup) {
+        backupDest = backupDir / fmt::format("{:08x}", SPLRandom::crcHash());
+        std::filesystem::create_directories(backupDest);
+        spdlog::info("Backing up existing textures to {}", backupDest.string());
+        spdlog::warn("This directory will be cleared the next time the program is run.");
+    }
+
+    for (const auto [i, tex] : std::views::enumerate(m_textures)) {
+        if (!tex.glTexture) {
+            spdlog::warn("Texture {} does not have a GL texture, skipping export", i);
+            continue;
+        }
+
+        const auto fileName = fmt::format("{}.png", i);
+        std::filesystem::path path = directory / fileName;
+        if (std::filesystem::exists(path)) {
+            if (doBackup) {
+                std::filesystem::path backupPath = backupDest / fileName;
+                std::filesystem::copy(path, backupPath);
+                spdlog::info("Backed up existing texture {}", path.filename().string());
+            } else {
+                spdlog::warn("No backup directory specified, skipping backup for {}", path.filename().string());
+            }
+        }
+
+        const auto rgba = tex.convertToRGBA8888();
+        if (!rgba.empty()) {
+            if (stbi_write_png(path.string().c_str(), tex.width, tex.height, 4, rgba.data(), tex.width * 4)) {
+                spdlog::info("Exported texture {} to {}", i, path.string());
+            } else {
+                spdlog::error("Failed to write texture {} to {}", i, path.string());
+            }
+        } else {
+            spdlog::error("Failed to convert texture {} to RGBA8888", i);
+        }
+    }
 }
 
 SPLResourceHeader SPLArchive::fromNative(const SPLResourceHeaderNative &native) {

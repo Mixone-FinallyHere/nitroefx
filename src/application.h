@@ -27,6 +27,13 @@ public:
         return m_editor.get();
     }
 
+    static std::string openFile();
+    static std::string saveFile(const std::string& default_path = {});
+    static std::string openDirectory(const wchar_t* title = nullptr);
+
+    static std::filesystem::path getConfigPath();
+    static std::filesystem::path getTempPath();
+
 private:
     void pollEvents();
     void handleKeydown(const SDL_Event& event);
@@ -38,16 +45,11 @@ private:
     void setColors();
     void loadFonts();
     void loadConfig();
+    void clearTempDir();
     void executeAction(u32 action);
 
     void addRecentFile(const std::string& path);
     void addRecentProject(const std::string& path);
-
-    static std::filesystem::path getConfigPath();
-
-    static std::string openFile();
-    static std::string saveFile(const std::string& default_path = {});
-    static std::string openProject();
 
 private:
     bool m_running = true;

@@ -1,4 +1,5 @@
 #include "application.h"
+#include "editor/debug_helper.h"
 #include "fonts/IconsFontAwesome6.h"
 #include "imgui/extensions.h"
 
@@ -126,6 +127,7 @@ int Application::run(int argc, char** argv) {
     m_editor = std::make_unique<Editor>();
     m_settings = ApplicationSettings::getDefault();
 
+    clearTempDir();
     loadConfig();
     loadFonts();
     setColors();
@@ -181,6 +183,8 @@ int Application::run(int argc, char** argv) {
         if (m_performanceWindowOpen) {
             renderPerformanceWindow();
         }
+
+        DebugHelper::render();
 
         ImGui::Render();
         glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
@@ -295,7 +299,7 @@ void Application::handleKeydown(const SDL_Event& event) {
     case SDLK_O:
         if (event.key.mod & SDL_KMOD_CTRL) {
             if (event.key.mod & SDL_KMOD_SHIFT) {
-                const auto path = openProject();
+                const auto path = openDirectory();
                 if (!path.empty()) {
                     g_projectManager->openProject(path);
                 }
@@ -428,7 +432,7 @@ void Application::renderMenuBar() {
 
             if (ImGui::BeginMenu("Open")) {
                 if (ImGui::MenuItemIcon(ICON_FA_FOLDER_OPEN, "Project", KEYBINDSTR(OpenProject), false, IM_COL32(157, 142, 106, 255))) {
-                    const auto path = openProject();
+                    const auto path = openDirectory();
                     if (!path.empty()) {
                         addRecentProject(path);
                         g_projectManager->openProject(path);
@@ -584,7 +588,7 @@ void Application::renderMenuBar() {
     ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, { 0.5f, 0.5f });
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 2.0f, 2.0f });
     ImGui::PushStyleVarX(ImGuiStyleVar_ItemSpacing, 4.0f); // Cut item spacing in half
-
+    
     if (ImGui::BeginViewportSideBar("##SecondaryMenuBar", viewport, ImGuiDir_Up, ImGui::GetFrameHeight(), flags)) {
         if (ImGui::BeginMenuBar()) {
             if (ImGui::IconButton(ICON_FA_FILE, size)) {
@@ -596,7 +600,7 @@ void Application::renderMenuBar() {
             }
 
             if (ImGui::IconButton(ICON_FA_FOLDER_OPEN, size, IM_COL32(157, 142, 106, 255))) {
-                const auto project = openProject();
+                const auto project = openDirectory();
                 if (!project.empty()) {
                     addRecentProject(project);
                     g_projectManager->openProject(project);
@@ -618,7 +622,7 @@ void Application::renderMenuBar() {
             if (ImGui::IconButton(ICON_FA_ROTATE_RIGHT, size, 0, m_editor->canRedo())) {
                 m_editor->redo();
             }
-
+            
             ImGui::VerticalSeparator(barSize);
 
             if (ImGui::IconButton(ICON_FA_PLAY, size, IM_COL32(143, 228, 143, 255), hasActiveEditor)) {
@@ -952,12 +956,29 @@ void Application::loadConfig() {
     m_editor->loadConfig(config);
 }
 
+void Application::clearTempDir() {
+    spdlog::info("Clearing temporary directory...");
+
+    const auto tempPath = getTempPath();
+    if (!std::filesystem::exists(tempPath)) {
+        spdlog::info("Temp path does not exist, creating: {}", tempPath.string());
+        std::filesystem::create_directories(tempPath);
+
+        return;
+    }
+    
+    std::filesystem::remove_all(tempPath);
+    for (const auto& entry : std::filesystem::directory_iterator(tempPath)) {
+        std::filesystem::remove_all(entry.path());
+    }
+}
+
 void Application::executeAction(u32 action) {
     spdlog::info("Executing Action: {}", ApplicationAction::Names.at(action));
 
     switch (action) {
     case ApplicationAction::OpenProject: {
-        const auto projectPath = openProject();
+        const auto projectPath = openDirectory();
         if (!projectPath.empty()) {
             addRecentProject(projectPath);
             g_projectManager->openProject(projectPath);
@@ -1146,6 +1167,10 @@ std::filesystem::path Application::getConfigPath() {
 #endif
 }
 
+std::filesystem::path Application::getTempPath() {
+    return std::filesystem::temp_directory_path() / "nitroefx";
+}
+
 std::string Application::openFile() {
     const char* filters[] = { "*.spa" };
     const char* result = tinyfd_openFileDialog(
@@ -1173,7 +1198,7 @@ std::string Application::saveFile(const std::string& default_path) {
     return result ? result : "";
 }
 
-std::string Application::openProject() {
+std::string Application::openDirectory(const wchar_t* title) {
 #ifdef _WIN32
 #ifdef _DEBUG
 #define HRESULT_CHECK(hr) if (FAILED(hr)) { spdlog::error("HRESULT failed @ {}:{}", __FILE__, __LINE__); return ""; }
@@ -1195,7 +1220,7 @@ std::string Application::openProject() {
         return "";
     }
 
-    HRESULT_CHECK(dlg->SetTitle(L"Open Project"))
+    HRESULT_CHECK(dlg->SetTitle(title ? title : L"Open Project"))
     HRESULT_CHECK(dlg->SetOptions(FOS_PICKFOLDERS | FOS_PATHMUSTEXIST))
     if (dlg->Show(nullptr) != S_OK) {
         spdlog::info("User cancelled dialog");
@@ -1212,7 +1237,7 @@ std::string Application::openProject() {
 
     return tinyfd_utf16to8(path);
 #else
-    const auto folder = tinyfd_selectFolderDialog("Open Project", nullptr);
+    const auto folder = tinyfd_selectFolderDialog(title ? tinyfd_utf16to8(title) : "Open Project", nullptr);
     return folder ? folder : "";
 #endif
 }

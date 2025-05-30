@@ -1,5 +1,6 @@
 #pragma once
 #include "types.h"
+#include "util/crc32.h"
 
 #include <random>
 #include <memory>
@@ -32,6 +33,14 @@ public:
         return glm::normalize(glm::vec3(nextF32N(), nextF32N(), 0.0f));
     }
 
+    static u32 crcHash() {
+        const auto inst = getInstance();
+        const auto value = nextU64();
+        const auto hash = detail::crc::crc32_impl((const char*)&value, sizeof(value), inst->m_crcSeed);
+        inst->m_crcSeed = hash; // Update seed for next call
+
+        return hash;
+    }
 
     // variance must be in the range [0, 1]
     // Generates a random float in the range (n * (variance / 2)) around n
@@ -59,12 +68,13 @@ public:
         return SPLRandom::range(-range, range);
     }
 
-private:
-    SPLRandom() : m_gen(m_rd()), m_distf(0.0f, 1.0f) {}
     SPLRandom(const SPLRandom&) = delete;
     SPLRandom& operator=(const SPLRandom&) = delete;
     SPLRandom(SPLRandom&&) = delete;
     SPLRandom& operator=(SPLRandom&&) = delete;
+
+private:
+    SPLRandom() : m_gen(m_rd()), m_distf(0.0f, 1.0f) {}
 
     static SPLRandom* getInstance() {
         if (!s_instance) {
@@ -94,5 +104,6 @@ private:
     std::uniform_int_distribution<u64> m_dist;
     std::uniform_int_distribution<u32> m_dist32;
     std::uniform_real_distribution<f32> m_distf;
+    u32 m_crcSeed = ~0; // Initial seed for CRC hash generation
 };
 

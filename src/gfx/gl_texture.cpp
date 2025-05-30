@@ -106,76 +106,7 @@ void GLTexture::createTexture(const SPLTexture& texture) {
     // to a format that OpenGL can understand (RGBA32). Then the texture will be uploaded to the GPU.
 
     // Step 1: Conversion
-    std::vector<u8> textureData;
-    switch ((TextureFormat)texture.param.format) {
-    case TextureFormat::None:
-        break;
-    case TextureFormat::A3I5:
-        textureData = convertA3I5(
-            texture.textureData.data(),
-            (const GXRgba*)texture.paletteData.data(),
-            texture.width,
-            texture.height,
-            texture.paletteData.size()
-        );
-        break;
-    case TextureFormat::Palette4:
-        textureData = convertPalette4(
-            texture.textureData.data(),
-            (const GXRgba*)texture.paletteData.data(),
-            texture.width,
-            texture.height,
-            texture.paletteData.size(),
-            texture.param.palColor0Transparent
-        );
-        break;
-    case TextureFormat::Palette16:
-        textureData = convertPalette16(
-            texture.textureData.data(),
-            (const GXRgba*)texture.paletteData.data(),
-            texture.width,
-            texture.height,
-            texture.paletteData.size(),
-            texture.param.palColor0Transparent
-        );
-        break;
-    case TextureFormat::Palette256:
-        textureData = convertPalette256(
-            texture.textureData.data(),
-            (const GXRgba*)texture.paletteData.data(),
-            texture.width,
-            texture.height,
-            texture.paletteData.size(),
-            texture.param.palColor0Transparent
-        );
-        break;
-    case TextureFormat::Comp4x4:
-        textureData = convertComp4x4(
-            texture.textureData.data(),
-            (const GXRgba*)texture.paletteData.data(),
-            texture.width,
-            texture.height,
-            texture.paletteData.size()
-        );
-        break;
-    case TextureFormat::A5I3:
-        textureData = convertA5I3(
-            texture.textureData.data(),
-            (const GXRgba*)texture.paletteData.data(),
-            texture.width,
-            texture.height,
-            texture.paletteData.size()
-        );
-        break;
-    case TextureFormat::Direct:
-        textureData = convertDirect(
-            (const GXRgba*)texture.textureData.data(),
-            texture.width,
-            texture.height
-        );
-        break;
-    }
-
+    const auto textureData = toRGBA(texture);
     const auto repeat = (TextureRepeat)texture.param.repeat;
 
     // Step 2: Upload to GPU
@@ -217,6 +148,71 @@ void GLTexture::createTexture(const SPLTexture& texture) {
     ));
 
     glCall(glBindTexture(GL_TEXTURE_2D, 0));
+}
+
+std::vector<u8> GLTexture::toRGBA(const SPLTexture& texture) {
+    switch ((TextureFormat)texture.param.format) {
+    case TextureFormat::A3I5:
+        return convertA3I5(
+            texture.textureData.data(),
+            (const GXRgba*)texture.paletteData.data(),
+            texture.width,
+            texture.height,
+            texture.paletteData.size()
+        );
+    case TextureFormat::Palette4:
+        return convertPalette4(
+            texture.textureData.data(),
+            (const GXRgba*)texture.paletteData.data(),
+            texture.width,
+            texture.height,
+            texture.paletteData.size(),
+            texture.param.palColor0Transparent
+        );
+    case TextureFormat::Palette16:
+        return convertPalette16(
+            texture.textureData.data(),
+            (const GXRgba*)texture.paletteData.data(),
+            texture.width,
+            texture.height,
+            texture.paletteData.size(),
+            texture.param.palColor0Transparent
+        );
+    case TextureFormat::Palette256:
+        return convertPalette256(
+            texture.textureData.data(),
+            (const GXRgba*)texture.paletteData.data(),
+            texture.width,
+            texture.height,
+            texture.paletteData.size(),
+            texture.param.palColor0Transparent
+        );
+    case TextureFormat::Comp4x4:
+        return convertComp4x4(
+            texture.textureData.data(),
+            (const GXRgba*)texture.paletteData.data(),
+            texture.width,
+            texture.height,
+            texture.paletteData.size()
+        );
+    case TextureFormat::A5I3:
+        return convertA5I3(
+            texture.textureData.data(),
+            (const GXRgba*)texture.paletteData.data(),
+            texture.width,
+            texture.height,
+            texture.paletteData.size()
+        );
+    case TextureFormat::Direct:
+        return convertDirect(
+            (const GXRgba*)texture.textureData.data(),
+            texture.width,
+            texture.height
+        );
+    default:
+        spdlog::error("Unsupported texture format: {}", (int)texture.param.format);
+        return {};
+    }
 }
 
 std::vector<u8> GLTexture::convertA3I5(const u8* tex, const GXRgba* pal, size_t width, size_t height, size_t palSize) {

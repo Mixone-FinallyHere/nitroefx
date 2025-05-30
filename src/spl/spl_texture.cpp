@@ -202,6 +202,10 @@ size_t TextureImportSpecification::getSizeEstimate(size_t width, size_t height) 
     }
 }
 
+std::vector<u8> SPLTexture::convertToRGBA8888() const {
+    return GLTexture::toRGBA(*this);
+}
+
 TextureImportSpecification SPLTexture::suggestSpecification(
     s32 width, 
     s32 height, 

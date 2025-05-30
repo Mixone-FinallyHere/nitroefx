@@ -43,6 +43,7 @@ public:
     size_t getTextureCount() const { return m_header.texCount; }
 
     void save(const std::filesystem::path& filename);
+    void exportTextures(const std::filesystem::path& directory, const std::filesystem::path& backupDir = {}) const;
 
     static constexpr u32 SPL_FRAMES_PER_SECOND = 30;
 

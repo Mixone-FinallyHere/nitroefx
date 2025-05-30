@@ -27,7 +27,7 @@ constexpr unsigned crc_table[] = { CRC_TABLE_GEN_A(0) };
 
 // Constexpr implementation and helpers
 constexpr uint32_t crc32_impl(const char* p, size_t len, uint32_t crc) {
-    return len ? crc32_impl(p + 1, len - 1, (crc >> 8) ^ crc_table[(crc & 0xFF) ^ *p]) : crc;
+    return len ? crc32_impl(p + 1, len - 1, (crc >> 8) ^ crc_table[(size_t)(crc & 0xFF) ^ (size_t)*p]) : crc;
 }
 
 template <class T, typename = std::enable_if_t<sizeof(T) == 1>>
