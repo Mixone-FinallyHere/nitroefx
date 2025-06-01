@@ -84,6 +84,7 @@ private:
 
     void openTempTexture(std::string_view path);
     void discardTempTexture();
+    void destroyTempTexture();
     void importTempTexture();
 
     void ensureValidSelection(const std::shared_ptr<EditorInstance>& editor);
@@ -135,6 +136,8 @@ private:
     std::array<f32, 64> m_yAnimBuffer;
 
     TempTexture* m_tempTexture = nullptr;
+    float m_tempTextureScale = 1.0f;
+    bool m_discardTempTexture = false; // Whether the temp texture should be discarded in the next frame
 
     std::unordered_map<u64, size_t> m_selectedResources;
     std::weak_ptr<EditorInstance> m_activeEditor;

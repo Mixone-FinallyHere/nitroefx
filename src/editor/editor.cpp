@@ -46,6 +46,10 @@ Editor::Editor() : m_xAnimBuffer(), m_yAnimBuffer() {
 void Editor::render() {
     const auto& instances = g_projectManager->getOpenEditors();
 
+    if (m_discardTempTexture) {
+        destroyTempTexture();
+    }
+
     ImGuiWindowClass windowClass;
     windowClass.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoTabBar
         | ImGuiDockNodeFlags_NoDockingOverCentralNode
@@ -594,6 +598,9 @@ void Editor::renderTextureManager() {
             ImGui::Image((ImTextureID)texture.glTexture->getHandle(), { 32, 32 });
             ImGui::SameLine();
             if (ImGui::PaddedTreeNode(name.c_str(), padding, ImGuiTreeNodeFlags_SpanAvailWidth)) {
+
+                ImGui::Text("Format: %s", getTextureFormat(texture.param.format));
+
                 ImGui::InputScalar("S", ImGuiDataType_U8, &texture.param.s);
                 ImGui::InputScalar("T", ImGuiDataType_U8, &texture.param.t);
                 
@@ -628,22 +635,44 @@ void Editor::renderTextureManager() {
             }
         }
 
+        const auto popupPos = ImGui::GetMainViewport()->GetCenter();
+        ImGui::SetNextWindowPos(popupPos, ImGuiCond_Appearing, { 0.5f, 0.5f });
         if (ImGui::BeginPopup("##ImportTexturePopup")) {
-            ImGui::Text("Texture Info:");
-            ImGui::Text("Size: %dx%d", m_tempTexture->width, m_tempTexture->height);
-            ImGui::Text("Channels: %d", m_tempTexture->channels);
-            ImGui::Text("Number of unique Colors: %" PRIu64, m_tempTexture->suggestedSpec.uniqueColors.size());
-            ImGui::Text("Number of unique Alphas: %" PRIu64, m_tempTexture->suggestedSpec.uniqueAlphas.size());
+            const auto textureSize = ImVec2(m_tempTexture->width, m_tempTexture->height) * m_tempTextureScale;
+            const ImVec2 tableSize = { std::max(textureSize.x, 300.0f), 0.0f};
+            const auto& style = ImGui::GetStyle();
+
+            if (ImGui::BeginTable("##TempTextureTable", 2, 
+                ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchSame, tableSize)) {
+
+                ImGui::TableSetupColumn("##aaa", ImGuiTableColumnFlags_WidthStretch, 0.5f);
+                ImGui::TableSetupColumn("##bbb", ImGuiTableColumnFlags_WidthStretch, 0.5f);
+
+                ImGui::TableNextColumn(); ImGui::Text("Size");
+                ImGui::TableNextColumn(); ImGui::Text("%dx%d", m_tempTexture->width, m_tempTexture->height);
+                
+                ImGui::TableNextColumn(); ImGui::Text("Channels");
+                ImGui::TableNextColumn(); ImGui::Text("%d", m_tempTexture->channels);
+
+                ImGui::TableNextColumn(); ImGui::Text("Unique Colors");
+                ImGui::TableNextColumn(); ImGui::Text("%" PRIu64, m_tempTexture->suggestedSpec.uniqueColors.size());
+
+                ImGui::TableNextColumn(); ImGui::Text("Unique Alphas");
+                ImGui::TableNextColumn(); ImGui::Text("%" PRIu64, m_tempTexture->suggestedSpec.uniqueAlphas.size());
 
             const auto estimatedSize = m_tempTexture->suggestedSpec.getSizeEstimate(m_tempTexture->width, m_tempTexture->height);
+                ImGui::TableNextColumn(); ImGui::Text("Estimated Size");
+                ImGui::TableNextColumn();
             if (estimatedSize >= 1024) {
-                ImGui::Text("Estimated Size: %zu kB", estimatedSize / 1024);
+                    ImGui::Text("%zu kB", estimatedSize / 1024);
             } else {
-                ImGui::Text("Estimated Size: %zu B", estimatedSize);
+                    ImGui::Text("%zu B", estimatedSize);
             }
 
-            //ImGui::Text("Suggested Format: %s", getTextureFormat(m_tempTexture->suggestedSpec.format));
-            if (ImGui::BeginCombo("Format", getTextureFormat(m_tempTexture->suggestedSpec.format))) {
+                ImGui::TableNextColumn(); ImGui::Text("Format");
+                ImGui::TableNextColumn();
+                ImGui::SetNextItemWidth(tableSize.x * 0.5f - style.CellPadding.x * 2);
+                if (ImGui::BeginCombo("##Format", getTextureFormat(m_tempTexture->suggestedSpec.format))) {
                 for (auto i = (int)TextureFormat::A3I5; i < (int)TextureFormat::Count; i++) {
                     const auto flags = (TextureFormat)i == TextureFormat::Comp4x4 ? ImGuiSelectableFlags_Disabled : 0;
                     if (ImGui::Selectable(getTextureFormat((TextureFormat)i), (int)m_tempTexture->suggestedSpec.format == i, flags)) {
@@ -663,10 +692,28 @@ void Editor::renderTextureManager() {
                 ImGui::EndCombo();
             }
 
-            ImGui::Text("Color Compression: %s", m_tempTexture->suggestedSpec.requiresColorCompression ? "Yes" : "No");
-            ImGui::Text("Alpha Compression: %s", m_tempTexture->suggestedSpec.requiresAlphaCompression ? "Yes" : "No");
+                ImGui::TableNextColumn(); ImGui::Text("Color Compression");
+                ImGui::TableNextColumn(); ImGui::Text("%s", m_tempTexture->suggestedSpec.requiresColorCompression ? "Yes" : "No");
 
-            ImGui::Image((ImTextureID)m_tempTexture->texture->getHandle(), { 256, 256 });
+                ImGui::TableNextColumn(); ImGui::Text("Alpha Compression");
+                ImGui::TableNextColumn(); ImGui::Text("%s", m_tempTexture->suggestedSpec.requiresAlphaCompression ? "Yes" : "No");
+
+                ImGui::EndTable();
+            }
+
+            ImGui::SetNextItemWidth(150.0f - style.CellPadding.x * 2);
+            ImGui::SliderFloat("Display Scale", &m_tempTextureScale, 0.1f, 8.0f, "%.2fx");
+            ImGui::SameLine();
+            ImGui::TextDisabled("(?)");
+            if (ImGui::BeginItemTooltip())
+            {
+                ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+                ImGui::TextUnformatted("Only for checking how the texture looks. Does not affect the actual imported texture.");
+                ImGui::PopTextWrapPos();
+                ImGui::EndTooltip();
+            }
+
+            ImGui::Image((ImTextureID)m_tempTexture->texture->getHandle(), textureSize);
 
             if (!m_tempTexture->isValidSize) {
                 ImGui::TextColored({ 0.93f, 0, 0, 1 }, "Invalid Texture Size (?)");
@@ -2014,7 +2061,7 @@ void Editor::openTempTexture(std::string_view path) {
     tempTex->preference = TextureConversionPreference::ColorDepth;
     tempTex->suggestedSpec = SPLTexture::suggestSpecification(tempTex->width, tempTex->height, tempTex->channels, tempTex->data, tempTex->preference);
 
-    if (tempTex->suggestedSpec.requiresColorCompression) {
+    if (tempTex->suggestedSpec.requiresColorCompression || tempTex->suggestedSpec.requiresAlphaCompression) {
         quantizeTexture(tempTex->data, tempTex->width, tempTex->height, tempTex->suggestedSpec, tempTex->quantized);
         tempTex->texture->update(tempTex->quantized);
     } else {
@@ -2033,9 +2080,16 @@ void Editor::openTempTexture(std::string_view path) {
 }
 
 void Editor::discardTempTexture() {
+    m_discardTempTexture = true;
+    spdlog::info("Discarding temp texture");
+}
+
+void Editor::destroyTempTexture() {
     stbi_image_free(m_tempTexture->data);
     delete m_tempTexture->quantized;
     delete m_tempTexture;
+    m_tempTexture = nullptr;
+    m_discardTempTexture = false;
 }
 
 void Editor::importTempTexture() {
@@ -2079,6 +2133,17 @@ void Editor::importTempTexture() {
 
     texture.textureData = textureData;
     texture.paletteData = paletteData;
+
+    switch (texture.param.format) {
+    case TextureFormat::Palette4: [[fallthrough]];
+    case TextureFormat::Palette16: [[fallthrough]];
+    case TextureFormat::Palette256:
+        // Check if the first color in the palette is transparent
+        texture.param.palColor0Transparent = ((GXRgba*)paletteData.data())->a == 0;
+        break;
+    default:
+        break;
+    }
 
     discardTempTexture();
 

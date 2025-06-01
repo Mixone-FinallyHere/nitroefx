@@ -967,7 +967,6 @@ void Application::clearTempDir() {
         return;
     }
     
-    std::filesystem::remove_all(tempPath);
     for (const auto& entry : std::filesystem::directory_iterator(tempPath)) {
         std::filesystem::remove_all(entry.path());
     }
