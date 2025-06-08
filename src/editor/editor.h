@@ -140,6 +140,9 @@ private:
     float m_tempTextureScale = 1.0f;
     bool m_discardTempTexture = false; // Whether the temp texture should be discarded in the next frame
 
+    size_t m_selectedTexture = -1;
+    bool m_deleteSelectedTexture = false;
+
     std::unordered_map<u64, size_t> m_selectedResources;
     std::weak_ptr<EditorInstance> m_activeEditor;
     std::shared_ptr<GridRenderer> m_gridRenderer;

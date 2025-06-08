@@ -50,6 +50,15 @@ void Editor::render() {
         destroyTempTexture();
     }
 
+    if (m_deleteSelectedTexture) {
+        const auto& editor = g_projectManager->getActiveEditor();
+        if (editor) {
+            editor->getArchive().deleteTexture(m_selectedTexture);
+            m_selectedTexture = -1;
+            m_deleteSelectedTexture = false;
+        }
+    }
+
     ImGuiWindowClass windowClass;
     windowClass.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoTabBar
         | ImGuiDockNodeFlags_NoDockingOverCentralNode
@@ -563,6 +572,7 @@ void Editor::renderTextureManager() {
         auto& textures = archive.getTextures();
 
         const auto importPopupId = ImGui::GetID("##ImportTexturePopup");
+        const auto deleteTexturePopupId = ImGui::GetID("##DeleteTexturePopup");
 
         if (ImGui::IconButton(ICON_FA_FILE_IMPORT, "Import", IM_COL32(93, 171, 231, 255))) {
             const auto path = tinyfd_openFileDialog(
@@ -628,6 +638,11 @@ void Editor::renderTextureManager() {
                     if (path) {
                         archive.exportTexture(i, path);
                     }
+                }
+
+                if (ImGui::MenuItemIcon(ICON_FA_TRASH, "Delete", nullptr, false, IM_COL32(128, 128, 128, 255))) {
+                    m_selectedTexture = i;
+                    ImGui::OpenPopup(deleteTexturePopupId);
                 }
 
                 ImGui::EndPopup();
@@ -772,6 +787,34 @@ void Editor::renderTextureManager() {
 
             if (ImGui::Button("Cancel")) {
                 discardTempTexture();
+                ImGui::CloseCurrentPopup();
+            }
+
+            ImGui::EndPopup();
+        }
+
+        if (ImGui::BeginPopupModal("##DeleteTexturePopup")) {
+            ImGui::Text("Are you sure you want to delete this texture?");
+            ImGui::TextDisabled("(This might break existing resources)");
+            ImGui::Separator();
+
+            const auto texCount = archive.getTextureCount();
+            if (texCount <= 1) {
+                ImGui::TextColored({ 0.93f, 0.2, 0.2, 1 }, "You cannot delete the last texture.");
+                ImGui::BeginDisabled();
+            }
+
+            if (ImGui::Button("Yes")) {
+                m_deleteSelectedTexture = true;
+                ImGui::CloseCurrentPopup();
+            }
+
+            if (texCount <= 1) {
+                ImGui::EndDisabled();
+            }
+
+            ImGui::SameLine();
+            if (ImGui::Button("No")) {
                 ImGui::CloseCurrentPopup();
             }
 

@@ -361,6 +361,65 @@ void SPLArchive::exportTexture(size_t index, const std::filesystem::path& file) 
     }
 }
 
+void SPLArchive::deleteTexture(size_t index) {
+    if (index >= m_textures.size()) {
+        spdlog::error("Invalid texture index: {}", index);
+        return;
+    }
+
+    // Should never be <1 but just in case
+    if (m_textures.size() <= 1) {
+        spdlog::warn("Cannot delete the last texture in the archive");
+        return;
+    }
+
+    auto& tex = m_textures[index];
+    if (tex.glTexture) {
+        tex.glTexture.reset();
+    }
+
+    // Not gonna delete the texture data or palette data here, as they might be shared
+    // and it would just complicate things unnecessarily.
+
+    m_textures.erase(m_textures.begin() + index);
+
+    // Update shared texture IDs
+    for (auto& t : m_textures) {
+        if (t.param.sharedTexID > index) {
+            t.param.sharedTexID--;
+        }
+
+        if (t.param.sharedTexID >= m_textures.size()) {
+            t.param.sharedTexID = 0; // Reset to 0 if invalid
+        }
+    }
+
+    for (auto& res : m_resources) {
+        if (res.header.misc.textureIndex > index) {
+            res.header.misc.textureIndex--;
+        }
+
+        if (res.header.misc.textureIndex >= m_textures.size()) {
+            res.header.misc.textureIndex = 0; // Reset to 0 if invalid
+        }
+
+        // Update child resource texture index if it exists
+        if (res.childResource) {
+            if (res.childResource->misc.texture > index) {
+                res.childResource->misc.texture--;
+            }
+
+            if (res.childResource->misc.texture >= m_textures.size()) {
+                res.childResource->misc.texture = 0; // Reset to 0 if invalid
+            }
+        }
+    }
+
+    m_header.texCount = (u16)m_textures.size();
+
+    spdlog::info("Deleted texture {}", index);
+}
+
 SPLResourceHeader SPLArchive::fromNative(const SPLResourceHeaderNative &native) {
     return SPLResourceHeader {
         .flags = {
