@@ -101,9 +101,7 @@ void Editor::render() {
 
     const auto editors = g_projectManager->getUnsavedEditors();
     if (!editors.empty()) {
-        const auto windowSize = ImGui::GetMainViewport()->Size;
-        const auto windowPos = ImGui::GetWindowPos();
-        const auto popupPos = windowPos + ImVec2(windowSize.x / 2, windowSize.y / 2);
+        const auto popupPos = ImGui::GetMainViewport()->GetCenter();
 
         ImGui::SetNextWindowSize({ 370, 310 }, ImGuiCond_Once);
         ImGui::SetNextWindowPos(popupPos, ImGuiCond_Appearing, { 0.5f, 0.5f });
@@ -597,8 +595,27 @@ void Editor::renderTextureManager() {
             
             ImGui::Image((ImTextureID)texture.glTexture->getHandle(), { 32, 32 });
             ImGui::SameLine();
-            if (ImGui::PaddedTreeNode(name.c_str(), padding, ImGuiTreeNodeFlags_SpanAvailWidth)) {
+            const bool open = ImGui::PaddedTreeNode(name.c_str(), padding, ImGuiTreeNodeFlags_SpanAvailWidth);
 
+            if (ImGui::BeginPopupContextItem(fmt::format("##TexturePopup{}", i).c_str())) {
+                if (ImGui::MenuItemIcon(ICON_FA_FILE_EXPORT, "Export...")) {
+                    const char* filterPatterns[] = { "*.png", "*.bmp", "*.tga" };
+                    const auto path = tinyfd_saveFileDialog(
+                        "Export Texture",
+                        fmt::format("texture_{}.png", i).c_str(),
+                        std::size(filterPatterns),
+                        filterPatterns,
+                        nullptr
+                    );
+
+                    if (path) {
+                        archive.exportTexture(i, path);
+                    }
+                }
+                ImGui::EndPopup();
+            }
+
+            if (open) {
                 ImGui::Text("Format: %s", getTextureFormat(texture.param.format));
 
                 ImGui::InputScalar("S", ImGuiDataType_U8, &texture.param.s);

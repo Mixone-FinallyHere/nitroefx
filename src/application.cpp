@@ -1,5 +1,4 @@
 #include "application.h"
-#include "editor/debug_helper.h"
 #include "fonts/IconsFontAwesome6.h"
 #include "imgui/extensions.h"
 
@@ -183,8 +182,6 @@ int Application::run(int argc, char** argv) {
         if (m_performanceWindowOpen) {
             renderPerformanceWindow();
         }
-
-        DebugHelper::render();
 
         ImGui::Render();
         glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);

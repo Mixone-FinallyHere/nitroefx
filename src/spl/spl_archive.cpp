@@ -321,6 +321,46 @@ void SPLArchive::exportTextures(const std::filesystem::path& directory, const st
     }
 }
 
+void SPLArchive::exportTexture(size_t index, const std::filesystem::path& file) const {
+    if (index >= m_textures.size()) {
+        spdlog::error("Invalid texture index: {}", index);
+        return;
+    }
+
+    const auto& tex = m_textures[index];
+    if (!tex.glTexture) {
+        spdlog::warn("Texture {} does not have a GL texture, skipping export", index);
+        return;
+    }
+
+    int ok = -1;
+    const auto rgba = tex.convertToRGBA8888();
+    if (!rgba.empty()) {
+        const auto ext = file.extension().string();
+        if (ext == ".png") {
+            ok = stbi_write_png(file.string().c_str(), tex.width, tex.height, 4, rgba.data(), tex.width * 4);
+        } else if (ext == ".jpg" || ext == ".jpeg") {
+            ok = stbi_write_jpg(file.string().c_str(), tex.width, tex.height, 4, rgba.data(), 100);
+        } else if (ext == ".bmp") {
+            ok = stbi_write_bmp(file.string().c_str(), tex.width, tex.height, 4, rgba.data());
+        } else if (ext == ".tga") {
+            ok = stbi_write_tga(file.string().c_str(), tex.width, tex.height, 4, rgba.data());
+        } else {
+            spdlog::error("Unsupported texture format: {}", ext);
+            return;
+        }
+    } else {
+        spdlog::error("Failed to convert texture {} to RGBA8888", index);
+        return;
+    }
+
+    if (ok) {
+        spdlog::info("Exported texture {} to {}", index, file.string());
+    } else {
+        spdlog::error("Failed to write texture {} to {}", index, file.string());
+    }
+}
+
 SPLResourceHeader SPLArchive::fromNative(const SPLResourceHeaderNative &native) {
     return SPLResourceHeader {
         .flags = {
