@@ -40,9 +40,13 @@ public:
     u32 getTextureArray() const { return m_textureArray; }
 
     size_t getResourceCount() const { return m_resources.size(); }
-    size_t getTextureCount() const { return m_header.texCount; }
+    size_t getTextureCount() const { return m_textures.size(); }
 
     void save(const std::filesystem::path& filename);
+    void exportTextures(const std::filesystem::path& directory, const std::filesystem::path& backupDir = {}) const;
+    void exportTexture(size_t index, const std::filesystem::path& file) const;
+
+    void deleteTexture(size_t index);
 
     static constexpr u32 SPL_FRAMES_PER_SECOND = 30;
 

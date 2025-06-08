@@ -46,6 +46,19 @@ Editor::Editor() : m_xAnimBuffer(), m_yAnimBuffer() {
 void Editor::render() {
     const auto& instances = g_projectManager->getOpenEditors();
 
+    if (m_discardTempTexture) {
+        destroyTempTexture();
+    }
+
+    if (m_deleteSelectedTexture) {
+        const auto& editor = g_projectManager->getActiveEditor();
+        if (editor) {
+            editor->getArchive().deleteTexture(m_selectedTexture);
+            m_selectedTexture = -1;
+            m_deleteSelectedTexture = false;
+        }
+    }
+
     ImGuiWindowClass windowClass;
     windowClass.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoTabBar
         | ImGuiDockNodeFlags_NoDockingOverCentralNode
@@ -73,6 +86,8 @@ void Editor::render() {
         ImGui::EndTabBar();
     }
 
+    g_projectManager->clearForceActivate();
+
     for (const auto& instance : toClose) {
         g_projectManager->closeEditor(instance);
     }
@@ -97,9 +112,7 @@ void Editor::render() {
 
     const auto editors = g_projectManager->getUnsavedEditors();
     if (!editors.empty()) {
-        const auto windowSize = ImGui::GetMainViewport()->Size;
-        const auto windowPos = ImGui::GetWindowPos();
-        const auto popupPos = windowPos + ImVec2(windowSize.x / 2, windowSize.y / 2);
+        const auto popupPos = ImGui::GetMainViewport()->GetCenter();
 
         ImGui::SetNextWindowSize({ 370, 310 }, ImGuiCond_Once);
         ImGui::SetNextWindowPos(popupPos, ImGuiCond_Appearing, { 0.5f, 0.5f });
@@ -363,6 +376,11 @@ void Editor::playEmitterAction(EmitterSpawnType spawnType) {
     }
 
     const auto resourceIndex = m_selectedResources[editor->getUniqueID()];
+    if (resourceIndex < 0 || resourceIndex >= editor->getArchive().getResources().size()) {
+        spdlog::warn("Invalid resource index: {}", resourceIndex);
+        return;
+    }
+
     editor->getParticleSystem().addEmitter(
         editor->getArchive().getResource(resourceIndex),
         spawnType == EmitterSpawnType::Looped
@@ -429,6 +447,8 @@ void Editor::renderResourcePicker() {
         }
 
         bool anyHovered = false;
+
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.40f, 0.40f, 0.40f, 0.84f));
 
         const auto contentRegion = ImGui::GetContentRegionAvail();
         if (ImGui::BeginListBox("##Resources", contentRegion)) {
@@ -518,6 +538,8 @@ void Editor::renderResourcePicker() {
             ImGui::EndListBox();
         }
 
+        ImGui::PopStyleColor();
+
         if (!anyHovered
             && ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows) 
             && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
@@ -551,7 +573,10 @@ void Editor::renderTextureManager() {
         auto& archive = editor->getArchive();
         auto& textures = archive.getTextures();
 
-        if (ImGui::BlueButton(ICON_FA_FILE_IMPORT " Import")) {
+        const auto importPopupId = ImGui::GetID("##ImportTexturePopup");
+        const auto deleteTexturePopupId = ImGui::GetID("##DeleteTexturePopup");
+
+        if (ImGui::IconButton(ICON_FA_FILE_IMPORT, "Import", IM_COL32(93, 171, 231, 255))) {
             const auto path = tinyfd_openFileDialog(
                 "Import Texture", 
                 "", 
@@ -562,7 +587,16 @@ void Editor::renderTextureManager() {
             );
             if (path) {
                 openTempTexture(path);
-                ImGui::OpenPopup("##ImportTexturePopup");
+                ImGui::OpenPopup(importPopupId);
+            }
+        }
+
+        ImGui::SameLine();
+
+        if (ImGui::IconButton(ICON_FA_FILE_EXPORT, "Export All...", IM_COL32(255, 221, 93, 255))) {
+            const auto path = Application::openDirectory("Select Destination");
+            if (!path.empty()) {
+                archive.exportTextures(path, Application::getTempPath());
             }
         }
 
@@ -574,7 +608,51 @@ void Editor::renderTextureManager() {
             
             ImGui::Image((ImTextureID)texture.glTexture->getHandle(), { 32, 32 });
             ImGui::SameLine();
-            if (ImGui::PaddedTreeNode(name.c_str(), padding, ImGuiTreeNodeFlags_SpanAvailWidth)) {
+            const bool open = ImGui::PaddedTreeNode(name.c_str(), padding, ImGuiTreeNodeFlags_SpanAvailWidth);
+
+            if (ImGui::BeginPopupContextItem(fmt::format("##TexturePopup{}", i).c_str())) {
+                if (ImGui::MenuItemIcon(ICON_FA_FILE_IMPORT, "Update...", nullptr, false, IM_COL32(93, 171, 231, 255))) {
+                    const auto path = tinyfd_openFileDialog(
+                        "Update Texture",
+                        "",
+                        0,
+                        nullptr,
+                        "Image Files",
+                        0
+                    );
+
+                    if (path) {
+                        openTempTexture(path, i);
+                        ImGui::OpenPopup(importPopupId);
+                    }
+                }
+
+                if (ImGui::MenuItemIcon(ICON_FA_FILE_EXPORT, "Export...", nullptr, false, IM_COL32(255, 221, 93, 255))) {
+                    const char* filterPatterns[] = { "*.png", "*.bmp", "*.tga" };
+                    const auto path = tinyfd_saveFileDialog(
+                        "Export Texture",
+                        fmt::format("texture_{}.png", i).c_str(),
+                        std::size(filterPatterns),
+                        filterPatterns,
+                        nullptr
+                    );
+
+                    if (path) {
+                        archive.exportTexture(i, path);
+                    }
+                }
+
+                if (ImGui::MenuItemIcon(ICON_FA_TRASH, "Delete", nullptr, false, IM_COL32(128, 128, 128, 255))) {
+                    m_selectedTexture = i;
+                    ImGui::OpenPopup(deleteTexturePopupId);
+                }
+
+                ImGui::EndPopup();
+            }
+
+            if (open) {
+                ImGui::Text("Format: %s", getTextureFormat(texture.param.format));
+
                 ImGui::InputScalar("S", ImGuiDataType_U8, &texture.param.s);
                 ImGui::InputScalar("T", ImGuiDataType_U8, &texture.param.t);
                 
@@ -609,22 +687,44 @@ void Editor::renderTextureManager() {
             }
         }
 
-        if (ImGui::BeginPopup("##ImportTexturePopup")) {
-            ImGui::Text("Texture Info:");
-            ImGui::Text("Size: %dx%d", m_tempTexture->width, m_tempTexture->height);
-            ImGui::Text("Channels: %d", m_tempTexture->channels);
-            ImGui::Text("Number of unique Colors: %" PRIu64, m_tempTexture->suggestedSpec.uniqueColors.size());
-            ImGui::Text("Number of unique Alphas: %" PRIu64, m_tempTexture->suggestedSpec.uniqueAlphas.size());
+        const auto popupPos = ImGui::GetMainViewport()->GetCenter();
+        ImGui::SetNextWindowPos(popupPos, ImGuiCond_Appearing, { 0.5f, 0.5f });
+        if (ImGui::BeginPopupModal("##ImportTexturePopup")) {
+            const auto textureSize = ImVec2(m_tempTexture->width, m_tempTexture->height) * m_tempTextureScale;
+            const ImVec2 tableSize = { std::max(textureSize.x, 300.0f), 0.0f};
+            const auto& style = ImGui::GetStyle();
+
+            if (ImGui::BeginTable("##TempTextureTable", 2, 
+                ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchSame, tableSize)) {
+
+                ImGui::TableSetupColumn("##aaa", ImGuiTableColumnFlags_WidthStretch, 0.5f);
+                ImGui::TableSetupColumn("##bbb", ImGuiTableColumnFlags_WidthStretch, 0.5f);
+
+                ImGui::TableNextColumn(); ImGui::Text("Size");
+                ImGui::TableNextColumn(); ImGui::Text("%dx%d", m_tempTexture->width, m_tempTexture->height);
+                
+                ImGui::TableNextColumn(); ImGui::Text("Channels");
+                ImGui::TableNextColumn(); ImGui::Text("%d", m_tempTexture->channels);
+
+                ImGui::TableNextColumn(); ImGui::Text("Unique Colors");
+                ImGui::TableNextColumn(); ImGui::Text("%" PRIu64, m_tempTexture->suggestedSpec.uniqueColors.size());
+
+                ImGui::TableNextColumn(); ImGui::Text("Unique Alphas");
+                ImGui::TableNextColumn(); ImGui::Text("%" PRIu64, m_tempTexture->suggestedSpec.uniqueAlphas.size());
 
             const auto estimatedSize = m_tempTexture->suggestedSpec.getSizeEstimate(m_tempTexture->width, m_tempTexture->height);
+                ImGui::TableNextColumn(); ImGui::Text("Estimated Size");
+                ImGui::TableNextColumn();
             if (estimatedSize >= 1024) {
-                ImGui::Text("Estimated Size: %zu kB", estimatedSize / 1024);
+                    ImGui::Text("%zu kB", estimatedSize / 1024);
             } else {
-                ImGui::Text("Estimated Size: %zu B", estimatedSize);
+                    ImGui::Text("%zu B", estimatedSize);
             }
 
-            //ImGui::Text("Suggested Format: %s", getTextureFormat(m_tempTexture->suggestedSpec.format));
-            if (ImGui::BeginCombo("Format", getTextureFormat(m_tempTexture->suggestedSpec.format))) {
+                ImGui::TableNextColumn(); ImGui::Text("Format");
+                ImGui::TableNextColumn();
+                ImGui::SetNextItemWidth(tableSize.x * 0.5f - style.CellPadding.x * 2);
+                if (ImGui::BeginCombo("##Format", getTextureFormat(m_tempTexture->suggestedSpec.format))) {
                 for (auto i = (int)TextureFormat::A3I5; i < (int)TextureFormat::Count; i++) {
                     const auto flags = (TextureFormat)i == TextureFormat::Comp4x4 ? ImGuiSelectableFlags_Disabled : 0;
                     if (ImGui::Selectable(getTextureFormat((TextureFormat)i), (int)m_tempTexture->suggestedSpec.format == i, flags)) {
@@ -644,10 +744,28 @@ void Editor::renderTextureManager() {
                 ImGui::EndCombo();
             }
 
-            ImGui::Text("Color Compression: %s", m_tempTexture->suggestedSpec.requiresColorCompression ? "Yes" : "No");
-            ImGui::Text("Alpha Compression: %s", m_tempTexture->suggestedSpec.requiresAlphaCompression ? "Yes" : "No");
+                ImGui::TableNextColumn(); ImGui::Text("Color Compression");
+                ImGui::TableNextColumn(); ImGui::Text("%s", m_tempTexture->suggestedSpec.requiresColorCompression ? "Yes" : "No");
 
-            ImGui::Image((ImTextureID)m_tempTexture->texture->getHandle(), { 256, 256 });
+                ImGui::TableNextColumn(); ImGui::Text("Alpha Compression");
+                ImGui::TableNextColumn(); ImGui::Text("%s", m_tempTexture->suggestedSpec.requiresAlphaCompression ? "Yes" : "No");
+
+                ImGui::EndTable();
+            }
+
+            ImGui::SetNextItemWidth(150.0f - style.CellPadding.x * 2);
+            ImGui::SliderFloat("Display Scale", &m_tempTextureScale, 0.1f, 8.0f, "%.2fx");
+            ImGui::SameLine();
+            ImGui::TextDisabled("(?)");
+            if (ImGui::BeginItemTooltip())
+            {
+                ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+                ImGui::TextUnformatted("Only for checking how the texture looks. Does not affect the actual imported texture.");
+                ImGui::PopTextWrapPos();
+                ImGui::EndTooltip();
+            }
+
+            ImGui::Image((ImTextureID)m_tempTexture->texture->getHandle(), textureSize);
 
             if (!m_tempTexture->isValidSize) {
                 ImGui::TextColored({ 0.93f, 0, 0, 1 }, "Invalid Texture Size (?)");
@@ -671,6 +789,34 @@ void Editor::renderTextureManager() {
 
             if (ImGui::Button("Cancel")) {
                 discardTempTexture();
+                ImGui::CloseCurrentPopup();
+            }
+
+            ImGui::EndPopup();
+        }
+
+        if (ImGui::BeginPopupModal("##DeleteTexturePopup")) {
+            ImGui::Text("Are you sure you want to delete this texture?");
+            ImGui::TextDisabled("(This might break existing resources)");
+            ImGui::Separator();
+
+            const auto texCount = archive.getTextureCount();
+            if (texCount <= 1) {
+                ImGui::TextColored({ 0.93f, 0.2, 0.2, 1 }, "You cannot delete the last texture.");
+                ImGui::BeginDisabled();
+            }
+
+            if (ImGui::Button("Yes")) {
+                m_deleteSelectedTexture = true;
+                ImGui::CloseCurrentPopup();
+            }
+
+            if (texCount <= 1) {
+                ImGui::EndDisabled();
+            }
+
+            ImGui::SameLine();
+            if (ImGui::Button("No")) {
                 ImGui::CloseCurrentPopup();
             }
 
@@ -707,9 +853,13 @@ void Editor::renderResourceEditor() {
             auto& resource = resources[m_selectedResources[id]];
             const auto& texture = textures[resource.header.misc.textureIndex];
 
-            if (ImGui::GreenButton("Play Emitter")) {
+            if (ImGui::IconButton(ICON_FA_PLAY, "Play Emitter", IM_COL32(143, 228, 143, 255))) {
                 playEmitterAction(m_emitterSpawnType);
             }
+
+            //if (ImGui::GreenButton("Play Emitter")) {
+            //    playEmitterAction(m_emitterSpawnType);
+            //}
 
             ImGui::SameLine();
             ImGui::SetNextItemWidth(150);
@@ -721,9 +871,13 @@ void Editor::renderResourceEditor() {
                 ImGui::InputFloat("##Interval", &m_emitterInterval, 0.1f, 1.0f, "%.2fs");
             }
 
-            if (ImGui::RedButton("Kill Emitters")) {
+            if (ImGui::IconButton(ICON_FA_STOP, "Kill Emitters", IM_COL32(245, 87, 98, 255))) {
                 killEmitters();
             }
+
+            //if (ImGui::RedButton("Kill Emitters")) {
+            //    killEmitters();
+            //}
 
             if (ImGui::BeginTabBar("##editorTabs")) {
                 if (ImGui::BeginTabItem("General")) {
@@ -1104,7 +1258,7 @@ void Editor::renderBehaviorEditor(SPLResource& res) {
     LOCK_EDITOR();
     std::vector<std::shared_ptr<SPLBehavior>> toRemove;
 
-    if (ImGui::BlueButton(ICON_FA_CIRCLE_PLUS " Add Behavior...")) {
+    if (ImGui::IconButton(ICON_FA_CIRCLE_PLUS, "Add Behavior...", IM_COL32(35, 209, 139, 255))) {
         ImGui::OpenPopup("##addBehavior");
     }
 
@@ -1332,7 +1486,7 @@ void Editor::renderAnimationEditor(SPLResource& res) {
 
     LOCK_EDITOR();
 
-    if (ImGui::BlueButton(ICON_FA_CIRCLE_PLUS " Add Animation...")) {
+    if (ImGui::IconButton(ICON_FA_CIRCLE_PLUS , "Add Animation...", IM_COL32(35, 209, 139, 255))) {
         ImGui::OpenPopup("##addAnimation");
     }
 
@@ -1967,10 +2121,15 @@ void Editor::updateMaxParticles() {
     }
 }
 
-void Editor::openTempTexture(std::string_view path) {
+void Editor::openTempTexture(std::string_view path, size_t destIndex) {
     constexpr auto isPowerOf2 = [](s32 value) {
         return (value & (value - 1)) == 0;
     };
+
+    if (destIndex != -1 && destIndex >= g_projectManager->getActiveEditor()->getArchive().getTextures().size()) {
+        spdlog::error("Invalid destination index for temp texture: {}", destIndex);
+        return;
+    }
 
     const auto tempTex = new TempTexture;
     m_tempTexture = tempTex;
@@ -1978,6 +2137,8 @@ void Editor::openTempTexture(std::string_view path) {
     tempTex->path = path;
     tempTex->data = stbi_load(path.data(), &tempTex->width, &tempTex->height, &tempTex->channels, 4);
     if (!tempTex->data) {
+        delete m_tempTexture;
+        m_tempTexture = nullptr;
         return;
     }
 
@@ -1987,7 +2148,7 @@ void Editor::openTempTexture(std::string_view path) {
     tempTex->preference = TextureConversionPreference::ColorDepth;
     tempTex->suggestedSpec = SPLTexture::suggestSpecification(tempTex->width, tempTex->height, tempTex->channels, tempTex->data, tempTex->preference);
 
-    if (tempTex->suggestedSpec.requiresColorCompression) {
+    if (tempTex->suggestedSpec.requiresColorCompression || tempTex->suggestedSpec.requiresAlphaCompression) {
         quantizeTexture(tempTex->data, tempTex->width, tempTex->height, tempTex->suggestedSpec, tempTex->quantized);
         tempTex->texture->update(tempTex->quantized);
     } else {
@@ -2003,12 +2164,21 @@ void Editor::openTempTexture(std::string_view path) {
     if (!isPowerOf2(tempTex->width) || !isPowerOf2(tempTex->height)) {
         tempTex->isValidSize = false;
     }
+
+    tempTex->destIndex = destIndex;
 }
 
 void Editor::discardTempTexture() {
+    m_discardTempTexture = true;
+    spdlog::info("Discarding temp texture");
+}
+
+void Editor::destroyTempTexture() {
     stbi_image_free(m_tempTexture->data);
     delete m_tempTexture->quantized;
     delete m_tempTexture;
+    m_tempTexture = nullptr;
+    m_discardTempTexture = false;
 }
 
 void Editor::importTempTexture() {
@@ -2019,7 +2189,7 @@ void Editor::importTempTexture() {
     auto& activeEditor = g_projectManager->getActiveEditor();
     auto& archive = activeEditor->getArchive();
     auto& textures = archive.getTextures();
-    auto& texture = textures.emplace_back();
+    auto& texture = m_tempTexture->destIndex != -1 ? textures[m_tempTexture->destIndex] : textures.emplace_back();
     texture.glTexture = std::move(m_tempTexture->texture);
     texture.width = m_tempTexture->width;
     texture.height = m_tempTexture->height;
@@ -2052,6 +2222,17 @@ void Editor::importTempTexture() {
 
     texture.textureData = textureData;
     texture.paletteData = paletteData;
+
+    switch (texture.param.format) {
+    case TextureFormat::Palette4: [[fallthrough]];
+    case TextureFormat::Palette16: [[fallthrough]];
+    case TextureFormat::Palette256:
+        // Check if the first color in the palette is transparent
+        texture.param.palColor0Transparent = ((GXRgba*)paletteData.data())->a == 0;
+        break;
+    default:
+        break;
+    }
 
     discardTempTexture();
 

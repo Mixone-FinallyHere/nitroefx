@@ -82,8 +82,9 @@ private:
 
     void updateMaxParticles();
 
-    void openTempTexture(std::string_view path);
+    void openTempTexture(std::string_view path, size_t destIndex = -1);
     void discardTempTexture();
+    void destroyTempTexture();
     void importTempTexture();
 
     void ensureValidSelection(const std::shared_ptr<EditorInstance>& editor);
@@ -110,6 +111,7 @@ private:
         TextureConversionPreference preference;
         std::unique_ptr<GLTexture> texture;
         bool isValidSize;
+        size_t destIndex = -1;
     };
 
     bool m_pickerOpen = true;
@@ -135,6 +137,11 @@ private:
     std::array<f32, 64> m_yAnimBuffer;
 
     TempTexture* m_tempTexture = nullptr;
+    float m_tempTextureScale = 1.0f;
+    bool m_discardTempTexture = false; // Whether the temp texture should be discarded in the next frame
+
+    size_t m_selectedTexture = -1;
+    bool m_deleteSelectedTexture = false;
 
     std::unordered_map<u64, size_t> m_selectedResources;
     std::weak_ptr<EditorInstance> m_activeEditor;

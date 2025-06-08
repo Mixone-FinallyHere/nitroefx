@@ -4,8 +4,12 @@
 #include <GL/glew.h>
 #include <glm/gtc/constants.hpp>
 #include <spdlog/spdlog.h>
+#include <stb_image_write.h>
 #include <fstream>
 #include <concepts>
+#include <ranges>
+
+#include "spl_random.h"
 
 
 template<class T> requires std::is_trivially_copyable_v<T>
@@ -274,6 +278,146 @@ void SPLArchive::save(const std::filesystem::path& filename) {
 
     file.seekp(0, std::ios::beg);
     file << m_header;
+}
+
+void SPLArchive::exportTextures(const std::filesystem::path& directory, const std::filesystem::path& backupDir) const {
+    const bool doBackup = !backupDir.empty();
+    std::filesystem::path backupDest;
+    if (doBackup) {
+        backupDest = backupDir / fmt::format("{:08x}", SPLRandom::crcHash());
+        std::filesystem::create_directories(backupDest);
+        spdlog::info("Backing up existing textures to {}", backupDest.string());
+        spdlog::warn("This directory will be cleared the next time the program is run.");
+    }
+
+    for (const auto [i, tex] : std::views::enumerate(m_textures)) {
+        if (!tex.glTexture) {
+            spdlog::warn("Texture {} does not have a GL texture, skipping export", i);
+            continue;
+        }
+
+        const auto fileName = fmt::format("{}.png", i);
+        std::filesystem::path path = directory / fileName;
+        if (std::filesystem::exists(path)) {
+            if (doBackup) {
+                std::filesystem::path backupPath = backupDest / fileName;
+                std::filesystem::copy(path, backupPath);
+                spdlog::info("Backed up existing texture {}", path.filename().string());
+            } else {
+                spdlog::warn("No backup directory specified, skipping backup for {}", path.filename().string());
+            }
+        }
+
+        const auto rgba = tex.convertToRGBA8888();
+        if (!rgba.empty()) {
+            if (stbi_write_png(path.string().c_str(), tex.width, tex.height, 4, rgba.data(), tex.width * 4)) {
+                spdlog::info("Exported texture {} to {}", i, path.string());
+            } else {
+                spdlog::error("Failed to write texture {} to {}", i, path.string());
+            }
+        } else {
+            spdlog::error("Failed to convert texture {} to RGBA8888", i);
+        }
+    }
+}
+
+void SPLArchive::exportTexture(size_t index, const std::filesystem::path& file) const {
+    if (index >= m_textures.size()) {
+        spdlog::error("Invalid texture index: {}", index);
+        return;
+    }
+
+    const auto& tex = m_textures[index];
+    if (!tex.glTexture) {
+        spdlog::warn("Texture {} does not have a GL texture, skipping export", index);
+        return;
+    }
+
+    int ok = -1;
+    const auto rgba = tex.convertToRGBA8888();
+    if (!rgba.empty()) {
+        const auto ext = file.extension().string();
+        if (ext == ".png") {
+            ok = stbi_write_png(file.string().c_str(), tex.width, tex.height, 4, rgba.data(), tex.width * 4);
+        } else if (ext == ".jpg" || ext == ".jpeg") {
+            ok = stbi_write_jpg(file.string().c_str(), tex.width, tex.height, 4, rgba.data(), 100);
+        } else if (ext == ".bmp") {
+            ok = stbi_write_bmp(file.string().c_str(), tex.width, tex.height, 4, rgba.data());
+        } else if (ext == ".tga") {
+            ok = stbi_write_tga(file.string().c_str(), tex.width, tex.height, 4, rgba.data());
+        } else {
+            spdlog::error("Unsupported texture format: {}", ext);
+            return;
+        }
+    } else {
+        spdlog::error("Failed to convert texture {} to RGBA8888", index);
+        return;
+    }
+
+    if (ok) {
+        spdlog::info("Exported texture {} to {}", index, file.string());
+    } else {
+        spdlog::error("Failed to write texture {} to {}", index, file.string());
+    }
+}
+
+void SPLArchive::deleteTexture(size_t index) {
+    if (index >= m_textures.size()) {
+        spdlog::error("Invalid texture index: {}", index);
+        return;
+    }
+
+    // Should never be <1 but just in case
+    if (m_textures.size() <= 1) {
+        spdlog::warn("Cannot delete the last texture in the archive");
+        return;
+    }
+
+    auto& tex = m_textures[index];
+    if (tex.glTexture) {
+        tex.glTexture.reset();
+    }
+
+    // Not gonna delete the texture data or palette data here, as they might be shared
+    // and it would just complicate things unnecessarily.
+
+    m_textures.erase(m_textures.begin() + index);
+
+    // Update shared texture IDs
+    for (auto& t : m_textures) {
+        if (t.param.sharedTexID > index) {
+            t.param.sharedTexID--;
+        }
+
+        if (t.param.sharedTexID >= m_textures.size()) {
+            t.param.sharedTexID = 0; // Reset to 0 if invalid
+        }
+    }
+
+    for (auto& res : m_resources) {
+        if (res.header.misc.textureIndex > index) {
+            res.header.misc.textureIndex--;
+        }
+
+        if (res.header.misc.textureIndex >= m_textures.size()) {
+            res.header.misc.textureIndex = 0; // Reset to 0 if invalid
+        }
+
+        // Update child resource texture index if it exists
+        if (res.childResource) {
+            if (res.childResource->misc.texture > index) {
+                res.childResource->misc.texture--;
+            }
+
+            if (res.childResource->misc.texture >= m_textures.size()) {
+                res.childResource->misc.texture = 0; // Reset to 0 if invalid
+            }
+        }
+    }
+
+    m_header.texCount = (u16)m_textures.size();
+
+    spdlog::info("Deleted texture {}", index);
 }
 
 SPLResourceHeader SPLArchive::fromNative(const SPLResourceHeaderNative &native) {

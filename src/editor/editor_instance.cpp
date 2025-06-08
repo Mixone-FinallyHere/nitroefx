@@ -30,8 +30,13 @@ std::pair<bool, bool> EditorInstance::render() {
         ImGui::PushFont(g_application->getFont("Italic"));
     }
 
+    const auto& activeEditor = g_projectManager->getActiveEditor();
+    const auto flags = g_projectManager->shouldForceActivate() && this == activeEditor.get()
+        ? ImGuiTabItemFlags_SetSelected
+        : ImGuiTabItemFlags_None;
+
     const auto name = m_modified ? m_path.filename().string() + "*" : m_path.filename().string();
-    const bool openTab = ImGui::BeginTabItem(name.c_str(), &open);
+    const bool openTab = ImGui::BeginTabItem(name.c_str(), &open, flags);
 
     if (m_isTemp) {
         ImGui::PopFont();

@@ -3,9 +3,11 @@
 #include "editor_instance.h"
 
 #include <SDL3/SDL_events.h>
+#include <algorithm>
 #include <filesystem>
 #include <memory>
 #include <span>
+#include <ranges>
 #include <vector>
 
 
@@ -20,6 +22,15 @@ public:
     void closeTempEditor();
     void closeAllEditors();
     void saveAllEditors();
+
+    bool hasEditor(const std::filesystem::path& path) const {
+        return std::ranges::any_of(m_openEditors, [&path](const auto& editor) { return editor->getPath() == path; });
+    }
+
+    std::shared_ptr<EditorInstance> getEditor(const std::filesystem::path& path) const {
+        const auto it = std::ranges::find_if(m_openEditors, [&path](const auto& editor) { return editor->getPath() == path; });
+        return it != m_openEditors.end() ? *it : nullptr;
+    }
 
     void open();
     void render();
@@ -52,6 +63,14 @@ public:
         return m_activeEditor != nullptr;
     }
 
+    bool shouldForceActivate() const {
+        return m_forceActivate;
+    }
+
+    void clearForceActivate() {
+        m_forceActivate = false;
+    }
+
     void handleEvent(const SDL_Event& event);
 
     std::span<const std::shared_ptr<EditorInstance>> getUnsavedEditors() {
@@ -71,6 +90,7 @@ private:
 
     std::vector<std::shared_ptr<EditorInstance>> m_openEditors;
     std::shared_ptr<EditorInstance> m_activeEditor;
+    bool m_forceActivate = false;
 
     // Unsaved changes data
     std::vector<std::shared_ptr<EditorInstance>> m_unsavedEditors;

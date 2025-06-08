@@ -30,6 +30,7 @@ public:
 
 private:
     void createTexture(const SPLTexture& texture);
+    static std::vector<u8> toRGBA(const SPLTexture& texture);
 
     static std::vector<u8> convertA3I5(const u8* tex, const GXRgba* pal, size_t width, size_t height, size_t palSize);
     static std::vector<u8> convertPalette4(const u8* tex, const GXRgba* pal, size_t width, size_t height, size_t palSize, bool color0Transparent);
@@ -44,6 +45,8 @@ private:
     size_t m_width;
     size_t m_height;
     TextureFormat m_format;
+
+    friend class SPLTexture;
 };
 
 struct PixelA3I5 {

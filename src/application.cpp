@@ -126,6 +126,7 @@ int Application::run(int argc, char** argv) {
     m_editor = std::make_unique<Editor>();
     m_settings = ApplicationSettings::getDefault();
 
+    clearTempDir();
     loadConfig();
     loadFonts();
     setColors();
@@ -295,7 +296,7 @@ void Application::handleKeydown(const SDL_Event& event) {
     case SDLK_O:
         if (event.key.mod & SDL_KMOD_CTRL) {
             if (event.key.mod & SDL_KMOD_SHIFT) {
-                const auto path = openProject();
+                const auto path = openDirectory();
                 if (!path.empty()) {
                     g_projectManager->openProject(path);
                 }
@@ -408,14 +409,14 @@ void Application::dispatchEvent(const SDL_Event& event) {
 }
 
 void Application::renderMenuBar() {
-    if (ImGui::BeginMainMenuBar()) {
-        const bool hasProject = g_projectManager->hasProject();
-        const bool hasActiveEditor = g_projectManager->hasActiveEditor();
-        const bool hasOpenEditors = g_projectManager->hasOpenEditors();
+    const bool hasProject = g_projectManager->hasProject();
+    const bool hasActiveEditor = g_projectManager->hasActiveEditor();
+    const bool hasOpenEditors = g_projectManager->hasOpenEditors();
 
+    if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::BeginMenu("New")) {
-                if (ImGui::MenuItemIcon(ICON_FA_FOLDER_PLUS, "Project", "Ctrl+Shift+N")) {
+                if (ImGui::MenuItemIcon(ICON_FA_FOLDER_PLUS, "Project", "Ctrl+Shift+N", false, IM_COL32(157, 142, 106, 255))) {
                     spdlog::warn("New Project not implemented");
                 }
 
@@ -427,8 +428,8 @@ void Application::renderMenuBar() {
             }
 
             if (ImGui::BeginMenu("Open")) {
-                if (ImGui::MenuItemIcon(ICON_FA_FOLDER, "Project", KEYBINDSTR(OpenProject))) {
-                    const auto path = openProject();
+                if (ImGui::MenuItemIcon(ICON_FA_FOLDER_OPEN, "Project", KEYBINDSTR(OpenProject), false, IM_COL32(157, 142, 106, 255))) {
+                    const auto path = openDirectory();
                     if (!path.empty()) {
                         addRecentProject(path);
                         g_projectManager->openProject(path);
@@ -472,11 +473,11 @@ void Application::renderMenuBar() {
                 ImGui::EndMenu();
             }
 
-            if (ImGui::MenuItemIcon(ICON_FA_FLOPPY_DISK, "Save", KEYBINDSTR(Save), false, hasActiveEditor)) {
+            if (ImGui::MenuItemIcon(ICON_FA_FLOPPY_DISK, "Save", KEYBINDSTR(Save), false, IM_COL32(105, 190, 255, 255), hasActiveEditor)) {
                 m_editor->save();
             }
 
-            if (ImGui::MenuItemIcon(ICON_FA_FLOPPY_DISK, "Save As...", nullptr, false, hasActiveEditor)) {
+            if (ImGui::MenuItemIcon(ICON_FA_FLOPPY_DISK, "Save As...", nullptr, false, IM_COL32(105, 190, 255, 255), hasActiveEditor)) {
                 const auto path = saveFile();
                 if (!path.empty()) {
                     m_editor->saveAs(path);
@@ -484,23 +485,23 @@ void Application::renderMenuBar() {
                 }
             }
 
-            if (ImGui::MenuItemIcon(ICON_FA_FLOPPY_DISK, "Save All", KEYBINDSTR(SaveAll), false, hasOpenEditors)) {
+            if (ImGui::MenuItemIcon(ICON_FA_FLOPPY_DISK, "Save All", KEYBINDSTR(SaveAll), false, IM_COL32(105, 190, 255, 255), hasOpenEditors)) {
                 g_projectManager->saveAllEditors();
             }
 
-            if (ImGui::MenuItemIcon(ICON_FA_XMARK, "Close", KEYBINDSTR(Close), false, hasActiveEditor)) {
+            if (ImGui::MenuItemIcon(ICON_FA_XMARK, "Close", KEYBINDSTR(Close), false, 0, hasActiveEditor)) {
                 g_projectManager->closeEditor(g_projectManager->getActiveEditor());
             }
 
-            if (ImGui::MenuItemIcon(ICON_FA_XMARK, "Close All", KEYBINDSTR(CloseAll), false, hasOpenEditors)) {
+            if (ImGui::MenuItemIcon(ICON_FA_XMARK, "Close All", KEYBINDSTR(CloseAll), false, 0, hasOpenEditors)) {
                 g_projectManager->closeAllEditors();
             }
 
-            if (ImGui::MenuItemIcon(ICON_FA_XMARK, "Close Project", nullptr, false, hasProject)) {
+            if (ImGui::MenuItemIcon(ICON_FA_XMARK, "Close Project", nullptr, false, 0, hasProject)) {
                 g_projectManager->closeProject();
             }
 
-            if (ImGui::MenuItemIcon(ICON_FA_POWER_OFF, "Exit", KEYBINDSTR(Exit))) {
+            if (ImGui::MenuItemIcon(ICON_FA_RIGHT_FROM_BRACKET, "Exit", KEYBINDSTR(Exit))) {
                 m_running = false;
             }
 
@@ -508,27 +509,27 @@ void Application::renderMenuBar() {
         }
 
         if (ImGui::BeginMenu("Edit")) {
-            if (ImGui::MenuItemIcon(ICON_FA_ROTATE_LEFT, "Undo", KEYBINDSTR(Undo), false, m_editor->canUndo())) {
+            if (ImGui::MenuItemIcon(ICON_FA_ROTATE_LEFT, "Undo", KEYBINDSTR(Undo), false, 0, m_editor->canUndo())) {
                 m_editor->undo();
             }
 
-            if (ImGui::MenuItemIcon(ICON_FA_ROTATE_RIGHT, "Redo", KEYBINDSTR(Redo), false, m_editor->canRedo())) {
+            if (ImGui::MenuItemIcon(ICON_FA_ROTATE_RIGHT, "Redo", KEYBINDSTR(Redo), false, 0, m_editor->canRedo())) {
                 m_editor->redo();
             }
 
-            if (ImGui::MenuItemIcon(ICON_FA_PLAY, "Play Emitter", KEYBINDSTR(PlayEmitter), false, hasActiveEditor)) {
+            if (ImGui::MenuItemIcon(ICON_FA_PLAY, "Play Emitter", KEYBINDSTR(PlayEmitter), false, IM_COL32(143, 228, 143, 255), hasActiveEditor)) {
                 m_editor->playEmitterAction(EmitterSpawnType::SingleShot);
             }
 
-            if (ImGui::MenuItemIcon(ICON_FA_REPEAT, "Play Looped Emitter", KEYBINDSTR(PlayEmitterLooped), false, hasActiveEditor)) {
+            if (ImGui::MenuItemIcon(ICON_FA_REPEAT, "Play Looped Emitter", KEYBINDSTR(PlayEmitterLooped), false, IM_COL32(133, 208, 133, 255), hasActiveEditor)) {
                 m_editor->playEmitterAction(EmitterSpawnType::Looped);
             }
 
-            if (ImGui::MenuItem("Kill Emitters", KEYBINDSTR(KillEmitters), false, hasActiveEditor)) {
+            if (ImGui::MenuItemIcon(ICON_FA_STOP, "Kill Emitters", KEYBINDSTR(KillEmitters), false, IM_COL32(245, 87, 98, 255), hasActiveEditor)) {
                 m_editor->killEmitters();
             }
 
-            if (ImGui::MenuItem("Reset Camera", KEYBINDSTR(ResetCamera), false, hasActiveEditor)) {
+            if (ImGui::MenuItemIcon(ICON_FA_CAMERA_ROTATE, "Reset Camera", KEYBINDSTR(ResetCamera), false, 0, hasActiveEditor)) {
                 m_editor->resetCamera();
             }
 
@@ -571,6 +572,79 @@ void Application::renderMenuBar() {
 
         ImGui::EndMainMenuBar();
     }
+
+    const auto viewport = (ImGuiViewportP*)ImGui::GetMainViewport();
+    constexpr auto flags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_MenuBar;
+    constexpr float barSize = 24.0f;
+    constexpr ImVec2 size = { barSize, barSize };
+
+    ImGui::PushStyleColor(ImGuiCol_Button, 0x00000000);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(79, 79, 79, 200));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(90, 90, 90, 255));
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, { 0.5f, 0.5f });
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 2.0f, 2.0f });
+    ImGui::PushStyleVarX(ImGuiStyleVar_ItemSpacing, 4.0f); // Cut item spacing in half
+    
+    if (ImGui::BeginViewportSideBar("##SecondaryMenuBar", viewport, ImGuiDir_Up, ImGui::GetFrameHeight(), flags)) {
+        if (ImGui::BeginMenuBar()) {
+            if (ImGui::IconButton(ICON_FA_FILE, size)) {
+                const auto file = openFile();
+                if (!file.empty()) {
+                    addRecentFile(file);
+                    g_projectManager->openEditor(file);
+                }
+            }
+
+            if (ImGui::IconButton(ICON_FA_FOLDER_OPEN, size, IM_COL32(157, 142, 106, 255))) {
+                const auto project = openDirectory();
+                if (!project.empty()) {
+                    addRecentProject(project);
+                    g_projectManager->openProject(project);
+                }
+            }
+
+            ImGui::VerticalSeparator(barSize);
+
+            if (ImGui::IconButton(ICON_FA_FLOPPY_DISK, size, IM_COL32(105, 190, 255, 255), hasActiveEditor)) {
+                m_editor->save();
+            }
+
+            ImGui::VerticalSeparator(barSize);
+
+            if (ImGui::IconButton(ICON_FA_ROTATE_LEFT, size, 0, m_editor->canUndo())) {
+                m_editor->undo();
+            }
+
+            if (ImGui::IconButton(ICON_FA_ROTATE_RIGHT, size, 0, m_editor->canRedo())) {
+                m_editor->redo();
+            }
+            
+            ImGui::VerticalSeparator(barSize);
+
+            if (ImGui::IconButton(ICON_FA_PLAY, size, IM_COL32(143, 228, 143, 255), hasActiveEditor)) {
+                m_editor->playEmitterAction(EmitterSpawnType::SingleShot);
+            }
+
+            if (ImGui::IconButton(ICON_FA_REPEAT, size, IM_COL32(133, 208, 133, 255), hasActiveEditor)) {
+                m_editor->playEmitterAction(EmitterSpawnType::Looped);
+            }
+
+            if (ImGui::IconButton(ICON_FA_STOP, size, IM_COL32(245, 87, 98, 255), hasActiveEditor)) {
+                m_editor->killEmitters();
+            }
+
+            if (ImGui::IconButton(ICON_FA_CAMERA_ROTATE, size, 0, hasActiveEditor)) {
+                m_editor->resetCamera();
+            }
+
+            ImGui::EndMenuBar();
+        }
+    }
+    ImGui::End();
+
+    ImGui::PopStyleVar(4);
+    ImGui::PopStyleColor(3);
 }
 
 void Application::renderPreferences() {
@@ -698,59 +772,65 @@ void Application::setColors() {
     style.ButtonTextAlign = ImVec2(0.5f, 0.5f);
     style.SelectableTextAlign = ImVec2(0.0f, 0.0f);
 
-    style.Colors[ImGuiCol_Text] = ImVec4(0.8369014859199524f, 0.8369098901748657f, 0.8369098901748657f, 1.0f);
-    style.Colors[ImGuiCol_TextDisabled] = ImVec4(0.4980392158031464f, 0.4980392158031464f, 0.4980392158031464f, 1.0f);
-    style.Colors[ImGuiCol_WindowBg] = ImVec4(0.1411764770746231f, 0.1607843190431595f, 0.1803921610116959f, 1.0f);
-    style.Colors[ImGuiCol_ChildBg] = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
-    style.Colors[ImGuiCol_PopupBg] = ImVec4(0.1142772808670998f, 0.1279543489217758f, 0.1416308879852295f, 1.0f);
-    style.Colors[ImGuiCol_Border] = ImVec4(0.2354436367750168f, 0.2712275087833405f, 0.3304721117019653f, 0.4470588266849518f);
-    style.Colors[ImGuiCol_BorderShadow] = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
-    style.Colors[ImGuiCol_FrameBg] = ImVec4(0.1607843190431595f, 0.1803921610116959f, 0.2000000029802322f, 1.0f);
-    style.Colors[ImGuiCol_FrameBgHovered] = ImVec4(0.1775497645139694f, 0.198217362165451f, 0.2188841104507446f, 1.0f);
-    style.Colors[ImGuiCol_FrameBgActive] = ImVec4(0.1976459473371506f, 0.2232870012521744f, 0.2489270567893982f, 1.0f);
-    style.Colors[ImGuiCol_TitleBg] = ImVec4(0.1215686276555061f, 0.1411764770746231f, 0.1607843190431595f, 1.0f);
-    style.Colors[ImGuiCol_TitleBgActive] = ImVec4(0.1215686276555061f, 0.1411764770746231f, 0.1607843190431595f, 1.0f);
-    style.Colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.1215686276555061f, 0.1411764770746231f, 0.1607843190431595f, 1.0f);
-    style.Colors[ImGuiCol_MenuBarBg] = ImVec4(0.1215686276555061f, 0.1411764770746231f, 0.1607843190431595f, 1.0f);
-    style.Colors[ImGuiCol_ScrollbarBg] = ImVec4(0.1153456568717957f, 0.1187514066696167f, 0.1330472230911255f, 0.5299999713897705f);
-    style.Colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.3098039329051971f, 0.3098039329051971f, 0.3098039329051971f, 1.0f);
-    style.Colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.407843142747879f, 0.407843142747879f, 0.407843142747879f, 1.0f);
-    style.Colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.5098039507865906f, 0.5098039507865906f, 0.5098039507865906f, 1.0f);
-    style.Colors[ImGuiCol_CheckMark] = ImVec4(0.5176470875740051f, 0.3568627536296844f, 0.6705882549285889f, 1.0f);
-    style.Colors[ImGuiCol_SliderGrab] = ImVec4(0.5157450437545776f, 0.3568627536296844f, 0.6705882549285889f, 1.0f);
-    style.Colors[ImGuiCol_SliderGrabActive] = ImVec4(0.5788434743881226f, 0.2895798087120056f, 0.8540772199630737f, 1.0f);
-    style.Colors[ImGuiCol_Button] = ImVec4(0.2356939762830734f, 0.270569235086441f, 0.3098039329051971f, 0.7843137383460999f);
-    style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0.3462888300418854f, 0.2819724082946777f, 0.3690987229347229f, 0.7843137383460999f);
-    style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.3874832093715668f, 0.2803691029548645f, 0.4039215743541718f, 1.0f);
-    style.Colors[ImGuiCol_Header] = ImVec4(0.1411764770746231f, 0.1607843190431595f, 0.1803921610116959f, 1.0f);
-    style.Colors[ImGuiCol_HeaderHovered] = ImVec4(0.1607843190431595f, 0.1803921610116959f, 0.2000000029802322f, 1.0f);
-    style.Colors[ImGuiCol_HeaderActive] = ImVec4(0.1904621571302414f, 0.2132570743560791f, 0.2360514998435974f, 1.0f);
-    style.Colors[ImGuiCol_Separator] = ImVec4(0.4274509847164154f, 0.4274509847164154f, 0.4980392158031464f, 0.5f);
-    style.Colors[ImGuiCol_SeparatorHovered] = ImVec4(0.2477850168943405f, 0.248460590839386f, 0.3261802792549133f, 0.7799999713897705f);
-    style.Colors[ImGuiCol_SeparatorActive] = ImVec4(0.3376374840736389f, 0.346673846244812f, 0.4034335017204285f, 1.0f);
-    style.Colors[ImGuiCol_ResizeGrip] = ImVec4(0.3162703216075897f, 0.3700733184814453f, 0.4334763884544373f, 0.09019608050584793f);
-    style.Colors[ImGuiCol_ResizeGripHovered] = ImVec4(0.9999899864196777f, 0.9999945759773254f, 1.0f, 0.6700000166893005f);
-    style.Colors[ImGuiCol_ResizeGripActive] = ImVec4(0.3372549116611481f, 0.3450980484485626f, 0.4039215743541718f, 1.0f);
-    style.Colors[ImGuiCol_Tab] = ImVec4(0.1215686276555061f, 0.1411764770746231f, 0.1607843190431595f, 1.0f);
-    style.Colors[ImGuiCol_TabHovered] = ImVec4(0.1559063494205475f, 0.1766677051782608f, 0.1974248886108398f, 1.0f);
-    style.Colors[ImGuiCol_TabActive] = ImVec4(0.1727974563837051f, 0.2001329809427261f, 0.2274678349494934f, 1.0f);
-    style.Colors[ImGuiCol_TabUnfocused] = ImVec4(0.1215686276555061f, 0.1411764770746231f, 0.1607843190431595f, 1.0f);
-    style.Colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.153235450387001f, 0.177476242184639f, 0.2017167210578918f, 1.0f);
-    style.Colors[ImGuiCol_PlotLines] = ImVec4(0.6078431606292725f, 0.6078431606292725f, 0.6078431606292725f, 1.0f);
-    style.Colors[ImGuiCol_PlotLinesHovered] = ImVec4(1.0f, 0.4274509847164154f, 0.3490196168422699f, 1.0f);
-    style.Colors[ImGuiCol_PlotHistogram] = ImVec4(0.5814036130905151f, 0.1259923875331879f, 0.8154506683349609f, 1.0f);
-    style.Colors[ImGuiCol_PlotHistogramHovered] = ImVec4(0.6688579916954041f, 0.211847722530365f, 0.9313304424285889f, 1.0f);
-    style.Colors[ImGuiCol_TableHeaderBg] = ImVec4(0.1411764770746231f, 0.1607843190431595f, 0.1803921610116959f, 1.0f);
-    style.Colors[ImGuiCol_TableBorderStrong] = ImVec4(0.3093271851539612f, 0.3093271851539612f, 0.3490196168422699f, 0.4980392158031464f);
-    style.Colors[ImGuiCol_TableBorderLight] = ImVec4(0.2276816666126251f, 0.2276816666126251f, 0.2470588237047195f, 0.4980392158031464f);
-    style.Colors[ImGuiCol_TableRowBg] = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
-    style.Colors[ImGuiCol_TableRowBgAlt] = ImVec4(1.0f, 1.0f, 1.0f, 0.05999999865889549f);
-    style.Colors[ImGuiCol_TextSelectedBg] = ImVec4(0.2588235437870026f, 0.9764705896377563f, 0.9117898344993591f, 0.3499999940395355f);
-    style.Colors[ImGuiCol_DragDropTarget] = ImVec4(0.5249696969985962f, 0.3654515743255615f, 0.6652360558509827f, 0.8999999761581421f);
-    style.Colors[ImGuiCol_NavHighlight] = ImVec4(0.5275201797485352f, 0.3633987307548523f, 0.6666666865348816f, 0.8352941274642944f);
-    style.Colors[ImGuiCol_NavWindowingHighlight] = ImVec4(1.0f, 1.0f, 1.0f, 0.699999988079071f);
-    style.Colors[ImGuiCol_NavWindowingDimBg] = ImVec4(0.800000011920929f, 0.800000011920929f, 0.800000011920929f, 0.2000000029802322f);
-    style.Colors[ImGuiCol_ModalWindowDimBg] = ImVec4(7.167382136685774e-07f, 7.775358312755998e-07f, 9.999999974752427e-07f, 0.3499999940395355f);
+    ImVec4* colors = style.Colors;
+    colors[ImGuiCol_Text]                       = ImVec4(0.84f, 0.84f, 0.84f, 1.00f);
+    colors[ImGuiCol_TextDisabled]               = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
+    colors[ImGuiCol_WindowBg]                   = ImVec4(0.18f, 0.18f, 0.18f, 1.00f);
+    colors[ImGuiCol_ChildBg]                    = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+    colors[ImGuiCol_PopupBg]                    = ImVec4(0.14f, 0.14f, 0.14f, 1.00f);
+    colors[ImGuiCol_Border]                     = ImVec4(0.33f, 0.33f, 0.33f, 0.45f);
+    colors[ImGuiCol_BorderShadow]               = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+    colors[ImGuiCol_FrameBg]                    = ImVec4(0.20f, 0.20f, 0.20f, 1.00f);
+    colors[ImGuiCol_FrameBgHovered]             = ImVec4(0.22f, 0.22f, 0.22f, 1.00f);
+    colors[ImGuiCol_FrameBgActive]              = ImVec4(0.25f, 0.25f, 0.25f, 1.00f);
+    colors[ImGuiCol_TitleBg]                    = ImVec4(0.16f, 0.16f, 0.16f, 1.00f);
+    colors[ImGuiCol_TitleBgActive]              = ImVec4(0.16f, 0.16f, 0.16f, 1.00f);
+    colors[ImGuiCol_TitleBgCollapsed]           = ImVec4(0.16f, 0.16f, 0.16f, 1.00f);
+    colors[ImGuiCol_MenuBarBg]                  = ImVec4(0.16f, 0.16f, 0.16f, 1.00f);
+    colors[ImGuiCol_ScrollbarBg]                = ImVec4(0.12f, 0.12f, 0.13f, 0.53f);
+    colors[ImGuiCol_ScrollbarGrab]              = ImVec4(0.31f, 0.31f, 0.31f, 1.00f);
+    colors[ImGuiCol_ScrollbarGrabHovered]       = ImVec4(0.41f, 0.41f, 0.41f, 1.00f);
+    colors[ImGuiCol_ScrollbarGrabActive]        = ImVec4(0.51f, 0.51f, 0.51f, 1.00f);
+    colors[ImGuiCol_CheckMark]                  = ImVec4(0.52f, 0.36f, 0.67f, 1.00f);
+    colors[ImGuiCol_SliderGrab]                 = ImVec4(0.52f, 0.36f, 0.67f, 1.00f);
+    colors[ImGuiCol_SliderGrabActive]           = ImVec4(0.58f, 0.29f, 0.85f, 1.00f);
+    colors[ImGuiCol_Button]                     = ImVec4(0.31f, 0.31f, 0.31f, 0.55f);
+    colors[ImGuiCol_ButtonHovered]              = ImVec4(0.33f, 0.33f, 0.33f, 0.65f);
+    colors[ImGuiCol_ButtonActive]               = ImVec4(0.40f, 0.40f, 0.40f, 1.00f);
+    colors[ImGuiCol_Header]                     = ImVec4(0.18f, 0.18f, 0.18f, 1.00f);
+    colors[ImGuiCol_HeaderHovered]              = ImVec4(0.20f, 0.20f, 0.20f, 1.00f);
+    colors[ImGuiCol_HeaderActive]               = ImVec4(0.24f, 0.24f, 0.24f, 1.00f);
+    colors[ImGuiCol_Separator]                  = ImVec4(0.50f, 0.50f, 0.50f, 0.50f);
+    colors[ImGuiCol_SeparatorHovered]           = ImVec4(0.33f, 0.33f, 0.33f, 0.78f);
+    colors[ImGuiCol_SeparatorActive]            = ImVec4(0.40f, 0.40f, 0.40f, 1.00f);
+    colors[ImGuiCol_ResizeGrip]                 = ImVec4(0.44f, 0.44f, 0.44f, 0.09f);
+    colors[ImGuiCol_ResizeGripHovered]          = ImVec4(1.00f, 1.00f, 1.00f, 0.67f);
+    colors[ImGuiCol_ResizeGripActive]           = ImVec4(0.40f, 0.40f, 0.40f, 1.00f);
+    colors[ImGuiCol_TabHovered]                 = ImVec4(0.20f, 0.20f, 0.20f, 1.00f);
+    colors[ImGuiCol_Tab]                        = ImVec4(0.16f, 0.16f, 0.16f, 1.00f);
+    colors[ImGuiCol_TabSelected]                = ImVec4(0.23f, 0.23f, 0.23f, 1.00f);
+    colors[ImGuiCol_TabSelectedOverline]        = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+    colors[ImGuiCol_TabDimmed]                  = ImVec4(0.16f, 0.16f, 0.16f, 1.00f);
+    colors[ImGuiCol_TabDimmedSelected]          = ImVec4(0.20f, 0.20f, 0.20f, 1.00f);
+    colors[ImGuiCol_TabDimmedSelectedOverline]  = ImVec4(0.50f, 0.50f, 0.50f, 0.00f);
+    colors[ImGuiCol_DockingPreview]             = ImVec4(0.26f, 0.59f, 0.98f, 0.70f);
+    colors[ImGuiCol_DockingEmptyBg]             = ImVec4(0.20f, 0.20f, 0.20f, 1.00f);
+    colors[ImGuiCol_PlotLines]                  = ImVec4(0.61f, 0.61f, 0.61f, 1.00f);
+    colors[ImGuiCol_PlotLinesHovered]           = ImVec4(1.00f, 0.43f, 0.35f, 1.00f);
+    colors[ImGuiCol_PlotHistogram]              = ImVec4(0.58f, 0.13f, 0.82f, 1.00f);
+    colors[ImGuiCol_PlotHistogramHovered]       = ImVec4(0.67f, 0.21f, 0.93f, 1.00f);
+    colors[ImGuiCol_TableHeaderBg]              = ImVec4(0.14f, 0.16f, 0.18f, 1.00f);
+    colors[ImGuiCol_TableBorderStrong]          = ImVec4(0.31f, 0.31f, 0.35f, 0.50f);
+    colors[ImGuiCol_TableBorderLight]           = ImVec4(0.23f, 0.23f, 0.25f, 0.50f);
+    colors[ImGuiCol_TableRowBg]                 = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+    colors[ImGuiCol_TableRowBgAlt]              = ImVec4(1.00f, 1.00f, 1.00f, 0.06f);
+    colors[ImGuiCol_TextLink]                   = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+    colors[ImGuiCol_TextSelectedBg]             = ImVec4(0.26f, 0.98f, 0.91f, 0.35f);
+    colors[ImGuiCol_DragDropTarget]             = ImVec4(0.52f, 0.37f, 0.67f, 0.90f);
+    colors[ImGuiCol_NavCursor]                  = ImVec4(0.67f, 0.67f, 0.67f, 0.84f);
+    colors[ImGuiCol_NavWindowingHighlight]      = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
+    colors[ImGuiCol_NavWindowingDimBg]          = ImVec4(0.80f, 0.80f, 0.80f, 0.20f);
+    colors[ImGuiCol_ModalWindowDimBg]           = ImVec4(0.00f, 0.00f, 0.00f, 0.35f);
 }
 
 #include "fonts/tahoma_font.h"
@@ -873,12 +953,28 @@ void Application::loadConfig() {
     m_editor->loadConfig(config);
 }
 
+void Application::clearTempDir() {
+    spdlog::info("Clearing temporary directory...");
+
+    const auto tempPath = getTempPath();
+    if (!std::filesystem::exists(tempPath)) {
+        spdlog::info("Temp path does not exist, creating: {}", tempPath.string());
+        std::filesystem::create_directories(tempPath);
+
+        return;
+    }
+    
+    for (const auto& entry : std::filesystem::directory_iterator(tempPath)) {
+        std::filesystem::remove_all(entry.path());
+    }
+}
+
 void Application::executeAction(u32 action) {
     spdlog::info("Executing Action: {}", ApplicationAction::Names.at(action));
 
     switch (action) {
     case ApplicationAction::OpenProject: {
-        const auto projectPath = openProject();
+        const auto projectPath = openDirectory();
         if (!projectPath.empty()) {
             addRecentProject(projectPath);
             g_projectManager->openProject(projectPath);
@@ -1013,6 +1109,11 @@ void Application::addRecentFile(const std::string& path) {
         m_recentFiles.pop_back();
     }
 
+    const auto existing = std::ranges::find(m_recentFiles, path);
+    if (existing != m_recentFiles.end()) {
+        m_recentFiles.erase(existing);
+    }
+
     m_recentFiles.push_front(path);
 
     saveConfig();
@@ -1021,6 +1122,11 @@ void Application::addRecentFile(const std::string& path) {
 void Application::addRecentProject(const std::string& path) {
     if (m_recentProjects.size() >= 10) {
         m_recentProjects.pop_back();
+    }
+
+    const auto existing = std::ranges::find(m_recentProjects, path);
+    if (existing != m_recentProjects.end()) {
+        m_recentProjects.erase(existing);
     }
 
     m_recentProjects.push_front(path);
@@ -1057,6 +1163,10 @@ std::filesystem::path Application::getConfigPath() {
 #endif
 }
 
+std::filesystem::path Application::getTempPath() {
+    return std::filesystem::temp_directory_path() / "nitroefx";
+}
+
 std::string Application::openFile() {
     const char* filters[] = { "*.spa" };
     const char* result = tinyfd_openFileDialog(
@@ -1084,7 +1194,7 @@ std::string Application::saveFile(const std::string& default_path) {
     return result ? result : "";
 }
 
-std::string Application::openProject() {
+std::string Application::openDirectory(const char* title) {
 #ifdef _WIN32
 #ifdef _DEBUG
 #define HRESULT_CHECK(hr) if (FAILED(hr)) { spdlog::error("HRESULT failed @ {}:{}", __FILE__, __LINE__); return ""; }
@@ -1106,7 +1216,7 @@ std::string Application::openProject() {
         return "";
     }
 
-    HRESULT_CHECK(dlg->SetTitle(L"Open Project"))
+    HRESULT_CHECK(dlg->SetTitle(title ? tinyfd_utf8to16(title) : L"Open Project"))
     HRESULT_CHECK(dlg->SetOptions(FOS_PICKFOLDERS | FOS_PATHMUSTEXIST))
     if (dlg->Show(nullptr) != S_OK) {
         spdlog::info("User cancelled dialog");
@@ -1123,7 +1233,7 @@ std::string Application::openProject() {
 
     return tinyfd_utf16to8(path);
 #else
-    const auto folder = tinyfd_selectFolderDialog("Open Project", nullptr);
+    const auto folder = tinyfd_selectFolderDialog(title ? title : "Open Project", nullptr);
     return folder ? folder : "";
 #endif
 }
