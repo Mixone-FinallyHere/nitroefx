@@ -3,9 +3,11 @@
 #include "editor_instance.h"
 
 #include <SDL3/SDL_events.h>
+#include <algorithm>
 #include <filesystem>
 #include <memory>
 #include <span>
+#include <ranges>
 #include <vector>
 
 
