@@ -14,15 +14,21 @@ struct CameraParams {
     glm::vec3 up;
 };
 
+enum class CameraProjection {
+    Perspective,
+    Orthographic
+};
+
 // Heavily inspired by https://github.com/StudioCherno/Hazel/blob/2024.1/Hazel/src/Hazel/Editor/EditorCamera.h
 class Camera {
 public:
-    Camera(f32 fov, const glm::vec2& viewport, f32 near, f32 far);
+    Camera(f32 fov, const glm::vec2& viewport, f32 near, f32 far, CameraProjection projection = CameraProjection::Perspective);
 
     void reset();
     void update();
     void handleEvent(const SDL_Event& event);
 
+    void setProjection(CameraProjection projection);
     void setViewport(f32 width, f32 height);
     const glm::vec2& getViewport() const { return m_viewport; }
 
@@ -51,6 +57,7 @@ public:
 
 private:
     void updateView();
+    void updateProjection();
 
     glm::vec3 computePosition() const;
     glm::quat getOrientation() const;
@@ -88,7 +95,10 @@ private:
     f32 m_pitchDelta = 0.0f;
     f32 m_yawDelta = 0.0f;
 
+    f32 m_orthoScale = 10.0f;
+
     glm::vec2 m_viewport;
+    CameraProjection m_projection = CameraProjection::Perspective;
 
     bool m_viewportHovered;
     bool m_active = false;

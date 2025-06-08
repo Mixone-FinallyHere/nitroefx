@@ -8,10 +8,9 @@
 #include <imgui.h>
 
 
-Camera::Camera(f32 fov, const glm::vec2& viewport, f32 near, f32 far)
-    : m_fov(fov), m_aspect(viewport.x / viewport.y), m_near(near), m_far(far), m_viewport(viewport) {
-    m_proj = glm::perspective(fov, m_aspect, near, far);
-    
+Camera::Camera(f32 fov, const glm::vec2& viewport, f32 near, f32 far, CameraProjection projection)
+    : m_fov(fov), m_aspect(viewport.x / viewport.y), m_near(near), m_far(far), m_viewport(viewport), m_projection(projection) {
+    updateProjection();
     reset();
     m_position = computePosition();
     const auto orientation = getOrientation();
@@ -28,6 +27,8 @@ void Camera::reset() {
 }
 
 void Camera::update() {
+    updateProjection();
+
     const ImVec2 pos = ImGui::GetMousePos();
     const glm::vec2 mousePos = { pos.x, pos.y };
     const glm::vec2 delta = (mousePos - m_lastMousePos) * 0.002f;
@@ -41,7 +42,7 @@ void Camera::update() {
         if (ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
             rotateCamera(delta);
         } else if (ImGui::IsMouseDown(ImGuiMouseButton_Right)) {
-            zoomCamera((delta.x + delta.y) * 0.1f);
+            zoomCamera((delta.x + delta.y) * 0.25f);
         } else if (ImGui::IsMouseDown(ImGuiMouseButton_Middle)) {
             panCamera(delta);
         }
@@ -67,13 +68,23 @@ void Camera::handleEvent(const SDL_Event& event) {
     }
 }
 
+void Camera::setProjection(CameraProjection projection) {
+    if (m_projection == projection) {
+        return;
+    }
+
+    m_projection = projection;
+    m_projDirty = true;
+}
+
 void Camera::setViewport(f32 width, f32 height) {
     if ((u32)m_viewport.x == (u32)width && (u32)m_viewport.y == (u32)height) {
         return;
     }
 
-    m_proj = glm::perspective(m_fov, width / height, m_near, m_far);
     m_viewport = { width, height };
+    m_aspect = width / height;
+    m_projDirty = true;
 }
 
 const glm::mat4& Camera::getView() const {
@@ -100,6 +111,26 @@ void Camera::updateView() {
     m_yawDelta *= 0.6f;
     m_pitchDelta *= 0.6f;
     m_positionDelta *= 0.8f;
+}
+
+void Camera::updateProjection() {
+    if (!m_projDirty) {
+        return;
+    }
+
+    if (m_projection == CameraProjection::Perspective) {
+        m_proj = glm::perspective(m_fov, m_aspect, m_near, m_far);
+    } else {
+        const f32 halfWidth = m_orthoScale * m_aspect;
+        const f32 halfHeight = m_orthoScale;
+        m_proj = glm::ortho(
+            -halfWidth, halfWidth,
+            -halfHeight, halfHeight,
+            m_near, m_far
+        );
+    }
+
+    m_projDirty = false;
 }
 
 glm::vec3 Camera::computePosition() const {
@@ -135,6 +166,12 @@ void Camera::panCamera(const glm::vec2& delta) {
 }
 
 void Camera::zoomCamera(f32 delta) {
+    if (m_projection == CameraProjection::Orthographic) {
+        m_orthoScale = glm::max(m_orthoScale - delta, 0.1f);
+        m_projDirty = true;
+        return;
+    }
+
     const f32 speed = zoomSpeed();
     m_distance -= delta * speed;
     const auto forward = getForward();
@@ -154,6 +191,10 @@ glm::vec2 Camera::panSpeed() const {
 }
 
 f32 Camera::zoomSpeed() const {
+    if (m_projection == CameraProjection::Orthographic) {
+        return m_orthoScale * 0.25f;
+    }
+
     const f32 dist = glm::max(m_distance * 0.2f, 0.0f);
     return glm::min(dist * dist, 50.0f);
 }

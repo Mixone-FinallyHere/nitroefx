@@ -18,6 +18,12 @@ EditorInstance::EditorInstance(const std::filesystem::path& path, bool isTemp)
     m_uniqueID = SPLRandom::nextU64();
     m_updateProj = true;
     notifyResourceChanged(0);
+
+    m_camera.setProjection(
+        g_application->getEditor()->getSettings().useOrthographicCamera
+            ? CameraProjection::Orthographic
+            : CameraProjection::Perspective
+    );
 }
 
 std::pair<bool, bool> EditorInstance::render() {

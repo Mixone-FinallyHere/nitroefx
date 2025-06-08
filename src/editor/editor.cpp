@@ -181,6 +181,14 @@ void Editor::renderMenu(std::string_view name) {
         bool saveConfig = false;
         saveConfig |= ImGui::MenuItemIcon(ICON_FA_BRUSH, "Display Active Emitters", nullptr, & m_settings.displayActiveEmitters);
         saveConfig |= ImGui::MenuItemIcon(ICON_FA_BRUSH, "Display Edited Emitter", nullptr, &m_settings.displayEditedEmitter);
+        if (ImGui::MenuItemIcon(ICON_FA_EYE, "Use Ortho Camera", nullptr, &m_settings.useOrthographicCamera)) {
+            saveConfig = true;
+            for (const auto& instance : g_projectManager->getOpenEditors()) {
+                instance->getCamera().setProjection(
+                    m_settings.useOrthographicCamera ? CameraProjection::Orthographic : CameraProjection::Perspective
+                );
+            }
+        }
 
         if (saveConfig) {
             g_application->saveConfig();
@@ -304,8 +312,9 @@ void Editor::loadConfig(const nlohmann::json& config) {
     };
 
     const auto& settings = config["settings"];
-    m_settings.displayActiveEmitters = config.value<bool>("displayActiveEmitters", m_settingsDefault.displayActiveEmitters);
-    m_settings.displayEditedEmitter = config.value<bool>("displayEditedEmitter", m_settingsDefault.displayEditedEmitter);
+    m_settings.displayActiveEmitters = settings.value<bool>("displayActiveEmitters", m_settingsDefault.displayActiveEmitters);
+    m_settings.displayEditedEmitter = settings.value<bool>("displayEditedEmitter", m_settingsDefault.displayEditedEmitter);
+    m_settings.useOrthographicCamera = settings.value<bool>("useOrthographicCamera", m_settingsDefault.useOrthographicCamera);
     m_settings.activeEmitterColor = loadVec4(settings, "activeEmitterColor", m_settingsDefault.activeEmitterColor);
     m_settings.editedEmitterColor = loadVec4(settings, "editedEmitterColor", m_settingsDefault.editedEmitterColor);
     m_settings.collisionPlaneBounceColor = loadVec4(settings, "collisionPlaneBounceColor", m_settingsDefault.collisionPlaneBounceColor);
@@ -321,6 +330,7 @@ void Editor::saveConfig(nlohmann::json& config) const {
     config["settings"] = nlohmann::json::object({
         { "displayActiveEmitters", m_settings.displayActiveEmitters },
         { "displayEditedEmitter", m_settings.displayEditedEmitter },
+        { "useOrthographicCamera", m_settings.useOrthographicCamera },
         { "activeEmitterColor", saveVec4(m_settings.activeEmitterColor) },
         { "editedEmitterColor", saveVec4(m_settings.editedEmitterColor) },
         { "collisionPlaneBounceColor", saveVec4(m_settings.collisionPlaneBounceColor) },
