@@ -86,6 +86,8 @@ void Editor::render() {
         ImGui::EndTabBar();
     }
 
+    g_projectManager->clearForceActivate();
+
     for (const auto& instance : toClose) {
         g_projectManager->closeEditor(instance);
     }

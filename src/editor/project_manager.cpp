@@ -52,13 +52,11 @@ void ProjectManager::closeProject(bool force) {
 }
 
 void ProjectManager::openEditor(const std::filesystem::path& path) {
-    const auto existing = std::ranges::find_if(m_openEditors, [&path](const auto& editor) { 
-        return editor->getPath() == path; 
-    });
-
-    if (existing != m_openEditors.end()) {
-        m_activeEditor = *existing;
-        existing->get()->makePermanent();
+    const auto existing = getEditor(path);
+    if (existing) {
+        m_activeEditor = existing;
+        m_forceActivate = true;
+        existing->makePermanent();
         return;
     }
 
@@ -71,6 +69,14 @@ void ProjectManager::openEditor(const std::filesystem::path& path) {
 }
 
 void ProjectManager::openTempEditor(const std::filesystem::path& path) {
+    const auto existing = getEditor(path);
+    if (existing) {
+        m_activeEditor = existing;
+        m_forceActivate = true;
+        existing->makePermanent();
+        return;
+    }
+
     closeTempEditor();
     const auto editor = std::make_shared<EditorInstance>(path, true);
     m_openEditors.push_back(editor);
