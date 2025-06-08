@@ -562,8 +562,9 @@ void Editor::renderTextureManager() {
         auto& archive = editor->getArchive();
         auto& textures = archive.getTextures();
 
+        const auto importPopupId = ImGui::GetID("##ImportTexturePopup");
+
         if (ImGui::IconButton(ICON_FA_FILE_IMPORT, "Import", IM_COL32(93, 171, 231, 255))) {
-        //if (ImGui::BlueButton(ICON_FA_FILE_IMPORT " Import")) {
             const auto path = tinyfd_openFileDialog(
                 "Import Texture", 
                 "", 
@@ -574,7 +575,7 @@ void Editor::renderTextureManager() {
             );
             if (path) {
                 openTempTexture(path);
-                ImGui::OpenPopup("##ImportTexturePopup");
+                ImGui::OpenPopup(importPopupId);
             }
         }
 
@@ -598,7 +599,23 @@ void Editor::renderTextureManager() {
             const bool open = ImGui::PaddedTreeNode(name.c_str(), padding, ImGuiTreeNodeFlags_SpanAvailWidth);
 
             if (ImGui::BeginPopupContextItem(fmt::format("##TexturePopup{}", i).c_str())) {
-                if (ImGui::MenuItemIcon(ICON_FA_FILE_EXPORT, "Export...")) {
+                if (ImGui::MenuItemIcon(ICON_FA_FILE_IMPORT, "Update...", nullptr, false, IM_COL32(93, 171, 231, 255))) {
+                    const auto path = tinyfd_openFileDialog(
+                        "Update Texture",
+                        "",
+                        0,
+                        nullptr,
+                        "Image Files",
+                        0
+                    );
+
+                    if (path) {
+                        openTempTexture(path, i);
+                        ImGui::OpenPopup(importPopupId);
+                    }
+                }
+
+                if (ImGui::MenuItemIcon(ICON_FA_FILE_EXPORT, "Export...", nullptr, false, IM_COL32(255, 221, 93, 255))) {
                     const char* filterPatterns[] = { "*.png", "*.bmp", "*.tga" };
                     const auto path = tinyfd_saveFileDialog(
                         "Export Texture",
@@ -612,6 +629,7 @@ void Editor::renderTextureManager() {
                         archive.exportTexture(i, path);
                     }
                 }
+
                 ImGui::EndPopup();
             }
 
@@ -654,7 +672,7 @@ void Editor::renderTextureManager() {
 
         const auto popupPos = ImGui::GetMainViewport()->GetCenter();
         ImGui::SetNextWindowPos(popupPos, ImGuiCond_Appearing, { 0.5f, 0.5f });
-        if (ImGui::BeginPopup("##ImportTexturePopup")) {
+        if (ImGui::BeginPopupModal("##ImportTexturePopup")) {
             const auto textureSize = ImVec2(m_tempTexture->width, m_tempTexture->height) * m_tempTextureScale;
             const ImVec2 tableSize = { std::max(textureSize.x, 300.0f), 0.0f};
             const auto& style = ImGui::GetStyle();
@@ -2058,10 +2076,15 @@ void Editor::updateMaxParticles() {
     }
 }
 
-void Editor::openTempTexture(std::string_view path) {
+void Editor::openTempTexture(std::string_view path, size_t destIndex) {
     constexpr auto isPowerOf2 = [](s32 value) {
         return (value & (value - 1)) == 0;
     };
+
+    if (destIndex != -1 && destIndex >= g_projectManager->getActiveEditor()->getArchive().getTextures().size()) {
+        spdlog::error("Invalid destination index for temp texture: {}", destIndex);
+        return;
+    }
 
     const auto tempTex = new TempTexture;
     m_tempTexture = tempTex;
@@ -2069,6 +2092,8 @@ void Editor::openTempTexture(std::string_view path) {
     tempTex->path = path;
     tempTex->data = stbi_load(path.data(), &tempTex->width, &tempTex->height, &tempTex->channels, 4);
     if (!tempTex->data) {
+        delete m_tempTexture;
+        m_tempTexture = nullptr;
         return;
     }
 
@@ -2094,6 +2119,8 @@ void Editor::openTempTexture(std::string_view path) {
     if (!isPowerOf2(tempTex->width) || !isPowerOf2(tempTex->height)) {
         tempTex->isValidSize = false;
     }
+
+    tempTex->destIndex = destIndex;
 }
 
 void Editor::discardTempTexture() {
@@ -2117,7 +2144,7 @@ void Editor::importTempTexture() {
     auto& activeEditor = g_projectManager->getActiveEditor();
     auto& archive = activeEditor->getArchive();
     auto& textures = archive.getTextures();
-    auto& texture = textures.emplace_back();
+    auto& texture = m_tempTexture->destIndex != -1 ? textures[m_tempTexture->destIndex] : textures.emplace_back();
     texture.glTexture = std::move(m_tempTexture->texture);
     texture.width = m_tempTexture->width;
     texture.height = m_tempTexture->height;

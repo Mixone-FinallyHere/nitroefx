@@ -82,7 +82,7 @@ private:
 
     void updateMaxParticles();
 
-    void openTempTexture(std::string_view path);
+    void openTempTexture(std::string_view path, size_t destIndex = -1);
     void discardTempTexture();
     void destroyTempTexture();
     void importTempTexture();
@@ -111,6 +111,7 @@ private:
         TextureConversionPreference preference;
         std::unique_ptr<GLTexture> texture;
         bool isValidSize;
+        size_t destIndex = -1;
     };
 
     bool m_pickerOpen = true;
