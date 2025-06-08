@@ -594,7 +594,7 @@ void Editor::renderTextureManager() {
         ImGui::SameLine();
 
         if (ImGui::IconButton(ICON_FA_FILE_EXPORT, "Export All...", IM_COL32(255, 221, 93, 255))) {
-            const auto path = Application::openDirectory(L"Select Destination");
+            const auto path = Application::openDirectory("Select Destination");
             if (!path.empty()) {
                 archive.exportTextures(path, Application::getTempPath());
             }

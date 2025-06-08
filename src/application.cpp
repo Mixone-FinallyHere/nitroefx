@@ -1194,7 +1194,7 @@ std::string Application::saveFile(const std::string& default_path) {
     return result ? result : "";
 }
 
-std::string Application::openDirectory(const wchar_t* title) {
+std::string Application::openDirectory(const char* title) {
 #ifdef _WIN32
 #ifdef _DEBUG
 #define HRESULT_CHECK(hr) if (FAILED(hr)) { spdlog::error("HRESULT failed @ {}:{}", __FILE__, __LINE__); return ""; }
@@ -1216,7 +1216,7 @@ std::string Application::openDirectory(const wchar_t* title) {
         return "";
     }
 
-    HRESULT_CHECK(dlg->SetTitle(title ? title : L"Open Project"))
+    HRESULT_CHECK(dlg->SetTitle(title ? tinyfd_utf8to16(title) : L"Open Project"))
     HRESULT_CHECK(dlg->SetOptions(FOS_PICKFOLDERS | FOS_PATHMUSTEXIST))
     if (dlg->Show(nullptr) != S_OK) {
         spdlog::info("User cancelled dialog");
@@ -1233,7 +1233,7 @@ std::string Application::openDirectory(const wchar_t* title) {
 
     return tinyfd_utf16to8(path);
 #else
-    const auto folder = tinyfd_selectFolderDialog(title ? tinyfd_utf16to8(title) : "Open Project", nullptr);
+    const auto folder = tinyfd_selectFolderDialog(title ? title : "Open Project", nullptr);
     return folder ? folder : "";
 #endif
 }

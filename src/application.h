@@ -29,7 +29,7 @@ public:
 
     static std::string openFile();
     static std::string saveFile(const std::string& default_path = {});
-    static std::string openDirectory(const wchar_t* title = nullptr);
+    static std::string openDirectory(const char* title = nullptr);
 
     static std::filesystem::path getConfigPath();
     static std::filesystem::path getTempPath();
