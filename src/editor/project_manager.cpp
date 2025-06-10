@@ -1,6 +1,7 @@
 #include "project_manager.h"
 
 #include <imgui.h>
+#include <imgui_internal.h>
 #include <imgui_stdlib.h>
 #include "SDL3/SDL_messagebox.h"
 #include <spdlog/spdlog.h>
@@ -142,16 +143,20 @@ void ProjectManager::render() {
         if (m_projectPath.empty()) {
             ImGui::Text("No project open");
         } else {
-            ImGui::Checkbox("Hide non SPL files", &m_hideOtherFiles);
-            ImGui::InputText("Filter", &m_searchString);
+            if (ImGui::CollapsingHeader("Settings")) {
+                ImGui::Checkbox("Hide non .spa files", &m_hideOtherFiles);
+            }
+            
+            ImGui::SetNextItemWidth(-1);
+            ImGui::InputTextWithHint("##Filter", "Search by name...", &m_searchString);
 
-            ImGui::BeginChild("##ProjectManagerFiles");
+            ImGui::BeginChild("##ProjectManagerFiles", {}, ImGuiChildFlags_Border);
 
             for (const auto& entry : std::filesystem::directory_iterator(m_projectPath)) {
                 if (entry.is_directory()) {
                     renderDirectory(entry.path());
                 } else {
-                    if (m_searchString.empty() || entry.path().string().contains(m_searchString)) {
+                    if (m_searchString.empty() || entry.path().filename().string().contains(m_searchString)) {
                         renderFile(entry.path());
                     }
                 }

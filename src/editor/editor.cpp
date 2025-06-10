@@ -668,8 +668,8 @@ void Editor::renderTextureManager() {
             if (open) {
                 ImGui::Text("Format: %s", getTextureFormat(texture.param.format));
 
-                ImGui::InputScalar("S", ImGuiDataType_U8, &texture.param.s);
-                ImGui::InputScalar("T", ImGuiDataType_U8, &texture.param.t);
+                // ImGui::InputScalar("S", ImGuiDataType_U8, &texture.param.s);
+                // ImGui::InputScalar("T", ImGuiDataType_U8, &texture.param.t);
                 
                 if (ImGui::BeginCombo("Repeat", getTextureRepeat(texture.param.repeat))) {
                     for (const auto [val, name] : detail::g_textureRepeatNames) {
