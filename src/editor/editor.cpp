@@ -5,6 +5,7 @@
 #include "help_messages.h"
 #include "fonts/IconsFontAwesome6.h"
 #include "imgui/extensions.h"
+#include "spl/spl_resource.h"
 
 #include <array>
 #include <cinttypes>
@@ -996,18 +997,6 @@ void Editor::renderHeaderEditor(SPLResourceHeader& header) const {
 
     LOCK_EDITOR();
 
-    constexpr auto helpPopup = [](std::string_view text) {
-        ImGui::SameLine();
-        ImGui::TextDisabled("(?)");
-        if (ImGui::BeginItemTooltip())
-        {
-            ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-            ImGui::TextUnformatted(text.data(), text.data() + text.size());
-            ImGui::PopTextWrapPos();
-            ImGui::EndTooltip();
-        }
-    };
-
     auto& flags = header.flags;
     auto& misc = header.misc;
     constexpr f32 frameTime = 1.0f / (f32)SPLArchive::SPL_FRAMES_PER_SECOND;
@@ -1516,6 +1505,11 @@ void Editor::renderAnimationEditor(SPLResource& res) {
             ImGui::CloseCurrentPopup();
         }
 
+        if (NOTIFY(ImGui::MenuItem("Texture", nullptr, false, !res.header.flags.hasTexAnim))) {
+            res.addTexAnim(SPLTexAnim::createDefault());
+            ImGui::CloseCurrentPopup();
+        }
+
         ImGui::EndPopup();
     }
 
@@ -1534,6 +1528,12 @@ void Editor::renderAnimationEditor(SPLResource& res) {
     if (res.alphaAnim) {
         if (renderAlphaAnimEditor(*res.alphaAnim)) {
             res.removeAlphaAnim();
+        }
+    }
+
+    if (res.texAnim) {
+        if (renderTexAnimEditor(*res.texAnim)) {
+            res.removeTexAnim();
         }
     }
 }
@@ -1771,7 +1771,100 @@ bool Editor::renderAlphaAnimEditor(SPLAlphaAnim& res) {
 }
 
 bool Editor::renderTexAnimEditor(SPLTexAnim& res) {
-    return false;
+    LOCK_EDITOR();
+
+    static bool hovered = false;
+
+    if (!ImGui::CollapsingHeader("Texture Animation")) {
+        return false;
+    }
+
+    if (hovered) {
+        ImGui::PushStyleColor(ImGuiCol_Border, s_hoverAccentColor);
+    }
+
+    ImGui::BeginChild("##texAnimEditor", {}, ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY);
+
+    if (hovered) {
+        ImGui::PopStyleColor();
+    }
+
+    NOTIFY(ImGui::SliderFloat("Step", &res.param.step, 0.01f, 1.0f));
+    HELP(texAnimStep);
+
+    NOTIFY(ImGui::Checkbox("Loop", &res.param.loop));
+    HELP(texAnimLoop);
+
+    NOTIFY(ImGui::Checkbox("Randomize Start", &res.param.randomizeInit));
+    HELP(texAnimRandomizeInit);
+
+    ImGui::SeparatorText("Textures");
+
+    const auto& textures = LOCKED_EDITOR()->getArchive().getTextures();
+    const auto popupId = ImGui::GetID("##texAnimTexturePicker");
+    bool buttonContextOpened = false;
+    static size_t selectedTexture = 0;
+
+    for (int i = 0; i < res.param.textureCount; i++) {
+        ImGui::PushID(i);
+        const auto& texture = textures[res.textures[i]];
+        if (ImGui::ImageButton("##tex", texture.glTexture->getHandle(), { 32, 32 })) {
+            ImGui::OpenPopup(popupId);
+            selectedTexture = i;
+        }
+        if (ImGui::BeginPopupContextItem("##texContext")) {
+            buttonContextOpened = true;
+            ImGui::BeginDisabled(res.param.textureCount <= 1);
+            
+            if (NOTIFY(ImGui::MenuItem("Delete"))) {
+                res.removeTexture(i);
+                ImGui::CloseCurrentPopup();
+            }
+
+            ImGui::EndDisabled();
+            ImGui::EndPopup();
+        }
+        ImGui::PopID();
+    }
+
+    if (res.param.textureCount < SPLTexAnim::MAX_TEXTURES) {
+        if (ImGui::Button(ICON_FA_PLUS, { 32, 32 })) {
+            res.addTexture();
+        }
+    }
+
+    if (ImGui::BeginPopup("##texAnimTexturePicker")) {
+        for (int i = 0; i < textures.size(); ++i) {
+            ImGui::PushID(i);
+            const auto& texture = textures[i];
+            if (NOTIFY(ImGui::ImageButton("##tex", (ImTextureID)texture.glTexture->getHandle(), { 32, 32 }))) {
+                res.textures[selectedTexture] = i;
+                ImGui::CloseCurrentPopup();
+            }
+
+            if (i % 4 != 3) {
+                ImGui::SameLine();
+            }
+            ImGui::PopID();
+        }
+        ImGui::EndPopup();
+    }
+
+    ImGui::EndChild();
+
+    hovered = ImGui::IsItemHovered();
+    bool result = false;
+
+    if (!buttonContextOpened && ImGui::BeginPopupContextItem("##texAnimContext")) {
+        if (ImGui::MenuItem("Delete")) {
+            ImGui::CloseCurrentPopup();
+            result = true;
+        }
+
+        ImGui::EndPopup();
+    }
+
+    return result;
 }
 
 void Editor::renderChildrenEditor(SPLResource& res) {
@@ -1822,17 +1915,6 @@ void Editor::renderChildrenEditor(SPLResource& res) {
 
     auto& child = res.childResource.value();
     constexpr f32 frameTime = 1.0f / (f32)SPLArchive::SPL_FRAMES_PER_SECOND;
-    constexpr auto helpPopup = [](std::string_view text) {
-        ImGui::SameLine();
-        ImGui::TextDisabled("(?)");
-        if (ImGui::BeginItemTooltip())
-        {
-            ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-            ImGui::TextUnformatted(text.data());
-            ImGui::PopTextWrapPos();
-            ImGui::EndTooltip();
-        }
-    };
 
     bool open = ImGui::TreeNodeEx("##parentSettings", ImGuiTreeNodeFlags_SpanAvailWidth);
     ImGui::SameLine();
@@ -1993,6 +2075,18 @@ void Editor::renderChildrenEditor(SPLResource& res) {
         }
 
         ImGui::TreePop();
+    }
+}
+
+void Editor::helpPopup(std::string_view text) const {
+    ImGui::SameLine();
+    ImGui::TextDisabled("(?)");
+
+    if (ImGui::BeginItemTooltip()) {
+        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+        ImGui::TextUnformatted(text.data(), text.data() + text.size());
+        ImGui::PopTextWrapPos();
+        ImGui::EndTooltip();
     }
 }
 

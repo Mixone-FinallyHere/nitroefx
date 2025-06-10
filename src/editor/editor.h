@@ -78,6 +78,8 @@ private:
     bool renderTexAnimEditor(SPLTexAnim& res);
     void renderChildrenEditor(SPLResource& res);
 
+    void helpPopup(std::string_view text) const;
+
     void renderDebugShapes(const std::shared_ptr<EditorInstance>& editor, std::vector<Renderer*>& renderers);
 
     void updateMaxParticles();

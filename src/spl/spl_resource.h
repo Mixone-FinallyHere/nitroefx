@@ -497,7 +497,9 @@ struct SPLTexAnimNative {
 };
 
 struct SPLTexAnim final : SPLAnim {
-    u8 textures[8];
+    constexpr static size_t MAX_TEXTURES = 8;
+
+    u8 textures[MAX_TEXTURES];
     struct {
         u8 textureCount;
         f32 step; // Fraction of the particles lifetime for which each frame lasts
@@ -513,7 +515,27 @@ struct SPLTexAnim final : SPLAnim {
         param.loop = native.param.loop;
     }
 
+    void addTexture(u8 texture = 0) {
+        if (param.textureCount < MAX_TEXTURES) {
+            textures[param.textureCount++] = texture;
+        }
+    }
+
+    void removeTexture(size_t index) {
+        if (index < param.textureCount) {
+            param.textureCount--;
+            std::memmove(textures + index, textures + index + 1, (param.textureCount - index) * sizeof(u8));
+        }
+    }
+
     void apply(SPLParticle& ptcl, const SPLResource& resource, f32 lifeRate) const override;
+
+    static SPLTexAnim createDefault() {
+        return SPLTexAnim(SPLTexAnimNative{
+            .textures = { 0, 0, 0, 0, 0, 0, 0, 0 },
+            .param = { .frameCount = 1, .step = 255, .randomizeInit = false, .loop = false }
+        });
+    }
 };
 
 struct SPLChildResourceNative {
