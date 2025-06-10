@@ -50,6 +50,7 @@ Application::Application() {
     g_application = this;
 
     m_sortedActions = {
+        ApplicationAction::NewFile,
         ApplicationAction::OpenProject,
         ApplicationAction::OpenFile,
         ApplicationAction::Save,
@@ -288,7 +289,7 @@ void Application::handleKeydown(const SDL_Event& event) {
             if (event.key.mod & SDL_KMOD_SHIFT) {
                 spdlog::warn("New Project not implemented");
             } else {
-                spdlog::warn("New SPL File not implemented");
+                g_projectManager->openEditor();
             }
         }
         break;
@@ -421,7 +422,7 @@ void Application::renderMenuBar() {
                 }
 
                 if (ImGui::MenuItemIcon(ICON_FA_FILE_CIRCLE_PLUS, "SPL File", "Ctrl+N")) {
-                    spdlog::warn("New SPL File not implemented");
+                    g_projectManager->openEditor();
                 }
 
                 ImGui::EndMenu();
@@ -973,6 +974,9 @@ void Application::executeAction(u32 action) {
     spdlog::info("Executing Action: {}", ApplicationAction::Names.at(action));
 
     switch (action) {
+    case ApplicationAction::NewFile:
+        g_projectManager->openEditor();
+        break;
     case ApplicationAction::OpenProject: {
         const auto projectPath = openDirectory();
         if (!projectPath.empty()) {

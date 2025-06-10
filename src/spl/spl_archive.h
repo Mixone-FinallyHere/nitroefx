@@ -12,12 +12,15 @@
 enum {
     SPA_MAGIC = 0x53504120, // " ASP"
     SPT_MAGIC = 0x53505420, // " TPS"
+
+    SPA_VERSION = 0x315F3231, // "1_21"
 };
 
 
 class SPLArchive {
 public:
     explicit SPLArchive(const std::filesystem::path& filename);
+    SPLArchive();
 
     const SPLResource& getResource(size_t index) const { return m_resources[index]; }
     SPLResource& getResource(size_t index) { return m_resources[index]; }

@@ -3,6 +3,7 @@
 ApplicationSettings ApplicationSettings::getDefault() {
     return {
         .keybinds = {
+            { ApplicationAction::NewFile, { KeybindType::Key, { SDLK_N, SDL_KMOD_CTRL } } },
             { ApplicationAction::OpenProject, { KeybindType::Key, { SDLK_O, SDL_KMOD_CTRL } } },
             { ApplicationAction::OpenFile, { KeybindType::Key, { SDLK_O, SDL_KMOD_CTRL | SDL_KMOD_SHIFT } } },
             { ApplicationAction::Save, { KeybindType::Key, { SDLK_S, SDL_KMOD_CTRL } } },

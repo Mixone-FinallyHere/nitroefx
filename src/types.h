@@ -68,7 +68,7 @@ union GXRgba {
 
     GXRgba() = default;
     GXRgba(u16 color) : color(color) {}
-    GXRgba(u8 r, u8 g, u8 b, u8 a) : r(r), g(g), b(b), a(a) {}
+    constexpr GXRgba(u8 r, u8 g, u8 b, u8 a) : r(r), g(g), b(b), a(a) {}
     GXRgba(const glm::vec4& vec) {
         r = vec.r * 31.0f;
         g = vec.g * 31.0f;
@@ -108,7 +108,7 @@ union GXRgba {
         return a ? 0xFF : 0;
     }
 
-    static auto fromRGBA(u8 r, u8 g, u8 b, u8 a) {
+    static constexpr auto fromRGBA(u8 r, u8 g, u8 b, u8 a) {
         return GXRgba(r >> 3, g >> 3, b >> 3, a > 0x80);
     }
 };

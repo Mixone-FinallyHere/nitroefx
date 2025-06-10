@@ -68,6 +68,14 @@ void ProjectManager::openEditor(const std::filesystem::path& path) {
     m_openEditors.push_back(editor);
 }
 
+void ProjectManager::openEditor() {
+    const auto editor = std::make_shared<EditorInstance>();
+    m_openEditors.push_back(editor);
+
+    m_activeEditor = editor;
+    m_forceActivate = true;
+}
+
 void ProjectManager::openTempEditor(const std::filesystem::path& path) {
     const auto existing = getEditor(path);
     if (existing) {

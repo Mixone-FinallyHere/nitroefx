@@ -15,6 +15,7 @@
 class EditorInstance {
 public:
     explicit EditorInstance(const std::filesystem::path& path, bool isTemp = false);
+    EditorInstance(bool isTemp = false);
 
     std::pair<bool, bool> render();
     void renderParticles(const std::vector<Renderer*>& renderers);
@@ -57,6 +58,8 @@ public:
 
     EditorActionType undo();
     EditorActionType redo();
+
+    std::string getName() const;
 
     const std::filesystem::path& getPath() const {
         return m_path;

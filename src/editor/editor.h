@@ -40,6 +40,8 @@ public:
 
     void handleEvent(const SDL_Event& event);
 
+    void selectResource(u64 editorID, size_t resourceIndex);
+
     void save();
     void saveAs(const std::filesystem::path& path);
 

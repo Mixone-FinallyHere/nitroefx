@@ -437,6 +437,10 @@ void Editor::handleEvent(const SDL_Event& event) {
     editor->handleEvent(event);
 }
 
+void Editor::selectResource(u64 editorID, size_t resourceIndex) {
+    m_selectedResources[editorID] = resourceIndex;
+}
+
 void Editor::renderResourcePicker() {
     if (ImGui::Begin("Resource Picker##Editor", &m_pickerOpen)) {
 
@@ -1815,7 +1819,7 @@ bool Editor::renderTexAnimEditor(SPLTexAnim& res) {
         if (ImGui::BeginPopupContextItem("##texContext")) {
             buttonContextOpened = true;
             ImGui::BeginDisabled(res.param.textureCount <= 1);
-            
+
             if (NOTIFY(ImGui::MenuItem("Delete"))) {
                 res.removeTexture(i);
                 ImGui::CloseCurrentPopup();

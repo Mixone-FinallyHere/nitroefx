@@ -22,11 +22,73 @@ std::ostream& operator<<(std::ostream& stream, const T& v) {
     return stream.write(reinterpret_cast<const char*>(&v), sizeof(T));
 }
 
+namespace {
+
+#define ROW(i0, i1, i2, i3, i4, i5, i6, i7) (((i3 << 6) | (i2 << 4) | (i1 << 2) | (i0))), (((i7 << 6) | (i6 << 4) | (i5 << 2) | (i4)))
+
+constexpr std::array<u8, 8 * 8 / 4> DEFAULT_TEXTURE = {
+    ROW(0, 0, 1, 1, 0, 0, 1, 1),
+    ROW(0, 0, 1, 1, 0, 0, 1, 1),
+    ROW(1, 1, 0, 0, 1, 1, 0, 0),
+    ROW(1, 1, 0, 0, 1, 1, 0, 0),
+    ROW(0, 0, 1, 1, 0, 0, 1, 1),
+    ROW(0, 0, 1, 1, 0, 0, 1, 1),
+    ROW(1, 1, 0, 0, 1, 1, 0, 0),
+    ROW(1, 1, 0, 0, 1, 1, 0, 0)
+};
+
+#undef ROW
+
+constexpr std::array<GXRgba, 4> DEFAULT_PALETTE = {
+    GXRgba::fromRGBA(255, 0, 255, 255), // Pink
+    GXRgba::fromRGBA(0, 0, 0, 255), // Black
+    GXRgba::fromRGBA(0, 0, 0, 0),
+    GXRgba::fromRGBA(0, 0, 0, 0)
+};
+
+}
+
 
 SPLArchive::SPLArchive(const std::filesystem::path& filename) : m_header() {
     load(filename);
 }
 
+SPLArchive::SPLArchive() {
+    m_header = {
+        .magic = SPA_MAGIC,
+        .version = SPA_VERSION,
+        .resCount = 0,
+        .texCount = 1, // At least one texture is required
+        .reserved0 = 0,
+        .resSize = 0,
+        .texSize = 0,
+        .texOffset = 0,
+        .reserved1 = 0
+    };
+
+    // Create a default 8x8 texture
+    SPLTexture defaultTexture;
+    defaultTexture.param = {
+        .format = TextureFormat::Palette4,
+        .s = 0,
+        .t = 0,
+        .repeat = TextureRepeat::None,
+        .flip = TextureFlip::None,
+        .palColor0Transparent = false,
+        .useSharedTexture = false,
+        .sharedTexID = 0,
+    };
+
+    defaultTexture.width = 8;
+    defaultTexture.height = 8;
+
+    defaultTexture.textureData = std::span<const u8>(DEFAULT_TEXTURE.data(), DEFAULT_TEXTURE.size());
+    defaultTexture.paletteData = std::span<const u8>((u8*)DEFAULT_PALETTE.data(), DEFAULT_PALETTE.size() * sizeof(GXRgba));
+
+    defaultTexture.glTexture = std::make_shared<GLTexture>(defaultTexture);
+
+    m_textures.push_back(defaultTexture);
+}
 
 void SPLArchive::load(const std::filesystem::path& filename) {
     std::ifstream file(filename, std::ios::binary | std::ios::in);
