@@ -17,6 +17,8 @@ typedef s16 fx16;
 
 #define FX32_MAX            ((fx32)0x7fffffff)
 #define FX32_MIN            ((fx32)0x80000000)
+#define FX32_EPSILON        ((fx32)0x00000001)
+#define FX32_F32_EPSILON    (FX_FX32_TO_F32(FX32_EPSILON))
 
 #define FX_FX32_TO_F32(x)    ((f32)((x) / (f32)(1 << FX32_SHIFT)))
 #define FX_F32_TO_FX32(x)    ((fx32)(((x) > 0) ? \

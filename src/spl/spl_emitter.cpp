@@ -283,6 +283,8 @@ void SPLEmitter::emit(u32 count) {
         break;
     }
 
+    constexpr auto nonzero = [](f32 x) { return x == 0.0f ? FX32_F32_EPSILON : x; };
+
     for (u32 i = 0; i < count; ++i) {
         const auto ptcl = m_system->allocateParticle();
         if (!ptcl) {
@@ -298,11 +300,11 @@ void SPLEmitter::emit(u32 count) {
         } break;
 
         case SPLEmissionType::SphereSurface: {
-            ptcl->position = glm::sphericalRand(header.radius);
+            ptcl->position = glm::sphericalRand(nonzero(header.radius));
         } break;
 
         case SPLEmissionType::CircleBorder: {
-            ptcl->position = tiltCoordinates({ glm::circularRand(header.radius), 0 });
+            ptcl->position = tiltCoordinates({ glm::circularRand(nonzero(header.radius)), 0 });
         } break;
 
         case SPLEmissionType::CircleBorderUniform: {
@@ -315,29 +317,29 @@ void SPLEmitter::emit(u32 count) {
         } break;
 
         case SPLEmissionType::Sphere: {
-            ptcl->position = glm::ballRand(header.radius);
+            ptcl->position = glm::ballRand(nonzero(header.radius));
         } break;
 
         case SPLEmissionType::Circle: {
-            ptcl->position = tiltCoordinates({ glm::diskRand(header.radius), 0 });
+            ptcl->position = tiltCoordinates({ glm::diskRand(nonzero(header.radius)), 0 });
         } break;
 
         case SPLEmissionType::CylinderSurface: {
             ptcl->position = tiltCoordinates({
-                glm::circularRand(header.radius),
+                glm::circularRand(nonzero(header.radius)),
                 glm::linearRand(-header.length, header.length),
             });
         } break;
 
         case SPLEmissionType::Cylinder: {
             ptcl->position = tiltCoordinates({
-                glm::diskRand(header.radius),
+                glm::diskRand(nonzero(header.radius)),
                 glm::linearRand(-header.length, header.length),
             });
         } break;
 
         case SPLEmissionType::HemisphereSurface: {
-            ptcl->position = glm::sphericalRand(header.radius);
+            ptcl->position = glm::sphericalRand(nonzero(header.radius));
             const auto emitterUp = glm::cross(m_crossAxis1, m_crossAxis2);
             if (glm::dot(ptcl->position, emitterUp) <= 0) {
                 ptcl->position = -ptcl->position;
@@ -345,7 +347,7 @@ void SPLEmitter::emit(u32 count) {
         } break;
 
         case SPLEmissionType::Hemisphere: {
-            ptcl->position = glm::ballRand(header.radius);
+            ptcl->position = glm::ballRand(nonzero(header.radius));
             const auto emitterUp = glm::cross(m_crossAxis1, m_crossAxis2);
             if (glm::dot(ptcl->position, emitterUp) <= 0) {
                 ptcl->position = -ptcl->position;
