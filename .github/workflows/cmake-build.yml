@@ -112,14 +112,14 @@ jobs:
       shell: bash
 
     - name: Package binaries
-        run: |
+      run: |
           mkdir artifacts
           cp build/nitroefx* artifacts/
-        shell: bash
+      shell: bash
 
     - name: Upload binaries as artifacts
-        uses: actions/upload-artifact@v3
-        with:
+      uses: actions/upload-artifact@v3
+      with:
           name: nitroefx-${{ matrix.os }}-${{ matrix.build_type }}
           path: artifacts/
 
