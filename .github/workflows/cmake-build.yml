@@ -18,7 +18,7 @@ jobs:
         build_type: [dist]
     
     env:
-      USERNAME: Fexty12573
+      USERNAME: Mixone-FinallyHere
       VCPKG_EXE: ${{ github.workspace }}/vcpkg/vcpkg
       VCPKG_ROOT: ${{ github.workspace }}/vcpkg
       FEED_URL: https://nuget.pkg.github.com/Fexty12573/index.json
