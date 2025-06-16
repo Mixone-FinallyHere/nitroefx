@@ -1,5 +1,3 @@
-- name: Configure CMake
-  run: cmake --preset linux-x64-${{ matrix.build_type == 'Debug' && 'debug' || matrix.build_type == 'Release' && 'release' || 'dist' }}
 name: Build and Release Binaries
 
 on:
