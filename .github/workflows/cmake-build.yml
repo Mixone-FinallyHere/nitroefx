@@ -28,6 +28,9 @@ jobs:
         with:
           cmake-version: 3.15
 
+      - name: Create build directory
+        run: mkdir -p build
+
       - name: Set up Rust toolchain (Linux only)
         if: runner.os == 'Linux'
         run: |
@@ -52,14 +55,14 @@ jobs:
 
       - name: Configure CMake
         run: |
-          cmake --preset x64-${{ runner.os == 'Linux' && 'linux' || 'windows' }}-${{ matrix.build_type }}
+          cmake --preset ${{ runner.os == 'Linux' && 'linux-x64' || 'windows-x64' }}-${{ matrix.build_type }}
 
       - name: Build project
         run: cmake --build build
 
       - name: Package binaries
         run: |
-          mkdir artifacts
+          mkdir -p artifacts
           cp build/nitroefx* artifacts/
         shell: bash
 
@@ -75,16 +78,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
       - name: Download all artifacts (v4)
         uses: actions/download-artifact@v4
         with:
           path: artifacts/
 
-      - name: Create Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           files: artifacts/**
-          tag_name: ${{ github.ref }}
-          name: Release ${{ github.ref }}
+          tag_name: ${{ github.sha }}
+          name: Release ${{ github.sha }}
           draft: false
           prerelease: false
