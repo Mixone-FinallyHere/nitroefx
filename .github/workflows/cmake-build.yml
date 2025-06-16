@@ -16,7 +16,7 @@ jobs:
         build_type: [dist]
     
     env:
-      USERNAME: Fexty12573
+      USERNAME: Mixone-FinallyHere
       VCPKG_EXE: ${{ github.workspace }}/vcpkg/vcpkg
       VCPKG_ROOT: ${{ github.workspace }}/vcpkg
       FEED_URL: https://nuget.pkg.github.com/Fexty12573/index.json
@@ -110,3 +110,34 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       run: cmake --build build
       shell: bash
+
+    - name: Package binaries
+        run: |
+          mkdir artifacts
+          cp build/nitroefx* artifacts/
+        shell: bash
+
+    - name: Upload binaries as artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: nitroefx-${{ matrix.os }}-${{ matrix.build_type }}
+          path: artifacts/
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: artifacts/**
+          tag_name: ${{ github.ref }}
+          name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
