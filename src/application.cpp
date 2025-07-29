@@ -212,6 +212,23 @@ int Application::run(int argc, char** argv) {
     return 0;
 }
 
+int Application::runCli(argparse::ArgumentParser &cli) {
+    if (!cli.is_subcommand_used("cli")) {
+        spdlog::error("This application is not running in CLI mode");
+        return 1;
+    }
+
+    if (cli.get<bool>("--export")) {
+        const auto format = cli.get<std::string>("--format");
+        const auto output = cli.get<std::string>("--output");
+        const auto indices = cli.get<std::vector<int>>("--index");
+
+        SPLArchive archive(cli.get<std::string>("path"));
+    }
+
+    return 0;
+}
+
 void Application::pollEvents() {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {

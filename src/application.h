@@ -4,6 +4,7 @@
 #include "editor/editor.h"
 #include "editor/project_manager.h"
 
+#include <argparse/argparse.hpp>
 #include <SDL3/SDL_events.h>
 #include <string_view>
 
@@ -16,6 +17,7 @@ public:
     Application();
 
     int run(int argc, char** argv);
+    int runCli(argparse::ArgumentParser& cli);
 
     void saveConfig();
     ImFont* getFont(const std::string& name);
