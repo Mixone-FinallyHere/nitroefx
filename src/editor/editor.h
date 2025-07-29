@@ -89,7 +89,7 @@ private:
 
     void updateMaxParticles();
 
-    void openTempTexture(std::string_view path, size_t destIndex = -1);
+    void openTempTexture(const std::filesystem::path& path, size_t destIndex = -1);
     void discardTempTexture();
     void destroyTempTexture();
     void importTempTexture();

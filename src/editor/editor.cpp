@@ -18,7 +18,9 @@
 #include <imgui_internal.h>
 #include <tinyfiledialogs.h>
 #include <stb_image.h>
+#include <spng.h>
 #include <libimagequant.h>
+
 
 #define LOCKED_EDITOR() activeEditor_locked
 #define LOCK_EDITOR() auto LOCKED_EDITOR() = m_activeEditor.lock()
@@ -2274,7 +2276,7 @@ void Editor::updateMaxParticles() {
     }
 }
 
-void Editor::openTempTexture(std::string_view path, size_t destIndex) {
+void Editor::openTempTexture(const std::filesystem::path& path, size_t destIndex) {
     constexpr auto isPowerOf2 = [](s32 value) {
         return (value & (value - 1)) == 0;
     };
@@ -2284,28 +2286,98 @@ void Editor::openTempTexture(std::string_view path, size_t destIndex) {
         return;
     }
 
+    std::ifstream file(path, std::ios::binary | std::ios::in);
+    if (!file) {
+        spdlog::error("Failed to open file: {}", path.string());
+        return;
+    }
+
+    const std::vector<u8> fileData{std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
+    if (fileData.empty()) {
+        spdlog::error("File is empty: {}", path.string());
+        return;
+    }
+
+    spng_ctx* ctx = spng_ctx_new(0);
+    if (!ctx) {
+        spdlog::error("Failed to create SPNG context");
+        return;
+    }
+
+    spng_set_crc_action(ctx, SPNG_CRC_USE, SPNG_CRC_USE);
+
+    constexpr auto limit = 1024 * 1024 * 64U; // 64 MB
+    spng_set_chunk_limits(ctx, limit, limit);
+
+    int ret;
+    if ((ret = spng_set_png_buffer(ctx, fileData.data(), fileData.size())) != 0) {
+        spdlog::error("Failed to set PNG buffer: {}", spng_strerror(ret));
+        spng_ctx_free(ctx);
+        return;
+    }
+
+    spng_ihdr ihdr;
+    if ((ret = spng_get_ihdr(ctx, &ihdr)) != 0) {
+        spdlog::error("Failed to get PNG header: {}", spng_strerror(ret));
+        spng_ctx_free(ctx);
+        return;
+    }
+
     const auto tempTex = new TempTexture;
     m_tempTexture = tempTex;
 
-    tempTex->path = path;
-    tempTex->data = stbi_load(path.data(), &tempTex->width, &tempTex->height, &tempTex->channels, 4);
+    tempTex->path = path.string();
+    tempTex->data = stbi_load_from_memory(fileData.data(), (int)fileData.size(), &tempTex->width, &tempTex->height, &tempTex->channels, 4);
     if (!tempTex->data) {
         delete m_tempTexture;
         m_tempTexture = nullptr;
+        spng_ctx_free(ctx);
         return;
     }
 
     tempTex->texture = std::make_unique<GLTexture>(tempTex->width, tempTex->height);
-    tempTex->quantized = new u8[tempTex->width * tempTex->height * 4];
+    tempTex->quantized = new u8[(size_t)tempTex->width * tempTex->height * 4];
 
-    tempTex->preference = TextureConversionPreference::ColorDepth;
-    tempTex->suggestedSpec = SPLTexture::suggestSpecification(tempTex->width, tempTex->height, tempTex->channels, tempTex->data, tempTex->preference);
+    // If we load an indexed PNG, we can go a simple path and don't need to quantize it.
+    if (ihdr.color_type == SPNG_COLOR_TYPE_INDEXED && ihdr.bit_depth <= 8) {
+        spng_plte palette;
+        spng_get_plte(ctx, &palette);
 
-    if (tempTex->suggestedSpec.requiresColorCompression || tempTex->suggestedSpec.requiresAlphaCompression) {
-        quantizeTexture(tempTex->data, tempTex->width, tempTex->height, tempTex->suggestedSpec, tempTex->quantized);
-        tempTex->texture->update(tempTex->quantized);
-    } else {
+        TextureFormat format;
+        if (palette.n_entries <= 4) {
+            format = TextureFormat::Palette4;
+        } else if (palette.n_entries <= 16) {
+            format = TextureFormat::Palette16;
+        } else if (palette.n_entries <= 256) {
+            format = TextureFormat::Palette256;
+        } else {
+            spdlog::error("Unsupported indexed PNG bit depth: {}", ihdr.bit_depth);
+            format = TextureFormat::Palette256;
+        }
+
+        std::memcpy(tempTex->quantized, tempTex->data, (size_t)tempTex->width * tempTex->height * 4);
+        tempTex->preference = TextureConversionPreference::ColorDepth;
+        tempTex->suggestedSpec = {
+            .color0Transparent = true,
+            .requiresColorCompression = false,
+            .requiresAlphaCompression = false,
+            .format = format,
+            .uniqueColors = {},
+            .uniqueAlphas = {},
+            .flags = TextureAttributes::None,
+        };
+
         tempTex->texture->update(tempTex->data);
+    } else {
+        tempTex->preference = TextureConversionPreference::ColorDepth;
+        tempTex->suggestedSpec = SPLTexture::suggestSpecification(tempTex->width, tempTex->height, tempTex->channels, tempTex->data, tempTex->preference);
+
+        if (tempTex->suggestedSpec.requiresColorCompression || tempTex->suggestedSpec.requiresAlphaCompression) {
+            quantizeTexture(tempTex->data, tempTex->width, tempTex->height, tempTex->suggestedSpec, tempTex->quantized);
+            tempTex->texture->update(tempTex->quantized);
+        } else {
+            tempTex->texture->update(tempTex->data);
+        }
     }
 
     tempTex->isValidSize = true;
@@ -2319,6 +2391,8 @@ void Editor::openTempTexture(std::string_view path, size_t destIndex) {
     }
 
     tempTex->destIndex = destIndex;
+
+    spng_ctx_free(ctx);
 }
 
 void Editor::discardTempTexture() {
@@ -2328,7 +2402,7 @@ void Editor::discardTempTexture() {
 
 void Editor::destroyTempTexture() {
     stbi_image_free(m_tempTexture->data);
-    delete m_tempTexture->quantized;
+    delete[] m_tempTexture->quantized;
     delete m_tempTexture;
     m_tempTexture = nullptr;
     m_discardTempTexture = false;

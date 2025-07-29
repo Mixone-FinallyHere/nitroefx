@@ -15,6 +15,7 @@
     "glew",
     "implot",
     "nlohmann-json",
-    "argparse"
-  ]
+    "argparse",
+    "libspng"
+]
 }
