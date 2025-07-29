@@ -81,6 +81,10 @@ public:
         return m_camera;
     }
 
+    void updateViewportSize() {
+        m_updateProj = true;
+    }
+
 private:
     std::filesystem::path m_path;
     SPLArchive m_archive;

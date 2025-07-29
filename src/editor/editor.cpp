@@ -321,6 +321,8 @@ void Editor::loadConfig(const nlohmann::json& config) {
     m_settings.collisionPlaneBounceColor = loadVec4(settings, "collisionPlaneBounceColor", m_settingsDefault.collisionPlaneBounceColor);
     m_settings.collisionPlaneKillColor = loadVec4(settings, "collisionPlaneKillColor", m_settingsDefault.collisionPlaneKillColor);
     m_settings.maxParticles = settings.value("maxParticles", m_settingsDefault.maxParticles);
+    m_settings.useFixedDsResolution = settings.value("useFixedDsResolution", m_settingsDefault.useFixedDsResolution);
+    m_settings.fixedDsResolutionScale = settings.value("fixedDsResolutionScale", m_settingsDefault.fixedDsResolutionScale);
 }
 
 void Editor::saveConfig(nlohmann::json& config) const {
@@ -336,7 +338,9 @@ void Editor::saveConfig(nlohmann::json& config) const {
         { "editedEmitterColor", saveVec4(m_settings.editedEmitterColor) },
         { "collisionPlaneBounceColor", saveVec4(m_settings.collisionPlaneBounceColor) },
         { "collisionPlaneKillColor", saveVec4(m_settings.collisionPlaneKillColor) },
-        { "maxParticles", m_settings.maxParticles }
+        { "maxParticles", m_settings.maxParticles },
+        { "useFixedDsResolution", m_settings.useFixedDsResolution },
+        { "fixedDsResolutionScale", m_settings.fixedDsResolutionScale }
     });
 }
 
@@ -954,6 +958,26 @@ void Editor::renderSettings() {
         ImGui::ColorEdit4("Collision Plane Bounce Color", glm::value_ptr(m_settings.collisionPlaneBounceColor));
         ImGui::ColorEdit4("Collision Plane Kill Color", glm::value_ptr(m_settings.collisionPlaneKillColor));
 
+        ImGui::SeparatorText("Rendering");
+        bool changed = false;
+
+        changed |= ImGui::Checkbox("Use DS Resolution", &m_settings.useFixedDsResolution);
+        ImGui::SameLine();
+        ImGui::TextDisabled("(?)");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("If enabled, particles will render at the Nintendo DS' native resolution of "
+                              "256x192 * <scale>");
+        }
+
+        if (m_settings.useFixedDsResolution) {
+            changed |= ImGui::SliderInt("DS Resolution Scale", &m_settings.fixedDsResolutionScale, 1, 8);
+            m_settings.fixedDsResolutionScale = glm::clamp(m_settings.fixedDsResolutionScale, 1, 8);
+        }
+
+        if (changed) {
+            updateRenderSettings(); // Update all open editors
+        }
+
         if (ImGui::Button("Reset to Defaults")) {
             m_settings = m_settingsDefault;
         }
@@ -992,6 +1016,13 @@ void Editor::renderSettings() {
 
     ImGui::PopID();
     ImGui::PopStyleVar();
+}
+
+void Editor::updateRenderSettings() {
+    const auto editors = g_projectManager->getOpenEditors();
+    for (const auto& editor : editors) {
+        editor->updateViewportSize();
+    }
 }
 
 void Editor::renderHeaderEditor(SPLResourceHeader& header) const {

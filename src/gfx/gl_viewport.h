@@ -12,7 +12,7 @@ public:
     void bind();
     void unbind();
 
-    void resize(const glm::vec2& size);
+    void resize(const glm::vec2& size, bool nearestFiltering = false);
 
     glm::vec2 getSize() const {
         return m_size;

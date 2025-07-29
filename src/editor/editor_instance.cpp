@@ -95,10 +95,19 @@ std::pair<bool, bool> EditorInstance::render() {
 }
 
 void EditorInstance::renderParticles(const std::vector<Renderer*>& renderers) {
-    if (m_updateProj || m_size != m_viewport.getSize()) {
-        m_viewport.resize(m_size);
-        m_camera.setViewport(m_size.x, m_size.y);
+    auto renderSize = m_size;
+
+    const auto& settings = g_application->getEditor()->getSettings();
+    if (settings.useFixedDsResolution) {
+        renderSize = glm::vec2(256, 192) * (float)settings.fixedDsResolutionScale;
+    }
+
+    if (m_updateProj || renderSize != m_viewport.getSize()) {
+        m_viewport.resize(renderSize, settings.fixedDsResolutionScale);
+        m_camera.setViewport(renderSize.x, renderSize.y);
         m_updateProj = false;
+
+        // Intentionally not setting m_size here as it represents the actual size of the editor viewport.
     }
 
     m_viewport.bind();
