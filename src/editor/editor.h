@@ -27,6 +27,7 @@ public:
     void render();
     void renderParticles();
     void renderMenu(std::string_view name);
+    void renderToolbar(float itemHeight);
     void renderStats();
     void openPicker();
     void openEditor();

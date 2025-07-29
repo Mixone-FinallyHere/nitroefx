@@ -203,6 +203,20 @@ void Editor::renderMenu(std::string_view name) {
     }
 }
 
+void Editor::renderToolbar(float itemHeight) {
+    constexpr float framePadding = 2.0f;
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { framePadding, framePadding });
+    ImGui::PushStyleColor(ImGuiCol_Header, m_settings.useFixedDsResolution ? IM_COL32(79, 79, 79, 200) : 0);
+    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, IM_COL32(79, 79, 79, 200));
+    ImGui::PushStyleColor(ImGuiCol_HeaderActive, IM_COL32(90, 90, 90, 255));
+
+    const ImVec2 size = { ImGui::CalcTextSize("DS Resolution").x + 2.0f * framePadding, itemHeight };
+    ImGui::Selectable("DS Resolution", &m_settings.useFixedDsResolution, ImGuiSelectableFlags_None, size);
+
+    ImGui::PopStyleColor(3);
+    ImGui::PopStyleVar();
+}
+
 void Editor::renderStats() {
     const auto& editor = g_projectManager->getActiveEditor();
     if (!editor) {

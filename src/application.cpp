@@ -593,18 +593,20 @@ void Application::renderMenuBar() {
 
     const auto viewport = (ImGuiViewportP*)ImGui::GetMainViewport();
     constexpr auto flags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_MenuBar;
-    constexpr float barSize = 24.0f;
-    constexpr ImVec2 size = { barSize, barSize };
+    constexpr float framePaddingY = 4.0f;
+    constexpr float itemHeight = 24.0f;
+    constexpr float barHeight = itemHeight + 2.0f;
+    constexpr ImVec2 size = { itemHeight, itemHeight };
 
     ImGui::PushStyleColor(ImGuiCol_Button, 0x00000000);
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(79, 79, 79, 200));
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(90, 90, 90, 255));
     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, { 0.5f, 0.5f });
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 2.0f, 2.0f });
     ImGui::PushStyleVarX(ImGuiStyleVar_ItemSpacing, 4.0f); // Cut item spacing in half
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 2.0f, framePaddingY });
     
-    if (ImGui::BeginViewportSideBar("##SecondaryMenuBar", viewport, ImGuiDir_Up, ImGui::GetFrameHeight(), flags)) {
+    if (ImGui::BeginViewportSideBar("##SecondaryMenuBar", viewport, ImGuiDir_Up, barHeight, flags)) {
         if (ImGui::BeginMenuBar()) {
             if (ImGui::IconButton(ICON_FA_FILE, size)) {
                 const auto file = openFile();
@@ -622,13 +624,13 @@ void Application::renderMenuBar() {
                 }
             }
 
-            ImGui::VerticalSeparator(barSize);
+            ImGui::VerticalSeparator(itemHeight);
 
             if (ImGui::IconButton(ICON_FA_FLOPPY_DISK, size, IM_COL32(105, 190, 255, 255), hasActiveEditor)) {
                 m_editor->save();
             }
 
-            ImGui::VerticalSeparator(barSize);
+            ImGui::VerticalSeparator(itemHeight);
 
             if (ImGui::IconButton(ICON_FA_ROTATE_LEFT, size, 0, m_editor->canUndo())) {
                 m_editor->undo();
@@ -638,7 +640,7 @@ void Application::renderMenuBar() {
                 m_editor->redo();
             }
             
-            ImGui::VerticalSeparator(barSize);
+            ImGui::VerticalSeparator(itemHeight);
 
             if (ImGui::IconButton(ICON_FA_PLAY, size, IM_COL32(143, 228, 143, 255), hasActiveEditor)) {
                 m_editor->playEmitterAction(EmitterSpawnType::SingleShot);
@@ -656,10 +658,16 @@ void Application::renderMenuBar() {
                 m_editor->resetCamera();
             }
 
+            ImGui::VerticalSeparator(itemHeight);
+
+            m_editor->renderToolbar(itemHeight);
+
             ImGui::EndMenuBar();
         }
     }
     ImGui::End();
+
+    
 
     ImGui::PopStyleVar(4);
     ImGui::PopStyleColor(3);

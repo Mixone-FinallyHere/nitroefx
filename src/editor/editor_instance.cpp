@@ -99,7 +99,13 @@ void EditorInstance::renderParticles(const std::vector<Renderer*>& renderers) {
 
     const auto& settings = g_application->getEditor()->getSettings();
     if (settings.useFixedDsResolution) {
-        renderSize = glm::vec2(256, 192) * (float)settings.fixedDsResolutionScale;
+        // We don't *actually* use 256x192, but we scale the viewport to match the aspect ratio
+        // so there isn't any stretching or squishing.
+        const float aspect = m_size.x / m_size.y;
+        const float baseHeight = 192.0f * settings.fixedDsResolutionScale;
+
+        renderSize.x = baseHeight * aspect;
+        renderSize.y = baseHeight;
     }
 
     if (m_updateProj || renderSize != m_viewport.getSize()) {
