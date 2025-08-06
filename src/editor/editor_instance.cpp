@@ -26,6 +26,22 @@ EditorInstance::EditorInstance(const std::filesystem::path& path, bool isTemp)
     );
 }
 
+EditorInstance::EditorInstance(bool isTemp)
+    : m_archive(), m_particleSystem(g_application->getEditor()->getSettings().maxParticles, m_archive.getTextures())
+    , m_camera(glm::radians(45.0f), { 800, 800 }, 1.0f, 500.0f), m_isTemp(isTemp) {
+    m_uniqueID = SPLRandom::nextU64();
+    m_updateProj = true;
+
+    g_application->getEditor()->selectResource(m_uniqueID, -1);
+    notifyResourceChanged(-1);
+
+    m_camera.setProjection(
+        g_application->getEditor()->getSettings().useOrthographicCamera
+            ? CameraProjection::Orthographic
+            : CameraProjection::Perspective
+    );
+}
+
 std::pair<bool, bool> EditorInstance::render() {
     bool open = true;
     bool active = false;
@@ -41,7 +57,11 @@ std::pair<bool, bool> EditorInstance::render() {
         ? ImGuiTabItemFlags_SetSelected
         : ImGuiTabItemFlags_None;
 
-    const auto name = m_modified ? m_path.filename().string() + "*" : m_path.filename().string();
+    std::string name = getName();
+    if (m_modified) {
+        name += "*";
+    }
+
     const bool openTab = ImGui::BeginTabItem(name.c_str(), &open, flags);
 
     if (m_isTemp) {
@@ -75,10 +95,25 @@ std::pair<bool, bool> EditorInstance::render() {
 }
 
 void EditorInstance::renderParticles(const std::vector<Renderer*>& renderers) {
-    if (m_updateProj || m_size != m_viewport.getSize()) {
-        m_viewport.resize(m_size);
-        m_camera.setViewport(m_size.x, m_size.y);
+    auto renderSize = m_size;
+
+    const auto& settings = g_application->getEditor()->getSettings();
+    if (settings.useFixedDsResolution) {
+        // We don't *actually* use 256x192, but we scale the viewport to match the aspect ratio
+        // so there isn't any stretching or squishing.
+        const float aspect = m_size.x / m_size.y;
+        const float baseHeight = 192.0f * settings.fixedDsResolutionScale;
+
+        renderSize.x = baseHeight * aspect;
+        renderSize.y = baseHeight;
+    }
+
+    if (m_updateProj || renderSize != m_viewport.getSize()) {
+        m_viewport.resize(renderSize, settings.fixedDsResolutionScale);
+        m_camera.setViewport(renderSize.x, renderSize.y);
         m_updateProj = false;
+
+        // Intentionally not setting m_size here as it represents the actual size of the editor viewport.
     }
 
     m_viewport.bind();
@@ -204,7 +239,10 @@ void EditorInstance::addResource() {
 
 void EditorInstance::save() {
     if (m_path.empty()) {
-        return;
+        const auto file = Application::saveFile();
+        if (!file.empty()) {
+            m_path = file;
+        }
     }
 
     m_archive.save(m_path);
@@ -232,4 +270,12 @@ EditorActionType EditorInstance::redo() {
     }
 
     return EditorActionType::None;
+}
+
+std::string EditorInstance::getName() const {
+    if (m_path.empty()) {
+        return "Untitled-" + std::to_string(m_uniqueID & 0xFF);
+    }
+
+    return m_path.filename().string();
 }

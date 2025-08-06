@@ -16,6 +16,7 @@ using namespace crc::literals;
 
 struct ApplicationAction {
     // application/File
+    static constexpr u32 NewFile = "application/File/NewFile"_crc;
     static constexpr u32 OpenProject = "application/File/OpenProject"_crc;
     static constexpr u32 OpenFile = "application/File/OpenFile"_crc;
     static constexpr u32 Save = "application/File/Save"_crc;
@@ -33,6 +34,7 @@ struct ApplicationAction {
     static constexpr u32 ResetCamera = "application/Edit/ResetCamera"_crc;
 
     static inline const std::map<u32, const char*> Names = {
+        { NewFile, "New File" },
         { OpenProject, "Open Project" },
         { OpenFile, "Open File" },
         { Save, "Save" },

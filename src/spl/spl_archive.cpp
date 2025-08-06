@@ -5,6 +5,7 @@
 #include <glm/gtc/constants.hpp>
 #include <spdlog/spdlog.h>
 #include <stb_image_write.h>
+#include <spng.h>
 #include <fstream>
 #include <concepts>
 #include <ranges>
@@ -22,11 +23,77 @@ std::ostream& operator<<(std::ostream& stream, const T& v) {
     return stream.write(reinterpret_cast<const char*>(&v), sizeof(T));
 }
 
+namespace {
+
+#define ROW(i0, i1, i2, i3, i4, i5, i6, i7) (((i3 << 6) | (i2 << 4) | (i1 << 2) | (i0))), (((i7 << 6) | (i6 << 4) | (i5 << 2) | (i4)))
+
+constexpr std::array<u8, 8 * 8 / 4> DEFAULT_TEXTURE = {
+    ROW(0, 0, 1, 1, 0, 0, 1, 1),
+    ROW(0, 0, 1, 1, 0, 0, 1, 1),
+    ROW(1, 1, 0, 0, 1, 1, 0, 0),
+    ROW(1, 1, 0, 0, 1, 1, 0, 0),
+    ROW(0, 0, 1, 1, 0, 0, 1, 1),
+    ROW(0, 0, 1, 1, 0, 0, 1, 1),
+    ROW(1, 1, 0, 0, 1, 1, 0, 0),
+    ROW(1, 1, 0, 0, 1, 1, 0, 0)
+};
+
+#undef ROW
+
+constexpr std::array<GXRgba, 4> DEFAULT_PALETTE = {
+    GXRgba::fromRGBA(255, 0, 255, 255), // Pink
+    GXRgba::fromRGBA(0, 0, 0, 255), // Black
+    GXRgba::fromRGBA(0, 0, 0, 0),
+    GXRgba::fromRGBA(0, 0, 0, 0)
+};
+
+void writePng(const SPLTexture& texture, const std::filesystem::path& file);
+void writePngIndexed(const SPLTexture& texture, const std::filesystem::path& file);
+void writePngRgba(const SPLTexture& texture, const std::filesystem::path& file);
+
+}
+
 
 SPLArchive::SPLArchive(const std::filesystem::path& filename) : m_header() {
     load(filename);
 }
 
+SPLArchive::SPLArchive() {
+    m_header = {
+        .magic = SPA_MAGIC,
+        .version = SPA_VERSION,
+        .resCount = 0,
+        .texCount = 1, // At least one texture is required
+        .reserved0 = 0,
+        .resSize = 0,
+        .texSize = 0,
+        .texOffset = 0,
+        .reserved1 = 0
+    };
+
+    // Create a default 8x8 texture
+    SPLTexture defaultTexture;
+    defaultTexture.param = {
+        .format = TextureFormat::Palette4,
+        .s = 0,
+        .t = 0,
+        .repeat = TextureRepeat::None,
+        .flip = TextureFlip::None,
+        .palColor0Transparent = false,
+        .useSharedTexture = false,
+        .sharedTexID = 0,
+    };
+
+    defaultTexture.width = 8;
+    defaultTexture.height = 8;
+
+    defaultTexture.textureData = std::span<const u8>(DEFAULT_TEXTURE.data(), DEFAULT_TEXTURE.size());
+    defaultTexture.paletteData = std::span<const u8>((u8*)DEFAULT_PALETTE.data(), DEFAULT_PALETTE.size() * sizeof(GXRgba));
+
+    defaultTexture.glTexture = std::make_shared<GLTexture>(defaultTexture);
+
+    m_textures.push_back(defaultTexture);
+}
 
 void SPLArchive::load(const std::filesystem::path& filename) {
     std::ifstream file(filename, std::ios::binary | std::ios::in);
@@ -334,12 +401,14 @@ void SPLArchive::exportTexture(size_t index, const std::filesystem::path& file) 
     }
 
     int ok = -1;
-    const auto rgba = tex.convertToRGBA8888();
-    if (!rgba.empty()) {
-        const auto ext = file.extension().string();
-        if (ext == ".png") {
-            ok = stbi_write_png(file.string().c_str(), tex.width, tex.height, 4, rgba.data(), tex.width * 4);
-        } else if (ext == ".jpg" || ext == ".jpeg") {
+    
+    const auto ext = file.extension().string();
+    if (ext == ".png") {
+        writePng(tex, file);
+        ok = 1;
+    } else {
+        const auto rgba = tex.convertToRGBA8888();
+        if (ext == ".jpg" || ext == ".jpeg") {
             ok = stbi_write_jpg(file.string().c_str(), tex.width, tex.height, 4, rgba.data(), 100);
         } else if (ext == ".bmp") {
             ok = stbi_write_bmp(file.string().c_str(), tex.width, tex.height, 4, rgba.data());
@@ -349,9 +418,6 @@ void SPLArchive::exportTexture(size_t index, const std::filesystem::path& file) 
             spdlog::error("Unsupported texture format: {}", ext);
             return;
         }
-    } else {
-        spdlog::error("Failed to convert texture {} to RGBA8888", index);
-        return;
     }
 
     if (ok) {
@@ -808,3 +874,140 @@ SPLTextureParamNative SPLArchive::toNative(const SPLTextureParam& param) {
     };
 }
 
+namespace {
+
+void writePng(const SPLTexture& texture, const std::filesystem::path& file) {
+    switch (texture.param.format) {
+    case TextureFormat::Palette4:
+    case TextureFormat::Palette16:
+    case TextureFormat::Palette256:
+        return writePngIndexed(texture, file);
+    case TextureFormat::Comp4x4:
+    case TextureFormat::A3I5:
+    case TextureFormat::A5I3:
+    case TextureFormat::Direct:
+        return writePngRgba(texture, file);
+    case TextureFormat::None:
+    case TextureFormat::Count:
+        break;
+    }
+
+    spdlog::error("Unsupported texture format for PNG export: {}", (int)texture.param.format);
+}
+
+void writePngIndexed(const SPLTexture& texture, const std::filesystem::path& file) {
+    spng_ctx* ctx = spng_ctx_new(SPNG_CTX_ENCODER);
+    if (!ctx) {
+        spdlog::error("Failed to create SPNG context");
+        return;
+    }
+
+    spng_set_option(ctx, SPNG_ENCODE_TO_BUFFER, true);
+
+    spng_ihdr ihdr{};
+    ihdr.width = texture.width;
+    ihdr.height = texture.height;
+    ihdr.color_type = SPNG_COLOR_TYPE_INDEXED;
+    ihdr.bit_depth = 8;
+    ihdr.interlace_method = SPNG_INTERLACE_NONE;
+
+    spng_set_ihdr(ctx, &ihdr);
+
+    const auto data = texture.convertTo8bpp();
+    if (data.empty()) {
+        spdlog::error("Failed to convert texture to 8bpp");
+        spng_ctx_free(ctx);
+        return;
+    }
+
+    spng_plte palette{};
+    const auto paletteData = (GXRgb*)texture.paletteData.data();
+
+    palette.n_entries = (u32)texture.getPaletteSize();
+    for (size_t i = 0; i < palette.n_entries; i++) {
+        const auto color = paletteData[i].toVec3();
+        palette.entries[i].red = (u8)(color.r * 255.0f);
+        palette.entries[i].green = (u8)(color.g * 255.0f);
+        palette.entries[i].blue = (u8)(color.b * 255.0f);
+    }
+
+    spng_set_plte(ctx, &palette);
+
+    int ret;
+    if ((ret = spng_encode_image(ctx, data.data(), data.size(), SPNG_FMT_PNG, SPNG_ENCODE_FINALIZE)) != 0) {
+        spdlog::error("Failed to encode texture to PNG: {}", spng_strerror(ret));
+    }
+
+    size_t pngSize;
+    void* pngData = spng_get_png_buffer(ctx, &pngSize, &ret);
+    if (pngData == nullptr) {
+        spdlog::error("Failed to get PNG buffer: {}", spng_strerror(ret));
+        spng_ctx_free(ctx);
+        return;
+    }
+
+    std::ofstream outFile(file, std::ios::binary);
+    if (!outFile) {
+        spdlog::error("Failed to open file for writing: {}", file.string());
+        free(pngData);
+        spng_ctx_free(ctx);
+        return;
+    }
+
+    outFile.write((const char*)pngData, pngSize);
+
+    free(pngData);
+    spng_ctx_free(ctx);
+}
+
+void writePngRgba(const SPLTexture& texture, const std::filesystem::path& file) {
+    const auto rgba = texture.convertToRGBA8888();
+    if (rgba.empty()) {
+        spdlog::error("Failed to convert texture to RGBA8888");
+        return;
+    }
+
+    spng_ctx* ctx = spng_ctx_new(SPNG_CTX_ENCODER);
+    if (!ctx) {
+        spdlog::error("Failed to create SPNG context");
+        return;
+    }
+
+    spng_set_option(ctx, SPNG_ENCODE_TO_BUFFER, true);
+
+    spng_ihdr ihdr{};
+    ihdr.width = texture.width;
+    ihdr.height = texture.height;
+    ihdr.bit_depth = 8;
+    ihdr.color_type = SPNG_COLOR_TYPE_TRUECOLOR_ALPHA;
+
+    spng_set_ihdr(ctx, &ihdr);
+
+    int ret;
+    if ((ret = spng_encode_image(ctx, rgba.data(), rgba.size(), SPNG_FMT_PNG, SPNG_ENCODE_FINALIZE)) != 0) {
+        spdlog::error("Failed to encode texture to PNG: {}", spng_strerror(ret));
+    }
+
+    size_t pngSize;
+    void* pngData = spng_get_png_buffer(ctx, &pngSize, &ret);
+    if (pngData == nullptr) {
+        spdlog::error("Failed to get PNG buffer: {}", spng_strerror(ret));
+        spng_ctx_free(ctx);
+        return;
+    }
+
+    std::ofstream outFile(file, std::ios::binary);
+    if (!outFile) {
+        spdlog::error("Failed to open file for writing: {}", file.string());
+        free(pngData);
+        spng_ctx_free(ctx);
+        return;
+    }
+
+    outFile.write((const char*)pngData, pngSize);
+
+    free(pngData);
+    spng_ctx_free(ctx);
+}
+
+}

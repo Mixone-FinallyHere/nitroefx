@@ -14,6 +14,8 @@
     "spdlog",
     "glew",
     "implot",
-    "nlohmann-json"
-  ]
+    "nlohmann-json",
+    "argparse",
+    "libspng"
+]
 }

@@ -27,6 +27,7 @@ public:
     void render();
     void renderParticles();
     void renderMenu(std::string_view name);
+    void renderToolbar(float itemHeight);
     void renderStats();
     void openPicker();
     void openEditor();
@@ -39,6 +40,8 @@ public:
     void resetCamera();
 
     void handleEvent(const SDL_Event& event);
+
+    void selectResource(u64 editorID, size_t resourceIndex);
 
     void save();
     void saveAs(const std::filesystem::path& path);
@@ -61,6 +64,8 @@ private:
     void renderResourceEditor();
     void renderSettings();
 
+    void updateRenderSettings();
+
     void renderHeaderEditor(SPLResourceHeader& header) const;
     void renderBehaviorEditor(SPLResource& res);
 
@@ -78,11 +83,13 @@ private:
     bool renderTexAnimEditor(SPLTexAnim& res);
     void renderChildrenEditor(SPLResource& res);
 
+    void helpPopup(std::string_view text) const;
+
     void renderDebugShapes(const std::shared_ptr<EditorInstance>& editor, std::vector<Renderer*>& renderers);
 
     void updateMaxParticles();
 
-    void openTempTexture(std::string_view path, size_t destIndex = -1);
+    void openTempTexture(const std::filesystem::path& path, size_t destIndex = -1);
     void discardTempTexture();
     void destroyTempTexture();
     void importTempTexture();

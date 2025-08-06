@@ -71,6 +71,10 @@ S(hasScaleAnim) = "Whether child particles use a scale animation";
 S(endScale) = "The final scale value the child particles grow to";
 S(hasAlphaAnim) = "Whether child particles have a fade-out animation";
 
+S(texAnimStep) = "The fraction of the particles lifetime/loop for which each texture frame lasts";
+S(texAnimLoop) = "Whether the texture animation loops";
+S(texAnimRandomizeInit) = "Whether to randomize the initial texture frame";
+
 }
 
 #undef S

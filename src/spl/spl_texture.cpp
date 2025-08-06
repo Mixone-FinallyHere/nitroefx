@@ -206,6 +206,67 @@ std::vector<u8> SPLTexture::convertToRGBA8888() const {
     return GLTexture::toRGBA(*this);
 }
 
+#define PIXEL2BPP(byte, pixel) (((byte) >> ((pixel) * 2)) & 0b11)
+#define PIXEL4BPP(byte, pixel) (((byte) >> ((pixel) * 4)) & 0b1111)
+
+std::vector<u8> SPLTexture::convertTo8bpp() const {
+    switch (param.format) {
+    case TextureFormat::Palette4: {
+        std::vector<u8> texture((size_t)width * height);
+        for (int i = 0; i < width * height; i += 4) {
+            const u8 byte = textureData[i / 4];
+
+            texture[i + 0] = PIXEL2BPP(byte, 0);
+            texture[i + 1] = PIXEL2BPP(byte, 1);
+            texture[i + 2] = PIXEL2BPP(byte, 2);
+            texture[i + 3] = PIXEL2BPP(byte, 3);
+        }
+
+        return texture;
+    }
+    case TextureFormat::Palette16: {
+        std::vector<u8> texture((size_t)width * height);
+        for (int i = 0; i < width * height; i += 2) {
+            const u8 byte = textureData[i / 2];
+
+            texture[i + 0] = PIXEL4BPP(byte, 0);
+            texture[i + 1] = PIXEL4BPP(byte, 1);
+        }
+
+        return texture;
+    }
+    case TextureFormat::Palette256:
+        return { textureData.data(), textureData.data() + textureData.size() };
+    case TextureFormat::Comp4x4:
+    case TextureFormat::None:
+    case TextureFormat::A3I5:
+    case TextureFormat::A5I3:
+    case TextureFormat::Direct:
+    case TextureFormat::Count:
+        return {};
+    }
+}
+
+size_t SPLTexture::getPaletteSize() const {
+    switch (param.format) {
+    case TextureFormat::A3I5:
+        return 32;
+    case TextureFormat::Palette4:
+        return 4;
+    case TextureFormat::Palette16:
+        return 16;
+    case TextureFormat::Palette256:
+        return 256;
+    case TextureFormat::A5I3:
+        return 8;
+    case TextureFormat::Comp4x4:
+    case TextureFormat::Direct:
+    case TextureFormat::None:
+    case TextureFormat::Count:
+        return 0;
+    }
+}
+
 TextureImportSpecification SPLTexture::suggestSpecification(
     s32 width, 
     s32 height, 

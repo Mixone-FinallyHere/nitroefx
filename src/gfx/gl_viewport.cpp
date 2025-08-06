@@ -20,7 +20,7 @@ void GLViewport::unbind() {
     glViewport(0, 0, (int)m_size.s, (int)m_size.t);
 }
 
-void GLViewport::resize(const glm::vec2& size) {
+void GLViewport::resize(const glm::vec2& size, bool nearestFiltering) {
     m_size = size;
 
     glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
@@ -37,8 +37,10 @@ void GLViewport::resize(const glm::vec2& size) {
         GL_UNSIGNED_BYTE, 
         nullptr
     );
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    const GLint filtering = nearestFiltering ? GL_NEAREST : GL_LINEAR;
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filtering);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filtering);
     glFramebufferTexture2D(
         GL_FRAMEBUFFER, 
         GL_COLOR_ATTACHMENT0, 

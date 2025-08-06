@@ -5,6 +5,7 @@
 #include "help_messages.h"
 #include "fonts/IconsFontAwesome6.h"
 #include "imgui/extensions.h"
+#include "spl/spl_resource.h"
 
 #include <array>
 #include <cinttypes>
@@ -17,7 +18,9 @@
 #include <imgui_internal.h>
 #include <tinyfiledialogs.h>
 #include <stb_image.h>
+#include <spng.h>
 #include <libimagequant.h>
+
 
 #define LOCKED_EDITOR() activeEditor_locked
 #define LOCK_EDITOR() auto LOCKED_EDITOR() = m_activeEditor.lock()
@@ -202,6 +205,20 @@ void Editor::renderMenu(std::string_view name) {
     }
 }
 
+void Editor::renderToolbar(float itemHeight) {
+    constexpr float framePadding = 2.0f;
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { framePadding, framePadding });
+    ImGui::PushStyleColor(ImGuiCol_Header, m_settings.useFixedDsResolution ? IM_COL32(79, 79, 79, 200) : 0);
+    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, IM_COL32(79, 79, 79, 200));
+    ImGui::PushStyleColor(ImGuiCol_HeaderActive, IM_COL32(90, 90, 90, 255));
+
+    const ImVec2 size = { ImGui::CalcTextSize("DS Resolution").x + 2.0f * framePadding, itemHeight };
+    ImGui::Selectable("DS Resolution", &m_settings.useFixedDsResolution, ImGuiSelectableFlags_None, size);
+
+    ImGui::PopStyleColor(3);
+    ImGui::PopStyleVar();
+}
+
 void Editor::renderStats() {
     const auto& editor = g_projectManager->getActiveEditor();
     if (!editor) {
@@ -320,6 +337,8 @@ void Editor::loadConfig(const nlohmann::json& config) {
     m_settings.collisionPlaneBounceColor = loadVec4(settings, "collisionPlaneBounceColor", m_settingsDefault.collisionPlaneBounceColor);
     m_settings.collisionPlaneKillColor = loadVec4(settings, "collisionPlaneKillColor", m_settingsDefault.collisionPlaneKillColor);
     m_settings.maxParticles = settings.value("maxParticles", m_settingsDefault.maxParticles);
+    m_settings.useFixedDsResolution = settings.value("useFixedDsResolution", m_settingsDefault.useFixedDsResolution);
+    m_settings.fixedDsResolutionScale = settings.value("fixedDsResolutionScale", m_settingsDefault.fixedDsResolutionScale);
 }
 
 void Editor::saveConfig(nlohmann::json& config) const {
@@ -335,7 +354,9 @@ void Editor::saveConfig(nlohmann::json& config) const {
         { "editedEmitterColor", saveVec4(m_settings.editedEmitterColor) },
         { "collisionPlaneBounceColor", saveVec4(m_settings.collisionPlaneBounceColor) },
         { "collisionPlaneKillColor", saveVec4(m_settings.collisionPlaneKillColor) },
-        { "maxParticles", m_settings.maxParticles }
+        { "maxParticles", m_settings.maxParticles },
+        { "useFixedDsResolution", m_settings.useFixedDsResolution },
+        { "fixedDsResolutionScale", m_settings.fixedDsResolutionScale }
     });
 }
 
@@ -434,6 +455,10 @@ void Editor::handleEvent(const SDL_Event& event) {
     }
 
     editor->handleEvent(event);
+}
+
+void Editor::selectResource(u64 editorID, size_t resourceIndex) {
+    m_selectedResources[editorID] = resourceIndex;
 }
 
 void Editor::renderResourcePicker() {
@@ -663,8 +688,8 @@ void Editor::renderTextureManager() {
             if (open) {
                 ImGui::Text("Format: %s", getTextureFormat(texture.param.format));
 
-                ImGui::InputScalar("S", ImGuiDataType_U8, &texture.param.s);
-                ImGui::InputScalar("T", ImGuiDataType_U8, &texture.param.t);
+                // ImGui::InputScalar("S", ImGuiDataType_U8, &texture.param.s);
+                // ImGui::InputScalar("T", ImGuiDataType_U8, &texture.param.t);
                 
                 if (ImGui::BeginCombo("Repeat", getTextureRepeat(texture.param.repeat))) {
                     for (const auto [val, name] : detail::g_textureRepeatNames) {
@@ -949,6 +974,26 @@ void Editor::renderSettings() {
         ImGui::ColorEdit4("Collision Plane Bounce Color", glm::value_ptr(m_settings.collisionPlaneBounceColor));
         ImGui::ColorEdit4("Collision Plane Kill Color", glm::value_ptr(m_settings.collisionPlaneKillColor));
 
+        ImGui::SeparatorText("Rendering");
+        bool changed = false;
+
+        changed |= ImGui::Checkbox("Use DS Resolution", &m_settings.useFixedDsResolution);
+        ImGui::SameLine();
+        ImGui::TextDisabled("(?)");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("If enabled, particles will render at the Nintendo DS' native resolution of "
+                              "256x192 * <scale>");
+        }
+
+        if (m_settings.useFixedDsResolution) {
+            changed |= ImGui::SliderInt("DS Resolution Scale", &m_settings.fixedDsResolutionScale, 1, 8);
+            m_settings.fixedDsResolutionScale = glm::clamp(m_settings.fixedDsResolutionScale, 1, 8);
+        }
+
+        if (changed) {
+            updateRenderSettings(); // Update all open editors
+        }
+
         if (ImGui::Button("Reset to Defaults")) {
             m_settings = m_settingsDefault;
         }
@@ -989,24 +1034,19 @@ void Editor::renderSettings() {
     ImGui::PopStyleVar();
 }
 
+void Editor::updateRenderSettings() {
+    const auto editors = g_projectManager->getOpenEditors();
+    for (const auto& editor : editors) {
+        editor->updateViewportSize();
+    }
+}
+
 void Editor::renderHeaderEditor(SPLResourceHeader& header) const {
     if (m_activeEditor.expired()) {
         return;
     }
 
     LOCK_EDITOR();
-
-    constexpr auto helpPopup = [](std::string_view text) {
-        ImGui::SameLine();
-        ImGui::TextDisabled("(?)");
-        if (ImGui::BeginItemTooltip())
-        {
-            ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-            ImGui::TextUnformatted(text.data(), text.data() + text.size());
-            ImGui::PopTextWrapPos();
-            ImGui::EndTooltip();
-        }
-    };
 
     auto& flags = header.flags;
     auto& misc = header.misc;
@@ -1516,6 +1556,11 @@ void Editor::renderAnimationEditor(SPLResource& res) {
             ImGui::CloseCurrentPopup();
         }
 
+        if (NOTIFY(ImGui::MenuItem("Texture", nullptr, false, !res.header.flags.hasTexAnim))) {
+            res.addTexAnim(SPLTexAnim::createDefault());
+            ImGui::CloseCurrentPopup();
+        }
+
         ImGui::EndPopup();
     }
 
@@ -1534,6 +1579,12 @@ void Editor::renderAnimationEditor(SPLResource& res) {
     if (res.alphaAnim) {
         if (renderAlphaAnimEditor(*res.alphaAnim)) {
             res.removeAlphaAnim();
+        }
+    }
+
+    if (res.texAnim) {
+        if (renderTexAnimEditor(*res.texAnim)) {
+            res.removeTexAnim();
         }
     }
 }
@@ -1771,7 +1822,100 @@ bool Editor::renderAlphaAnimEditor(SPLAlphaAnim& res) {
 }
 
 bool Editor::renderTexAnimEditor(SPLTexAnim& res) {
-    return false;
+    LOCK_EDITOR();
+
+    static bool hovered = false;
+
+    if (!ImGui::CollapsingHeader("Texture Animation")) {
+        return false;
+    }
+
+    if (hovered) {
+        ImGui::PushStyleColor(ImGuiCol_Border, s_hoverAccentColor);
+    }
+
+    ImGui::BeginChild("##texAnimEditor", {}, ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY);
+
+    if (hovered) {
+        ImGui::PopStyleColor();
+    }
+
+    NOTIFY(ImGui::SliderFloat("Step", &res.param.step, 0.01f, 1.0f));
+    HELP(texAnimStep);
+
+    NOTIFY(ImGui::Checkbox("Loop", &res.param.loop));
+    HELP(texAnimLoop);
+
+    NOTIFY(ImGui::Checkbox("Randomize Start", &res.param.randomizeInit));
+    HELP(texAnimRandomizeInit);
+
+    ImGui::SeparatorText("Textures");
+
+    const auto& textures = LOCKED_EDITOR()->getArchive().getTextures();
+    const auto popupId = ImGui::GetID("##texAnimTexturePicker");
+    bool buttonContextOpened = false;
+    static size_t selectedTexture = 0;
+
+    for (int i = 0; i < res.param.textureCount; i++) {
+        ImGui::PushID(i);
+        const auto& texture = textures[res.textures[i]];
+        if (ImGui::ImageButton("##tex", texture.glTexture->getHandle(), { 32, 32 })) {
+            ImGui::OpenPopup(popupId);
+            selectedTexture = i;
+        }
+        if (ImGui::BeginPopupContextItem("##texContext")) {
+            buttonContextOpened = true;
+            ImGui::BeginDisabled(res.param.textureCount <= 1);
+
+            if (NOTIFY(ImGui::MenuItem("Delete"))) {
+                res.removeTexture(i);
+                ImGui::CloseCurrentPopup();
+            }
+
+            ImGui::EndDisabled();
+            ImGui::EndPopup();
+        }
+        ImGui::PopID();
+    }
+
+    if (res.param.textureCount < SPLTexAnim::MAX_TEXTURES) {
+        if (ImGui::Button(ICON_FA_PLUS, { 32, 32 })) {
+            res.addTexture();
+        }
+    }
+
+    if (ImGui::BeginPopup("##texAnimTexturePicker")) {
+        for (int i = 0; i < textures.size(); ++i) {
+            ImGui::PushID(i);
+            const auto& texture = textures[i];
+            if (NOTIFY(ImGui::ImageButton("##tex", (ImTextureID)texture.glTexture->getHandle(), { 32, 32 }))) {
+                res.textures[selectedTexture] = i;
+                ImGui::CloseCurrentPopup();
+            }
+
+            if (i % 4 != 3) {
+                ImGui::SameLine();
+            }
+            ImGui::PopID();
+        }
+        ImGui::EndPopup();
+    }
+
+    ImGui::EndChild();
+
+    hovered = ImGui::IsItemHovered();
+    bool result = false;
+
+    if (!buttonContextOpened && ImGui::BeginPopupContextItem("##texAnimContext")) {
+        if (ImGui::MenuItem("Delete")) {
+            ImGui::CloseCurrentPopup();
+            result = true;
+        }
+
+        ImGui::EndPopup();
+    }
+
+    return result;
 }
 
 void Editor::renderChildrenEditor(SPLResource& res) {
@@ -1822,17 +1966,6 @@ void Editor::renderChildrenEditor(SPLResource& res) {
 
     auto& child = res.childResource.value();
     constexpr f32 frameTime = 1.0f / (f32)SPLArchive::SPL_FRAMES_PER_SECOND;
-    constexpr auto helpPopup = [](std::string_view text) {
-        ImGui::SameLine();
-        ImGui::TextDisabled("(?)");
-        if (ImGui::BeginItemTooltip())
-        {
-            ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-            ImGui::TextUnformatted(text.data());
-            ImGui::PopTextWrapPos();
-            ImGui::EndTooltip();
-        }
-    };
 
     bool open = ImGui::TreeNodeEx("##parentSettings", ImGuiTreeNodeFlags_SpanAvailWidth);
     ImGui::SameLine();
@@ -1996,6 +2129,18 @@ void Editor::renderChildrenEditor(SPLResource& res) {
     }
 }
 
+void Editor::helpPopup(std::string_view text) const {
+    ImGui::SameLine();
+    ImGui::TextDisabled("(?)");
+
+    if (ImGui::BeginItemTooltip()) {
+        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+        ImGui::TextUnformatted(text.data(), text.data() + text.size());
+        ImGui::PopTextWrapPos();
+        ImGui::EndTooltip();
+    }
+}
+
 void Editor::renderDebugShapes(const std::shared_ptr<EditorInstance>& editor, std::vector<Renderer*>& renderers) {
     const auto& archive = editor->getArchive();
     const auto& resources = archive.getResources();
@@ -2131,7 +2276,7 @@ void Editor::updateMaxParticles() {
     }
 }
 
-void Editor::openTempTexture(std::string_view path, size_t destIndex) {
+void Editor::openTempTexture(const std::filesystem::path& path, size_t destIndex) {
     constexpr auto isPowerOf2 = [](s32 value) {
         return (value & (value - 1)) == 0;
     };
@@ -2141,28 +2286,98 @@ void Editor::openTempTexture(std::string_view path, size_t destIndex) {
         return;
     }
 
+    std::ifstream file(path, std::ios::binary | std::ios::in);
+    if (!file) {
+        spdlog::error("Failed to open file: {}", path.string());
+        return;
+    }
+
+    const std::vector<u8> fileData{std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
+    if (fileData.empty()) {
+        spdlog::error("File is empty: {}", path.string());
+        return;
+    }
+
+    spng_ctx* ctx = spng_ctx_new(0);
+    if (!ctx) {
+        spdlog::error("Failed to create SPNG context");
+        return;
+    }
+
+    spng_set_crc_action(ctx, SPNG_CRC_USE, SPNG_CRC_USE);
+
+    constexpr auto limit = 1024 * 1024 * 64U; // 64 MB
+    spng_set_chunk_limits(ctx, limit, limit);
+
+    int ret;
+    if ((ret = spng_set_png_buffer(ctx, fileData.data(), fileData.size())) != 0) {
+        spdlog::error("Failed to set PNG buffer: {}", spng_strerror(ret));
+        spng_ctx_free(ctx);
+        return;
+    }
+
+    spng_ihdr ihdr;
+    if ((ret = spng_get_ihdr(ctx, &ihdr)) != 0) {
+        spdlog::error("Failed to get PNG header: {}", spng_strerror(ret));
+        spng_ctx_free(ctx);
+        return;
+    }
+
     const auto tempTex = new TempTexture;
     m_tempTexture = tempTex;
 
-    tempTex->path = path;
-    tempTex->data = stbi_load(path.data(), &tempTex->width, &tempTex->height, &tempTex->channels, 4);
+    tempTex->path = path.string();
+    tempTex->data = stbi_load_from_memory(fileData.data(), (int)fileData.size(), &tempTex->width, &tempTex->height, &tempTex->channels, 4);
     if (!tempTex->data) {
         delete m_tempTexture;
         m_tempTexture = nullptr;
+        spng_ctx_free(ctx);
         return;
     }
 
     tempTex->texture = std::make_unique<GLTexture>(tempTex->width, tempTex->height);
-    tempTex->quantized = new u8[tempTex->width * tempTex->height * 4];
+    tempTex->quantized = new u8[(size_t)tempTex->width * tempTex->height * 4];
 
-    tempTex->preference = TextureConversionPreference::ColorDepth;
-    tempTex->suggestedSpec = SPLTexture::suggestSpecification(tempTex->width, tempTex->height, tempTex->channels, tempTex->data, tempTex->preference);
+    // If we load an indexed PNG, we can go a simple path and don't need to quantize it.
+    if (ihdr.color_type == SPNG_COLOR_TYPE_INDEXED && ihdr.bit_depth <= 8) {
+        spng_plte palette;
+        spng_get_plte(ctx, &palette);
 
-    if (tempTex->suggestedSpec.requiresColorCompression || tempTex->suggestedSpec.requiresAlphaCompression) {
-        quantizeTexture(tempTex->data, tempTex->width, tempTex->height, tempTex->suggestedSpec, tempTex->quantized);
-        tempTex->texture->update(tempTex->quantized);
-    } else {
+        TextureFormat format;
+        if (palette.n_entries <= 4) {
+            format = TextureFormat::Palette4;
+        } else if (palette.n_entries <= 16) {
+            format = TextureFormat::Palette16;
+        } else if (palette.n_entries <= 256) {
+            format = TextureFormat::Palette256;
+        } else {
+            spdlog::error("Unsupported indexed PNG bit depth: {}", ihdr.bit_depth);
+            format = TextureFormat::Palette256;
+        }
+
+        std::memcpy(tempTex->quantized, tempTex->data, (size_t)tempTex->width * tempTex->height * 4);
+        tempTex->preference = TextureConversionPreference::ColorDepth;
+        tempTex->suggestedSpec = {
+            .color0Transparent = true,
+            .requiresColorCompression = false,
+            .requiresAlphaCompression = false,
+            .format = format,
+            .uniqueColors = {},
+            .uniqueAlphas = {},
+            .flags = TextureAttributes::None,
+        };
+
         tempTex->texture->update(tempTex->data);
+    } else {
+        tempTex->preference = TextureConversionPreference::ColorDepth;
+        tempTex->suggestedSpec = SPLTexture::suggestSpecification(tempTex->width, tempTex->height, tempTex->channels, tempTex->data, tempTex->preference);
+
+        if (tempTex->suggestedSpec.requiresColorCompression || tempTex->suggestedSpec.requiresAlphaCompression) {
+            quantizeTexture(tempTex->data, tempTex->width, tempTex->height, tempTex->suggestedSpec, tempTex->quantized);
+            tempTex->texture->update(tempTex->quantized);
+        } else {
+            tempTex->texture->update(tempTex->data);
+        }
     }
 
     tempTex->isValidSize = true;
@@ -2176,6 +2391,8 @@ void Editor::openTempTexture(std::string_view path, size_t destIndex) {
     }
 
     tempTex->destIndex = destIndex;
+
+    spng_ctx_free(ctx);
 }
 
 void Editor::discardTempTexture() {
@@ -2185,7 +2402,7 @@ void Editor::discardTempTexture() {
 
 void Editor::destroyTempTexture() {
     stbi_image_free(m_tempTexture->data);
-    delete m_tempTexture->quantized;
+    delete[] m_tempTexture->quantized;
     delete m_tempTexture;
     m_tempTexture = nullptr;
     m_discardTempTexture = false;

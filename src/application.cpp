@@ -50,6 +50,7 @@ Application::Application() {
     g_application = this;
 
     m_sortedActions = {
+        ApplicationAction::NewFile,
         ApplicationAction::OpenProject,
         ApplicationAction::OpenFile,
         ApplicationAction::Save,
@@ -211,6 +212,23 @@ int Application::run(int argc, char** argv) {
     return 0;
 }
 
+int Application::runCli(argparse::ArgumentParser &cli) {
+    if (!cli.is_subcommand_used("cli")) {
+        spdlog::error("This application is not running in CLI mode");
+        return 1;
+    }
+
+    if (cli.get<bool>("--export")) {
+        const auto format = cli.get<std::string>("--format");
+        const auto output = cli.get<std::string>("--output");
+        const auto indices = cli.get<std::vector<int>>("--index");
+
+        SPLArchive archive(cli.get<std::string>("path"));
+    }
+
+    return 0;
+}
+
 void Application::pollEvents() {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
@@ -288,7 +306,7 @@ void Application::handleKeydown(const SDL_Event& event) {
             if (event.key.mod & SDL_KMOD_SHIFT) {
                 spdlog::warn("New Project not implemented");
             } else {
-                spdlog::warn("New SPL File not implemented");
+                g_projectManager->openEditor();
             }
         }
         break;
@@ -421,7 +439,7 @@ void Application::renderMenuBar() {
                 }
 
                 if (ImGui::MenuItemIcon(ICON_FA_FILE_CIRCLE_PLUS, "SPL File", "Ctrl+N")) {
-                    spdlog::warn("New SPL File not implemented");
+                    g_projectManager->openEditor();
                 }
 
                 ImGui::EndMenu();
@@ -575,18 +593,20 @@ void Application::renderMenuBar() {
 
     const auto viewport = (ImGuiViewportP*)ImGui::GetMainViewport();
     constexpr auto flags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_MenuBar;
-    constexpr float barSize = 24.0f;
-    constexpr ImVec2 size = { barSize, barSize };
+    constexpr float framePaddingY = 4.0f;
+    constexpr float itemHeight = 24.0f;
+    constexpr float barHeight = itemHeight + 2.0f;
+    constexpr ImVec2 size = { itemHeight, itemHeight };
 
     ImGui::PushStyleColor(ImGuiCol_Button, 0x00000000);
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(79, 79, 79, 200));
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(90, 90, 90, 255));
     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, { 0.5f, 0.5f });
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 2.0f, 2.0f });
     ImGui::PushStyleVarX(ImGuiStyleVar_ItemSpacing, 4.0f); // Cut item spacing in half
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 2.0f, framePaddingY });
     
-    if (ImGui::BeginViewportSideBar("##SecondaryMenuBar", viewport, ImGuiDir_Up, ImGui::GetFrameHeight(), flags)) {
+    if (ImGui::BeginViewportSideBar("##SecondaryMenuBar", viewport, ImGuiDir_Up, barHeight, flags)) {
         if (ImGui::BeginMenuBar()) {
             if (ImGui::IconButton(ICON_FA_FILE, size)) {
                 const auto file = openFile();
@@ -604,13 +624,13 @@ void Application::renderMenuBar() {
                 }
             }
 
-            ImGui::VerticalSeparator(barSize);
+            ImGui::VerticalSeparator(itemHeight);
 
             if (ImGui::IconButton(ICON_FA_FLOPPY_DISK, size, IM_COL32(105, 190, 255, 255), hasActiveEditor)) {
                 m_editor->save();
             }
 
-            ImGui::VerticalSeparator(barSize);
+            ImGui::VerticalSeparator(itemHeight);
 
             if (ImGui::IconButton(ICON_FA_ROTATE_LEFT, size, 0, m_editor->canUndo())) {
                 m_editor->undo();
@@ -620,7 +640,7 @@ void Application::renderMenuBar() {
                 m_editor->redo();
             }
             
-            ImGui::VerticalSeparator(barSize);
+            ImGui::VerticalSeparator(itemHeight);
 
             if (ImGui::IconButton(ICON_FA_PLAY, size, IM_COL32(143, 228, 143, 255), hasActiveEditor)) {
                 m_editor->playEmitterAction(EmitterSpawnType::SingleShot);
@@ -638,10 +658,16 @@ void Application::renderMenuBar() {
                 m_editor->resetCamera();
             }
 
+            ImGui::VerticalSeparator(itemHeight);
+
+            m_editor->renderToolbar(itemHeight);
+
             ImGui::EndMenuBar();
         }
     }
     ImGui::End();
+
+    
 
     ImGui::PopStyleVar(4);
     ImGui::PopStyleColor(3);
@@ -973,6 +999,9 @@ void Application::executeAction(u32 action) {
     spdlog::info("Executing Action: {}", ApplicationAction::Names.at(action));
 
     switch (action) {
+    case ApplicationAction::NewFile:
+        g_projectManager->openEditor();
+        break;
     case ApplicationAction::OpenProject: {
         const auto projectPath = openDirectory();
         if (!projectPath.empty()) {

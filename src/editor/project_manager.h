@@ -17,6 +17,7 @@ public:
     void openProject(const std::filesystem::path& path);
     void closeProject(bool force = false);
     void openEditor(const std::filesystem::path& path);
+    void openEditor(); // Create an editor without an associated file
     void openTempEditor(const std::filesystem::path& path);
     void closeEditor(const std::shared_ptr<EditorInstance>& editor, bool force = false);
     void closeTempEditor();
@@ -29,6 +30,11 @@ public:
 
     std::shared_ptr<EditorInstance> getEditor(const std::filesystem::path& path) const {
         const auto it = std::ranges::find_if(m_openEditors, [&path](const auto& editor) { return editor->getPath() == path; });
+        return it != m_openEditors.end() ? *it : nullptr;
+    }
+
+    std::shared_ptr<EditorInstance> getEditor(u64 uniqueID) const {
+        const auto it = std::ranges::find_if(m_openEditors, [uniqueID](const auto& editor) { return editor->getUniqueID() == uniqueID; });
         return it != m_openEditors.end() ? *it : nullptr;
     }
 
